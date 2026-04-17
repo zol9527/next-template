@@ -1,0 +1,476 @@
+// ============================================================================
+// 电商 + 分销插件模型（合并）
+// 环境: PLUGIN_ECOMMERCE=true 或 PLUGIN_PROMOTION=true 时由合并脚本追加
+//
+// 注意: 电商与分销模型必须合并在同一文件中，因为:
+// - Order ↔ CommissionRecord 存在循环 FK 依赖
+// - Product ↔ Coupon 存在跨域 relation
+// - Prisma 不允许跨文件引用 relation
+// ============================================================================
+
+// ── 商品 ──
+
+model Product {
+  id               String                   @id @default(uuid())
+  name             String
+  slug             String?
+  summary          String?
+  description      String?
+  productKind      String                   @map("product_kind")
+  status           String                   @default("draft")
+  price            Decimal
+  originalPrice    Decimal?                 @map("original_price")
+  stockQuantity    Int?                     @map("stock_quantity")
+  isFeatured       Boolean                  @default(false) @map("is_featured")
+  tags             String                   @default("[]")
+  currencyCode     String                   @default("CNY") @map("currency_code")
+  extensions       String?
+  createdById      String?                  @map("created_by")
+  updatedById      String?                  @map("updated_by")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @default(now()) @map("updated_at")
+  deletedAt        DateTime?                @map("deleted_at")
+  couponAsGift     Coupon[]                 @relation("CouponGiftProduct")
+  entitlements     CourseEntitlement[]
+  orders           Order[]
+  categories       ProductCategory[]
+  mediaAttachments ProductMediaAttachment[]
+  createdBy        User?                    @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?                    @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([status])
+  @@index([productKind])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([deletedAt, status])
+  @@map("products")
+}
+
+model Category {
+  id        String            @id @default(uuid())
+  parentId  String?           @map("parent_id")
+  name      String
+  slug      String?
+  status    String            @default("active")
+  sortOrder Int               @default(0) @map("sort_order")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @default(now()) @map("updated_at")
+  parent    Category?         @relation("CategoryParent", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[]        @relation("CategoryParent")
+  products  ProductCategory[]
+
+  @@index([parentId])
+  @@index([status])
+  @@index([sortOrder])
+  @@map("categories")
+}
+
+model ProductCategory {
+  productId  String   @map("product_id")
+  categoryId String   @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model ProductMediaAttachment {
+  id        String     @id @default(uuid())
+  productId String     @map("product_id")
+  assetId   String     @map("asset_id")
+  usage     String
+  sortOrder Int        @default(0) @map("sort_order")
+  createdAt DateTime   @default(now()) @map("created_at")
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  asset     MediaAsset @relation(fields: [assetId], references: [id])
+
+  @@index([productId])
+  @@index([assetId])
+  @@index([usage])
+  @@map("product_media_attachments")
+}
+
+// ── 订单 & 支付 ──
+
+model Order {
+  id                 String                @id @default(uuid())
+  orderNo            String                @unique @map("order_no")
+  userId             String                @map("user_id")
+  productId          String                @map("product_id")
+  priceAmount        Decimal               @map("price_amount")
+  currencyCode       String                @default("CNY") @map("currency_code")
+  paidAmount         Decimal?              @map("paid_amount")
+  refundedAmount     Decimal               @default(0) @map("refunded_amount")
+  status             String                @default("pending_payment")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  paidAt             DateTime?             @map("paid_at")
+  completedAt        DateTime?             @map("completed_at")
+  closedAt           DateTime?             @map("closed_at")
+  updatedAt          DateTime              @default(now()) @map("updated_at")
+  couponRedemptionId String?               @unique @map("coupon_redemption_id")
+  discountAmount     Decimal?              @map("discount_amount")
+  commissions        CommissionRecord[]
+  entitlements       CourseEntitlement[]
+  fulfillmentJobs    OrderFulfillmentJob[]
+  user               User                  @relation(fields: [userId], references: [id])
+  product            Product               @relation(fields: [productId], references: [id])
+  couponRedemption   CouponRedemption?     @relation("OrderCouponRedemption", fields: [couponRedemptionId], references: [id])
+  payments           Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([paidAt])
+  @@index([completedAt])
+  @@index([closedAt])
+  @@index([productId])
+  @@map("orders")
+}
+
+model Payment {
+  id              String               @id @default(uuid())
+  orderId         String               @map("order_id")
+  channel         String               @default("wechat")
+  status          String               @default("pending")
+  amount          Decimal
+  currencyCode    String               @default("CNY") @map("currency_code")
+  providerTradeNo String?              @unique @map("provider_trade_no")
+  providerPayerId String?              @map("provider_payer_id")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  confirmedAt     DateTime?            @map("confirmed_at")
+  updatedAt       DateTime             @default(now()) @map("updated_at")
+  fulfillmentJobs OrderFulfillmentJob?
+  order           Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([confirmedAt])
+  @@map("payments")
+}
+
+model OrderFulfillmentJob {
+  id               String    @id @default(uuid())
+  orderId          String    @map("order_id")
+  paymentId        String    @unique @map("payment_id")
+  status           String    @default("pending")
+  attemptCount     Int       @default(0) @map("attempt_count")
+  availableAt      DateTime  @default(now()) @map("available_at")
+  startedAt        DateTime? @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  lastError        String?   @map("last_error")
+  lastErrorAt      DateTime? @map("last_error_at")
+  manualRequiredAt DateTime? @map("manual_required_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @map("updated_at")
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment          Payment   @relation(fields: [paymentId], references: [id])
+
+  @@index([orderId])
+  @@index([status, availableAt])
+  @@map("order_fulfillment_jobs")
+}
+
+// ── 课程权益 ──
+
+model CourseEntitlement {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  productId        String    @map("product_id")
+  grantedByOrderId String    @map("granted_by_order_id")
+  status           String    @default("active")
+  grantedAt        DateTime  @default(now()) @map("granted_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @map("updated_at")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product          Product   @relation(fields: [productId], references: [id])
+  order            Order     @relation(fields: [grantedByOrderId], references: [id])
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([status])
+  @@index([grantedAt])
+  @@map("course_entitlements")
+}
+
+// ── 优惠券 ──
+
+model Coupon {
+  id                    String             @id @default(uuid())
+  name                  String
+  description           String?
+  type                  String
+  status                String             @default("draft")
+  discountPercent       Decimal?           @map("discount_percent")
+  discountAmount        Decimal?           @map("discount_amount")
+  thresholdAmount       Decimal?           @map("threshold_amount")
+  thresholdDiscount     Decimal?           @map("threshold_discount")
+  giftProductId         String?            @map("gift_product_id")
+  minOrderAmount        Decimal?           @map("min_order_amount")
+  maxDiscountAmount     Decimal?           @map("max_discount_amount")
+  perUserLimit          Int?               @map("per_user_limit")
+  usageLimit            Int?               @map("usage_limit")
+  usedCount             Int                @default(0) @map("used_count")
+  applicableProductIds  String?            @default("[]") @map("applicable_product_ids")
+  applicableCategoryIds String?            @default("[]") @map("applicable_category_ids")
+  validFrom             DateTime           @map("valid_from")
+  validTo               DateTime           @map("valid_to")
+  createdBy             String?            @map("created_by")
+  updatedBy             String?            @map("updated_by")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @default(now()) @map("updated_at")
+  redemptions           CouponRedemption[]
+  creator               User?              @relation("CouponCreatedBy", fields: [createdBy], references: [id])
+  updater               User?              @relation("CouponUpdatedBy", fields: [updatedBy], references: [id])
+  giftProduct           Product?           @relation("CouponGiftProduct", fields: [giftProductId], references: [id], onDelete: Restrict)
+  userCoupons           UserCoupon[]
+
+  @@index([status])
+  @@index([validFrom, validTo])
+  @@index([createdAt])
+  @@index([type])
+  @@map("coupons")
+}
+
+model UserCoupon {
+  id           String            @id @default(uuid())
+  couponId     String            @map("coupon_id")
+  userId       String            @map("user_id")
+  status       String            @default("available")
+  usedAt       DateTime?         @map("used_at")
+  redemptionId String?           @map("redemption_id")
+  expiresAt    DateTime          @map("expires_at")
+  issuedBy     String?           @map("issued_by")
+  issuedAt     DateTime          @default(now()) @map("issued_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @map("updated_at")
+  redemptions  CouponRedemption?
+  coupon       Coupon            @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user         User              @relation("UserUserCoupons", fields: [userId], references: [id], onDelete: Cascade)
+  issuer       User?             @relation("UserIssuedCoupons", fields: [issuedBy], references: [id])
+
+  @@unique([couponId, userId])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@index([issuedAt])
+  @@map("user_coupons")
+}
+
+model CouponRedemption {
+  id                String     @id @default(uuid())
+  couponId          String     @map("coupon_id")
+  userCouponId      String     @unique @map("user_coupon_id")
+  userId            String     @map("user_id")
+  orderId           String?    @map("order_id")
+  originalAmount    Decimal    @map("original_amount")
+  discountAmount    Decimal    @map("discount_amount")
+  finalAmount       Decimal    @map("final_amount")
+  giftProductId     String?    @map("gift_product_id")
+  giftEntitlementId String?    @map("gift_entitlement_id")
+  redeemedAt        DateTime   @default(now()) @map("redeemed_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  coupon            Coupon     @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userCoupon        UserCoupon @relation(fields: [userCouponId], references: [id], onDelete: Cascade)
+  user              User       @relation("UserCouponRedemptions", fields: [userId], references: [id], onDelete: Cascade)
+  order             Order?     @relation("OrderCouponRedemption")
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([redeemedAt])
+  @@index([couponId])
+  @@index([couponId, redeemedAt])
+  @@index([userId, redeemedAt])
+  @@index([userCouponId])
+  @@index([createdAt])
+  @@map("coupon_redemptions")
+}
+
+// ── 分销关系 ──
+
+model DistributionRelation {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  promoterUserId String    @map("promoter_user_id")
+  effectiveAt    DateTime  @default(now()) @map("effective_at")
+  inactiveAt     DateTime? @map("inactive_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  user           User      @relation("UserDistribution", fields: [userId], references: [id], onDelete: Cascade)
+  promoter       User      @relation("PromoterDistribution", fields: [promoterUserId], references: [id])
+
+  @@index([promoterUserId])
+  @@map("distribution_relations")
+}
+
+model CommissionRule {
+  id         String    @id @default(uuid())
+  scope      String    @default("global")
+  scopeId    String?
+  rate       Decimal
+  activeFrom DateTime  @default(now()) @map("active_from")
+  activeTo   DateTime? @map("active_to")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @map("updated_at")
+
+  @@index([scope])
+  @@index([activeFrom])
+  @@map("commission_rules")
+}
+
+// ── 结算 ──
+
+model Settlement {
+  id           String                  @id @default(uuid())
+  status       String                  @default("pending")
+  totalAmount  Decimal                 @map("total_amount")
+  currencyCode String                  @default("CNY") @map("currency_code")
+  createdById  String                  @map("created_by")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  processedAt  DateTime?               @map("processed_at")
+  updatedAt    DateTime                @default(now()) @map("updated_at")
+  commissions  CommissionRecord[]
+  applications SettlementApplication[]
+  items        SettlementItem[]
+  createdBy    User                    @relation("SettlementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([processedAt])
+  @@map("settlements")
+}
+
+model CommissionRecord {
+  id               String          @id @default(uuid())
+  orderId          String          @map("order_id")
+  promoterUserId   String          @map("promoter_user_id")
+  baseAmount       Decimal         @map("base_amount")
+  rate             Decimal
+  commissionAmount Decimal         @map("commission_amount")
+  status           String          @default("frozen")
+  rateSource       String?         @map("rate_source")
+  settlementId     String?         @map("settlement_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @default(now()) @map("updated_at")
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  promoter         User            @relation("CommissionPromoter", fields: [promoterUserId], references: [id])
+  settlement       Settlement?     @relation(fields: [settlementId], references: [id])
+  items            SettlementItem?
+
+  @@unique([orderId, promoterUserId])
+  @@index([promoterUserId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orderId])
+  @@map("commission_records")
+}
+
+model SettlementItem {
+  id           String           @id @default(uuid())
+  settlementId String           @map("settlement_id")
+  commissionId String           @unique @map("commission_record_id")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  settlement   Settlement       @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  commission   CommissionRecord @relation(fields: [commissionId], references: [id])
+
+  @@index([settlementId])
+  @@map("settlement_items")
+}
+
+model SettlementApplication {
+  id              String      @id @default(uuid())
+  promoterUserId  String      @map("promoter_user_id")
+  amount          Decimal
+  status          String      @default("pending")
+  paymentMethod   String      @default("wechat_transfer") @map("payment_method")
+  paymentAccount  String?     @map("payment_account")
+  rejectionReason String?     @map("rejection_reason")
+  settlementId    String?     @map("settlement_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @default(now()) @map("updated_at")
+  promoter        User        @relation(fields: [promoterUserId], references: [id])
+  settlement      Settlement? @relation(fields: [settlementId], references: [id])
+
+  @@index([promoterUserId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("settlement_applications")
+}
+
+// ── 推广码 & 推广等级 ──
+
+model PromoterCode {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  promoterUserId String    @map("promoter_user_id")
+  type           String    @default("auto")
+  status         String    @default("active")
+  usageCount     Int       @default(0) @map("usage_count")
+  activeFrom     DateTime  @default(now()) @map("active_from")
+  activeTo       DateTime? @map("active_to")
+  metadata       String    @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @map("updated_at")
+  promoter       User      @relation(fields: [promoterUserId], references: [id], onDelete: Cascade)
+
+  @@index([promoterUserId])
+  @@index([status, activeTo])
+  @@index([createdAt])
+  @@map("promoter_codes")
+}
+
+model PromoterLevel {
+  id             String                @id @default(uuid())
+  name           String                @unique
+  level          Int                   @unique
+  commissionRate Decimal               @map("commission_rate")
+  minSalesCount  Int                   @default(0) @map("min_sales_count")
+  minSalesAmount Decimal               @default(0) @map("min_sales_amount")
+  description    String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @default(now()) @map("updated_at")
+  records        PromoterLevelRecord[]
+
+  @@map("promoter_levels")
+}
+
+model PromoterLevelRecord {
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  promoterLevelId String        @map("promoter_level_id")
+  effectiveAt     DateTime      @default(now()) @map("effective_at")
+  inactiveAt      DateTime?     @map("inactive_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level           PromoterLevel @relation(fields: [promoterLevelId], references: [id])
+
+  @@index([userId])
+  @@index([effectiveAt])
+  @@map("promoter_level_records")
+}
+
+// ── 电商+分销插件: User relation 字段 ──
+// {{PLUGIN_MODEL_INJECTIONS:User:commerce}}
+orders                        Order[]
+productsCreated               Product[]               @relation("ProductCreatedBy")
+productsUpdated               Product[]               @relation("ProductUpdatedBy")
+entitlements                  CourseEntitlement[]
+userCoupons                   UserCoupon[]            @relation("UserUserCoupons")
+issuedCoupons                 UserCoupon[]            @relation("UserIssuedCoupons")
+couponRedemptions             CouponRedemption[]      @relation("UserCouponRedemptions")
+createdCoupons                Coupon[]                @relation("CouponCreatedBy")
+updatedCoupons                Coupon[]                @relation("CouponUpdatedBy")
+commissions                   CommissionRecord[]      @relation("CommissionPromoter")
+distributionRelations         DistributionRelation?   @relation("UserDistribution")
+promoterDistributionRelations DistributionRelation[]  @relation("PromoterDistribution")
+promoterCodes                 PromoterCode[]
+promoterLevelRecords          PromoterLevelRecord[]
+settlementApplications        SettlementApplication[]
+settlements                   Settlement[]            @relation("SettlementCreatedBy")
+
+// ── 电商+分销插件: MediaAsset back-relation ──
+// {{PLUGIN_MODEL_INJECTIONS:MediaAsset:commerce}}
+productAttachments ProductMediaAttachment[]
+

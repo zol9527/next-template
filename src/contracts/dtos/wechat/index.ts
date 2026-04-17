@@ -1,0 +1,6 @@
+export * from '@/plugins/wechat/contracts/wechat-login.dto'
+export * from '@/plugins/wechat/contracts/wechat-phone-bind.dto'
+export * from '@/plugins/wechat/contracts/wechat-profile-completion.dto'
+export * from '@/plugins/wechat/contracts/wechat-account.dto'
+export * from '@/plugins/wechat/contracts/wechat-pay.dto'
+export * from '@/plugins/wechat/contracts/miniprogram-carousel.dto'

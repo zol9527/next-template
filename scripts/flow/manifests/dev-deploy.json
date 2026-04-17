@@ -1,0 +1,4 @@
+{
+  "name": "开发环境部署",
+  "steps": ["check", "pack-if-needed", "deploy"]
+}

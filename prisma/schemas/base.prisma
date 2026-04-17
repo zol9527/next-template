@@ -1,0 +1,536 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/lib/prisma/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================================================
+// 核心用户模型
+// 注意: 插件 relation 字段由合并脚本动态注入，不要在此手动添加
+// ============================================================================
+
+model User {
+  id                    String                  @id @default(uuid())
+  username              String?                 @unique
+  nickname              String?                 // 前台展示名称，不唯一，用户授权或填写后更新
+  email                 String?                 @unique
+  phone                 String?                 @unique
+  avatarUrl             String?                 @map("avatar_url")
+  userType              String?                 @map("user_type")
+  passwordHash          String?                 @map("password_hash")
+  passwordUpdatedAt     DateTime?               @map("password_updated_at")
+  status                String                  @default("active")
+  canUpload             Boolean                 @default(false) @map("can_upload")
+  failedLoginCount      Int                     @default(0) @map("failed_login_count")
+  lockedUntil           DateTime?               @map("locked_until")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @default(now()) @map("updated_at")
+  mfaEnabled            Boolean                 @default(false)
+  mfaSecret             String?
+  mfaBackupCodes        String?
+  mfaSetupAt            DateTime?
+  mfaLastVerifiedAt     DateTime?
+  mfaPendingSecret      String?                 @map("mfa_pending_secret")
+  mfaPendingBackupCodes String?                 @map("mfa_pending_backup_codes")
+  mfaPendingExpiresAt   DateTime?               @map("mfa_pending_expires_at")
+
+  // ── 核心 relation 字段 ──
+  idempotencyRequests   IdempotencyRequest[]
+  mediaAssetsCreated    MediaAsset[]            @relation("MediaAssetCreatedBy")
+  mfaActionTokens       MfaActionToken[]
+  mfaAuditLogs          MfaAuditLog[]
+  sessions              Session[]
+  userDocuments         UserDocument[]
+  userRoles             UserRole[]
+  blogArticles          BlogArticle[]
+
+  // ── 插件 relation 字段占位（由合并脚本注入） ──
+  // {{PLUGIN_MODEL_INJECTIONS:User}}
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// ============================================================================
+// RBAC 权限
+// ============================================================================
+
+model Role {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  roleAccess  RoleAccess[]
+  userRoles   UserRole[]
+
+  @@map("roles")
+}
+
+model RoleAccess {
+  id        String   @id @default(uuid())
+  roleId    String   @map("role_id")
+  action    String
+  scope     String
+  createdAt DateTime @default(now()) @map("created_at")
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, action, scope])
+  @@index([roleId])
+  @@index([scope])
+  @@map("role_access")
+}
+
+model UserRole {
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ============================================================================
+// 会话管理
+// ============================================================================
+
+model Session {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  refreshTokenHash    String    @unique @map("refresh_token_hash")
+  replacedBySessionId String?   @map("replaced_by_session_id")
+  rotatedAt           DateTime? @map("rotated_at")
+  userAgent           String?   @map("user_agent")
+  clientIp            String?   @map("client_ip")
+  isRevoked           Boolean   @default(false) @map("is_revoked")
+  expiresAt           DateTime  @map("expires_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ============================================================================
+// 系统设置 & 站点配置
+// ============================================================================
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model SiteConfig {
+  id            String   @id @default(uuid())
+  siteName      String   @map("site_name")
+  logoUrl       String?  @map("logo_url")
+  contactPhone  String?  @map("contact_phone")
+  contactWechat String?  @map("contact_wechat")
+  icpFiling     String?  @map("icp_filing")
+  copyright     String?  @map("copyright")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("site_config")
+}
+
+// ============================================================================
+// 公告 & 协议
+// ============================================================================
+
+model Announcement {
+  id        String           @id @default(uuid())
+  title     String
+  content   String           @db.Text
+  type      AnnouncementType @default(NOTICE)
+  isActive  Boolean          @default(true) @map("is_active")
+  priority  Int              @default(0)
+  startAt   DateTime?        @map("start_at")
+  endAt     DateTime?        @map("end_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@index([isActive, priority])
+  @@index([startAt, endAt])
+  @@map("announcements")
+}
+
+model Agreement {
+  id          String        @id @default(uuid())
+  type        AgreementType @unique
+  title       String
+  content     String        @db.Text
+  version     String
+  isActive    Boolean       @default(true) @map("is_active")
+  effectiveAt DateTime      @default(now()) @map("effective_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@map("agreements")
+}
+
+// ============================================================================
+// 媒体资源
+// ============================================================================
+
+model MediaAsset {
+  id                 String  @id @default(uuid())
+  provider           String
+  bucket             String
+  objectKey          String  @map("object_key")
+  url                String?
+  contentType        String  @map("content_type")
+  sizeBytes          BigInt  @map("size_bytes")
+  etag               String?
+  status             String  @default("active")
+  createdById        String? @map("created_by")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @map("updated_at")
+  createdBy          User?   @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
+
+  // {{PLUGIN_MODEL_INJECTIONS:MediaAsset}}
+
+  @@unique([provider, bucket, objectKey])
+  @@index([status])
+  @@index([createdAt])
+  @@map("media_assets")
+}
+
+// ============================================================================
+// 用户文档
+// ============================================================================
+
+model UserDocument {
+  id           String            @id @default(uuid())
+  userId       String            @map("user_id")
+  documentType String            @map("document_type")
+  documentName String?           @map("document_name")
+  filePath     String?           @map("file_path")
+  fileName     String?           @map("file_name")
+  fileSize     BigInt?           @map("file_size")
+  mimeType     String?           @map("mime_type")
+  status       String?           @default("pending")
+  note         String?           @map("note")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @map("updated_at")
+  versions     DocumentVersion[]
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, documentType])
+  @@index([userId])
+  @@index([documentType])
+  @@index([status])
+  @@map("user_documents")
+}
+
+model DocumentVersion {
+  id             String       @id @default(uuid())
+  userDocumentId String       @map("user_document_id")
+  documentName   String?      @map("document_name")
+  filePath       String?      @map("file_path")
+  fileName       String?      @map("file_name")
+  fileSize       BigInt?      @map("file_size")
+  mimeType       String?      @map("mime_type")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  userDocument   UserDocument @relation(fields: [userDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([userDocumentId])
+  @@index([createdAt])
+  @@map("document_versions")
+}
+
+// ============================================================================
+// MFA 多因素认证
+// ============================================================================
+
+model MfaActionToken {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique @map("token_hash")
+  userId     String    @map("user_id")
+  action     String
+  resourceId String?   @map("resource_id")
+  usedAt     DateTime? @map("used_at")
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, action])
+  @@index([tokenHash])
+  @@map("mfa_action_tokens")
+}
+
+model MfaAuditLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  action    String
+  ip        String
+  userAgent String?  @map("user_agent")
+  status    String
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("mfa_audit_logs")
+}
+
+model MfaGlobalSettings {
+  id              String   @id @default(cuid())
+  mode            String   @default("optional")
+  allowExemptions Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("mfa_global_settings")
+}
+
+model MfaRolePolicy {
+  id              String   @id @default(cuid())
+  roleName        String   @unique @map("role_name")
+  policy          String   @default("inherit")
+  allowExemptions Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("mfa_role_policies")
+}
+
+model MfaExemption {
+  id        String    @id @default(cuid())
+  userId    String    @unique @map("user_id")
+  reason    String
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  expiresAt DateTime? @map("expires_at")
+
+  @@map("mfa_exemptions")
+}
+
+// ============================================================================
+// 幂等请求
+// ============================================================================
+
+model IdempotencyRequest {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  action         String
+  idempotencyKey String   @map("idempotency_key")
+  requestHash    String   @map("request_hash")
+  status         String   @default("in_progress")
+  resourceType   String?  @map("resource_type")
+  resourceId     String?  @map("resource_id")
+  responseCode   Int?     @map("response_code")
+  responseBody   String?  @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+  expiresAt      DateTime @map("expires_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, action, idempotencyKey])
+  @@index([expiresAt])
+  @@map("idempotency_requests")
+}
+
+// ============================================================================
+// 导出任务
+// ============================================================================
+
+model ExportJob {
+  id           String    @id @default(uuid())
+  jobType      String    @map("job_type")
+  status       String    @default("pending")
+  requestedBy  String    @map("requested_by")
+  fileUrl      String?   @map("file_url")
+  fileName     String?   @map("file_name")
+  fileSize     BigInt?   @map("file_size")
+  recordCount  Int?      @map("record_count")
+  errorMessage String?   @map("error_message")
+  filters      String    @default("{}")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
+
+  @@index([status])
+  @@index([jobType])
+  @@index([requestedBy])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@map("export_jobs")
+}
+
+// ============================================================================
+// 版本发布
+// ============================================================================
+
+model VersionRelease {
+  id          String   @id @default(uuid())
+  version     String   @unique
+  title       String
+  description String   @db.LongText
+  releasedAt  DateTime @map("released_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([releasedAt])
+  @@map("version_releases")
+}
+
+// ============================================================================
+// 限流计数器
+// ============================================================================
+
+model rate_limit_counter {
+  id         String   @id @default(cuid())
+  bucket_key String   @unique @map("bucket_key")
+  count      Int      @default(0)
+  reset_at   DateTime @map("reset_at")
+  version    Int      @default(1)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([bucket_key])
+  @@index([reset_at])
+  @@map("rate_limit_counters")
+}
+
+// ============================================================================
+// 博客 / 内容管理（核心）
+// ============================================================================
+
+model BlogArticle {
+  id                String            @id @default(uuid())
+  title             String
+  slug              String            @unique
+  excerpt           String?           @db.Text
+  content           String?           @db.LongText
+  coverImage        String?           @map("cover_image")
+  status            ArticleStatus     @default(DRAFT)
+  authorId          String?           @map("author_id")
+  categoryId        String?           @map("category_id")
+  metaTitle         String?           @map("meta_title")
+  metaDescription   String?           @map("meta_description") @db.Text
+  ogImage           String?           @map("og_image")
+  sourceType        ContentSourceType @default(EDITOR) @map("source_type")
+  sourcePath        String?           @map("source_path")
+  viewCount         Int               @default(0) @map("view_count")
+  likeCount         Int               @default(0) @map("like_count")
+  publishedAt       DateTime?         @map("published_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @default(now()) @map("updated_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  author            User?             @relation(fields: [authorId], references: [id])
+  category          BlogCategory?     @relation(fields: [categoryId], references: [id])
+  tags              BlogArticleTag[]
+  views             BlogArticleView[]
+
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([deletedAt])
+  @@map("blog_articles")
+}
+
+model BlogCategory {
+  id          String         @id @default(uuid())
+  name        String
+  slug        String         @unique
+  description String?        @db.Text
+  parentId    String?        @map("parent_id")
+  sortOrder   Int            @default(0) @map("sort_order")
+  status      CategoryStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @default(now()) @map("updated_at")
+  parent      BlogCategory?  @relation("BlogCategoryParent", fields: [parentId], references: [id], onDelete: Restrict)
+  children    BlogCategory[] @relation("BlogCategoryParent")
+  articles    BlogArticle[]
+
+  @@index([parentId])
+  @@index([status])
+  @@index([sortOrder])
+  @@map("blog_categories")
+}
+
+model BlogTag {
+  id        String           @id @default(uuid())
+  name      String           @unique
+  slug      String           @unique
+  createdAt DateTime         @default(now()) @map("created_at")
+  articles  BlogArticleTag[]
+
+  @@map("blog_tags")
+}
+
+model BlogArticleTag {
+  articleId String      @map("article_id")
+  tagId     String      @map("tag_id")
+  article   BlogArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       BlogTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+  @@map("blog_article_tags")
+}
+
+model BlogArticleView {
+  id        String      @id @default(uuid())
+  articleId String      @map("article_id")
+  viewerId  String?     @map("viewer_id")
+  ip        String?
+  userAgent String?     @map("user_agent")
+  referer   String?
+  readTime  Int         @default(0) @map("read_time")
+  createdAt DateTime    @default(now()) @map("created_at")
+  article   BlogArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId, createdAt])
+  @@index([articleId])
+  @@map("blog_article_views")
+}
+
+// ============================================================================
+// 枚举（核心）
+// ============================================================================
+
+enum AnnouncementType {
+  NOTICE
+  ACTIVITY
+  MAINTENANCE
+}
+
+enum AgreementType {
+  USER_AGREEMENT
+  PRIVACY_POLICY
+  ABOUT_US
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ContentSourceType {
+  EDITOR
+  MARKDOWN
+  API
+}

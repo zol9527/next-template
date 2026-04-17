@@ -1,0 +1,91 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# build outputs
+/dist
+
+# app logs (enterprise logging feature)
+/logs
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+*.log
+*.log.*
+*.db
+
+# python
+__pycache__/
+
+# upload files
+/uploads/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example.local
+
+# vercel
+.vercel
+
+# prisma
+generated/
+# 生成的合并 schema（由 prisma:merge 脚本生成，源文件在 prisma/schemas/ 下）
+prisma/schema.prisma
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# AI related files
+.claude/
+.opencode/
+memories/
+.openviking/
+.sisyphus/
+ov.conf
+CLAUDE.md
+AGENTS.md
+.beads/
+
+# Git worktrees for isolated development
+.worktrees/
+
+# Dolt database files (added by bd init)
+.dolt/
+
+# 自定义打包文件
+deploy-prepare/
+
+# 版本发布相关文件
+CHANGELOG.md
+RELEASE_NOTES.md

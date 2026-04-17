@@ -1,0 +1,4 @@
+{
+  "name": "远程 Seed",
+  "steps": ["seed-remote"]
+}

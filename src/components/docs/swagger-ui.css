@@ -1,0 +1,437 @@
+/* Swagger UI Dark Mode Overrides - Strict Shadcn/Monochrome Style */
+
+/* Base container setup */
+.swagger-ui {
+    color: #fafafa !important;
+    font-family: inherit !important;
+    background-color: #09090b !important;
+}
+
+.swagger-ui .wrapper {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+
+/* -------------------------------------------------------------------------
+   HIDE DOWNLOAD / EXPORT / TOPBAR
+   ------------------------------------------------------------------------- */
+.swagger-ui .topbar,
+.swagger-ui .download-url,
+.swagger-ui .download-contents {
+    display: none !important;
+}
+
+.swagger-ui .try-out {
+    display: none !important;
+}
+
+/* -------------------------------------------------------------------------
+   SCROLLBAR CUSTOMIZATION
+   ------------------------------------------------------------------------- */
+/* Global Scrollbar for Swagger UI container */
+.swagger-ui ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+    background-color: #3f3f46;
+    /* zinc-700 */
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+    background-color: #52525b;
+    /* zinc-600 */
+}
+
+/* Code block scrollbars */
+.swagger-ui .microlight ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.swagger-ui .microlight ::-webkit-scrollbar-thumb {
+    background-color: #52525b;
+}
+
+
+/* -------------------------------------------------------------------------
+   INFO SECTION
+   ------------------------------------------------------------------------- */
+.swagger-ui .info .title,
+.swagger-ui .info h1,
+.swagger-ui .info h2,
+.swagger-ui .info h3,
+.swagger-ui .info h4,
+.swagger-ui .info h5 {
+    color: #fafafa !important;
+}
+
+.swagger-ui .info p,
+.swagger-ui .info li {
+    color: #a1a1aa !important;
+    /* zinc-400 */
+}
+
+.swagger-ui .info table {
+    color: #a1a1aa !important;
+}
+
+.swagger-ui a.link {
+    color: #fafafa !important;
+    text-decoration: underline !important;
+}
+
+/* -------------------------------------------------------------------------
+   SCHEME CONTAINER (Server / Authorize) - Hidden as we use HttpOnly Cookies
+   ------------------------------------------------------------------------- */
+.swagger-ui .scheme-container,
+.swagger-ui .auth-wrapper,
+.swagger-ui .authorize__btn {
+    display: none !important;
+}
+
+.swagger-ui .auth-wrapper {
+    justify-content: flex-end !important;
+}
+
+.swagger-ui .btn.authorize {
+    color: #fafafa !important;
+    border-color: #fafafa !important;
+    background: transparent !important;
+    border-radius: 4px !important;
+}
+
+.swagger-ui .btn.authorize svg {
+    fill: #fafafa !important;
+}
+
+.swagger-ui .btn.authorize.locked {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* -------------------------------------------------------------------------
+   FILTER BAR
+   ------------------------------------------------------------------------- */
+.swagger-ui .wrapper .filter {
+    margin-bottom: 24px !important;
+}
+
+.swagger-ui .filter .operation-filter-input {
+    background-color: #09090b !important;
+    /* zinc-950 */
+    border: 1px solid #27272a !important;
+    /* zinc-800 */
+    color: #fafafa !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    width: 100% !important;
+    font-size: 14px !important;
+    box-shadow: none !important;
+}
+
+.swagger-ui .filter .operation-filter-input:focus {
+    border-color: #fafafa !important;
+    outline: none !important;
+}
+
+/* -------------------------------------------------------------------------
+   OPERATION BLOCKS
+   ------------------------------------------------------------------------- */
+
+.swagger-ui .opblock {
+    background-color: #09090b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    margin-bottom: 12px !important;
+}
+
+.swagger-ui .opblock:hover {
+    border-color: #3f3f46 !important;
+}
+
+/* Use neutral styling for ALL methods */
+.swagger-ui .opblock.opblock-get,
+.swagger-ui .opblock.opblock-post,
+.swagger-ui .opblock.opblock-put,
+.swagger-ui .opblock.opblock-delete,
+.swagger-ui .opblock.opblock-patch {
+    background: #09090b !important;
+    border-color: #27272a !important;
+}
+
+.swagger-ui .opblock .opblock-summary {
+    padding: 12px !important;
+    border-bottom: 1px solid transparent !important;
+}
+
+.swagger-ui .opblock.is-open .opblock-summary {
+    border-bottom-color: #27272a !important;
+}
+
+/* Text Colors */
+.swagger-ui .opblock .opblock-summary-operation-id,
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path__deprecated {
+    color: #fafafa !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+.swagger-ui .opblock .opblock-summary-description {
+    color: #a1a1aa !important;
+    font-size: 13px !important;
+}
+
+/* Method Badges */
+.swagger-ui .opblock .opblock-summary-method {
+    background: #27272a !important;
+    /* Zinc-800 */
+    color: #fafafa !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    min-width: 60px !important;
+    text-align: center !important;
+    text-shadow: none !important;
+}
+
+.swagger-ui .opblock-summary-control-arrow {
+    fill: #a1a1aa !important;
+}
+
+
+/* -------------------------------------------------------------------------
+   EXPANDED DETAILS & HEADERS
+   ------------------------------------------------------------------------- */
+.swagger-ui .opblock-body {
+    padding: 16px !important;
+    background: #09090b !important;
+    border-radius: 0 0 8px 8px !important;
+}
+
+/* Fix the White Bars */
+.swagger-ui .opblock-section-header {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 8px 0 !important;
+}
+
+.swagger-ui .opblock-section-header h4 {
+    color: #fafafa !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+.swagger-ui .opblock-section-header .btn {
+    background: transparent !important;
+    color: #fafafa !important;
+    box-shadow: none !important;
+}
+
+/* Tabs */
+.swagger-ui .tab {
+    margin-bottom: 16px !important;
+}
+
+.swagger-ui .tab li {
+    color: #a1a1aa !important;
+    font-size: 13px !important;
+    margin-right: 20px !important;
+}
+
+.swagger-ui .tab li.active {
+    color: #fafafa !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #fafafa !important;
+}
+
+/* Tables in Parameters */
+.swagger-ui table thead tr td,
+.swagger-ui table thead tr th {
+    color: #fafafa !important;
+    border-bottom: 1px solid #27272a !important;
+    font-size: 13px !important;
+    padding: 8px 0 !important;
+}
+
+.swagger-ui table tbody tr td {
+    border-bottom: 1px solid #27272a !important;
+    padding: 10px 0 !important;
+    color: #d4d4d8 !important;
+}
+
+/* -------------------------------------------------------------------------
+   RESPONSE SCHEMA (The Fix)
+   ------------------------------------------------------------------------- */
+
+/* Model Container Table */
+.swagger-ui .model-box {
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+.swagger-ui .model-box .model {
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    color: #a1a1aa !important;
+}
+
+/* Property Name */
+.swagger-ui .model-box .prop-name {
+    color: #fafafa !important;
+    font-weight: 500 !important;
+    margin-right: 8px !important;
+}
+
+/* Property Type */
+.swagger-ui .model-box .prop-type {
+    color: #7dd3fc !important;
+    /* Light blue */
+}
+
+/* Description Text inside Model */
+.swagger-ui .model-box .markdown,
+.swagger-ui .model-box .markdown p {
+    color: #a1a1aa !important;
+    display: inline-block !important;
+    /* Prevent weird float */
+    margin: 0 !important;
+    vertical-align: top !important;
+}
+
+/* Fix Row Layout - attempt to flatten the weird table logic Swagger uses */
+.swagger-ui table.model {
+    margin-left: 20px !important;
+    /* Indent properties relative to braces */
+}
+
+.swagger-ui table.model tbody tr td {
+    padding: 4px 0 !important;
+    border: none !important;
+    vertical-align: top !important;
+}
+
+.swagger-ui .property-row td:first-child {
+    padding-right: 12px !important;
+    width: auto !important;
+    white-space: nowrap !important;
+}
+
+/* Required Star */
+.swagger-ui span.star {
+    color: #ef4444 !important;
+    /* Red */
+    font-weight: bold !important;
+    margin-left: 2px !important;
+}
+
+/* Nested Braces/Brackets */
+.swagger-ui .brace-open,
+.swagger-ui .brace-close {
+    color: #71717a !important;
+    /* Zinc-500 */
+    font-weight: normal !important;
+}
+
+/* Inner Table borders removal */
+.swagger-ui .model-box table {
+    background: transparent !important;
+}
+
+/* Form Inputs */
+.swagger-ui input[type=text],
+.swagger-ui input[type=password],
+.swagger-ui textarea,
+.swagger-ui select {
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    color: #fafafa !important;
+    border-radius: 4px !important;
+    padding: 6px 10px !important;
+}
+
+.swagger-ui input:focus,
+.swagger-ui textarea:focus {
+    border-color: #fafafa !important;
+    outline: none !important;
+}
+
+/* Code Blocks */
+.swagger-ui .microlight {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 6px !important;
+    padding: 12px !important;
+}
+
+.swagger-ui .microlight code {
+    color: #e4e4e7 !important;
+    /* zinc-200 */
+}
+
+/* Models Section (Bottom) */
+.swagger-ui section.models {
+    margin-top: 24px !important;
+    border: 1px solid #27272a !important;
+    border-radius: 8px !important;
+    background: #09090b !important;
+}
+
+.swagger-ui section.models h4 {
+    color: #fafafa !important;
+    border-bottom: 1px solid #27272a !important;
+    padding: 12px 16px !important;
+}
+
+.swagger-ui section.models .model-container {
+    background: transparent !important;
+    padding: 16px !important;
+}
+
+.swagger-ui .model-title {
+    color: #fafafa !important;
+}
+
+.swagger-ui .model {
+    color: #a1a1aa !important;
+}
+
+/* Modal */
+.swagger-ui .dialog-ux .modal-ux {
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header {
+    border-bottom: 1px solid #27272a !important;
+    background: #09090b !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header h3 {
+    color: #fafafa !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content {
+    background: #09090b !important;
+    padding: 20px !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content h4 {
+    color: #fafafa !important;
+}
+
+.swagger-ui label {
+    color: #fafafa !important;
+}

@@ -1,0 +1,22 @@
+[deploy]
+user = "ubuntu"
+host = "43.134.42.150"
+port = 22
+node_version = 25
+remote_dir = "/home/ubuntu/edu-mini-app"
+app_name = "edu-app"
+remote_tmp_zip = "/tmp/deploy.zip"
+env_deps = ["bun", "caddy", "pm2"]
+
+[pack]
+prepare_dir = "deploy-prepare"
+zip_path = "deploy-prepare/deploy.zip"
+prisma_setup_script = "scripts/db/prisma/setup.sh"
+repack = false
+
+[seed]
+mode = "minimal"
+
+[database]
+reset = false
+force_keep = false

@@ -1,0 +1,1203 @@
+'use client'
+
+import * as React from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ChevronRight, ChevronDown, Edit2, Trash2, Search, Package } from 'lucide-react'
+import { browserLogger } from '@/lib/logger/browser'
+import type { ApiResponse } from '@/contracts/api-response.schema'
+import type { AdminCategory, AdminCategoryStatus } from '@/contracts/dtos/admin/categories.dto'
+import type { AdminProduct, AdminProductListResponse } from '@/contracts/dtos/admin/products.dto'
+import { AdminProductForm } from './product/admin-product-form'
+
+/**
+ * File: admin-category-table.tsx
+ *
+ * Description: 优化后的分类管理表格组件，支持多层级展开、Sheet 创建、Modal 编辑
+ */
+
+interface CategoryTableProps {
+  categories: AdminCategory[]
+  searchQuery?: string
+}
+
+interface CategoryNode extends AdminCategory {
+  children?: CategoryNode[]
+}
+
+interface FlatCategoryNode extends AdminCategory {
+  depth: number
+  hasChildren: boolean
+  children?: CategoryNode[]
+}
+
+/**
+ * Function: buildCategoryTree
+ *
+ * Description: 构建分类树形结构
+ *
+ * Parameters:
+ *   items(AdminCategory[]): 分类列表
+ *
+ * Returns:
+ *   nodes(CategoryNode[]): 树形结构的分类节点数组
+ */
+function buildCategoryTree(items: AdminCategory[]): CategoryNode[] {
+  const itemMap = new Map<string, CategoryNode>()
+  items.forEach((item) => itemMap.set(item.id, { ...item }))
+
+  const roots: CategoryNode[] = []
+  items.forEach((item) => {
+    const node = itemMap.get(item.id)!
+    if (item.parentId) {
+      const parent = itemMap.get(item.parentId)
+      if (parent) {
+        parent.children = parent.children || []
+        parent.children.push(node)
+      }
+    } else {
+      roots.push(node)
+    }
+  })
+
+  return roots
+}
+
+/**
+ * Function: flattenCategories
+ *
+ * Description: 将树形结构扁平化为带层级信息的数组
+ *
+ * Parameters:
+ *   nodes(CategoryNode[]): 树形节点数组
+ *   depth(number): 当前层级深度
+ *
+ * Returns:
+ *   result(FlatCategoryNode[]): 扁平化的节点数组
+ */
+function flattenCategories(nodes: CategoryNode[], depth: number = 0): FlatCategoryNode[] {
+  const result: FlatCategoryNode[] = []
+  for (const node of nodes) {
+    result.push({ ...node, depth, hasChildren: !!node.children?.length })
+    if (node.children?.length) {
+      result.push(...flattenCategories(node.children, depth + 1))
+    }
+  }
+  return result
+}
+
+/**
+ * Function: getVisibleNodes
+ *
+ * Description: 根据展开状态过滤可见节点
+ *
+ * Parameters:
+ *   flatNodes(FlatCategoryNode[]): 扁平化节点数组
+ *   expandedIds(Set<string>): 展开的节点 ID 集合
+ *
+ * Returns:
+ *   result(FlatCategoryNode[]): 可见的节点数组
+ */
+function getVisibleNodes(flatNodes: FlatCategoryNode[], expandedIds: Set<string>): FlatCategoryNode[] {
+  return flatNodes.filter((node) => {
+    if (node.depth === 0) return true
+    // 检查父节点是否展开
+    const parent = flatNodes.find((n) => n.id === node.parentId)
+    if (!parent) return true
+    return expandedIds.has(parent.id)
+  })
+}
+
+/**
+ * Function: CreateCategorySheet
+ *
+ * Description: 创建分类的 Sheet 组件
+ *
+ * Parameters:
+ *   open(boolean): 是否打开
+ *   onOpenChange(function): 打开状态变化回调
+ *   categories(AdminCategory[]): 所有分类列表（用于父分类选择）
+ *   onSuccess(function): 创建成功回调
+ */
+function CreateCategorySheet({
+  open,
+  onOpenChange,
+  categories,
+  onSuccess,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  categories: AdminCategory[]
+  onSuccess: () => void
+}) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  const [name, setName] = React.useState('')
+  const [slug, setSlug] = React.useState('')
+  const [selectedParentIds, setSelectedParentIds] = React.useState<Set<string>>(new Set())
+  const [isRoot, setIsRoot] = React.useState(true)
+  const [searchQuery, setSearchQuery] = React.useState('')
+
+  // 重置表单
+  const resetForm = React.useCallback(() => {
+    setName('')
+    setSlug('')
+    setSelectedParentIds(new Set())
+    setIsRoot(true)
+    setSearchQuery('')
+  }, [])
+
+  // 创建分类的 mutation
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const trimmedName = name.trim()
+      if (!trimmedName) {
+        throw new Error('分类名称不能为空')
+      }
+
+      // 确定要创建的父分类列表
+      const parentIds = isRoot ? [] : Array.from(selectedParentIds)
+
+      if (!isRoot && parentIds.length === 0) {
+        throw new Error('请选择至少一个父分类')
+      }
+
+      // 前端验证：检查同级分类名称是否已存在
+      const nameToLower = trimmedName.toLowerCase()
+      for (const parentId of parentIds) {
+        const siblings = categories.filter((c) => c.parentId === parentId)
+        const nameExists = siblings.some((c) => c.name.toLowerCase() === nameToLower)
+        if (nameExists) {
+          const parentName = parentId ? getCategoryName(parentId) : '一级分类'
+          throw new Error(`「${parentName}」下已存在名为「${trimmedName}」的分类`)
+        }
+      }
+
+      // 如果是一级分类，检查一级分类中是否已存在同名
+      if (isRoot) {
+        const rootCategories = categories.filter((c) => !c.parentId)
+        const nameExists = rootCategories.some((c) => c.name.toLowerCase() === nameToLower)
+        if (nameExists) {
+          throw new Error(`一级分类中已存在名为「${trimmedName}」的分类`)
+        }
+      }
+
+      // 批量创建
+      const promises = parentIds.map((parentId) =>
+        fetch('/api/v1/admin/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: trimmedName,
+            slug: slug.trim() || null,
+            parentId: parentId || null,
+          }),
+        })
+      )
+
+      // 如果是一级分类，只创建一个
+      if (isRoot) {
+        promises.push(
+          fetch('/api/v1/admin/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name: trimmedName, slug: slug.trim() || null, parentId: null }),
+          })
+        )
+      }
+
+      const results = await Promise.all(promises)
+
+      // 检查所有请求是否成功
+      const errors: string[] = []
+      for (const res of results) {
+        if (!res.ok) {
+          let errorMessage = res.statusText || '请求失败'
+          try {
+            const json = (await res.json()) as ApiResponse<unknown>
+            if (!json.success) errorMessage = json.error?.message || '请求失败'
+          } catch { /* ignore */ }
+          errors.push(errorMessage)
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join('; '))
+      }
+
+      return { successCount: results.length }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] })
+      const count = data?.successCount || 1
+      toast({
+        title: '创建成功',
+        description: count > 1 ? `已创建 ${count} 个分类` : '分类已创建',
+        variant: 'default',
+      })
+      resetForm()
+      onOpenChange(false)
+      onSuccess()
+    },
+    onError: (error) => {
+      toast({
+        title: '创建失败',
+        description: error instanceof Error ? error.message : '网络错误，请稍后再试',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  /**
+   * Function: getCategoryName
+   *
+   * Description: 获取分类名称
+   *
+   * Parameters:
+   *   id(string): 分类 ID
+   *
+   * Returns:
+   *   name(string): 分类名称
+   */
+  function getCategoryName(id: string) {
+    const cat = categories.find((c) => c.id === id)
+    return cat?.name || id
+  }
+
+  // 过滤顶级分类
+  const filteredTopLevelCategories = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim()
+    return categories
+      .filter((c) => !c.parentId)
+      .filter((c) => !query || c.name.toLowerCase().includes(query))
+  }, [categories, searchQuery])
+
+  // 切换分类选中状态
+  const toggleCategorySelection = React.useCallback((categoryId: string) => {
+    setSelectedParentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(categoryId)) {
+        next.delete(categoryId)
+      } else {
+        next.add(categoryId)
+      }
+      return next
+    })
+  }, [])
+
+  return (
+    <Sheet open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) {
+        resetForm()
+      }
+      onOpenChange(newOpen)
+    }}>
+      <SheetContent className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>新建分类</SheetTitle>
+          <SheetDescription>
+            创建新的分类，可选择多个父分类批量创建子分类
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-6">
+          {/* 分类类型选择 */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">分类类型</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={isRoot ? 'solid' : 'outline'}
+                size="sm"
+                onClick={() => setIsRoot(true)}
+                className="flex-1"
+              >
+                一级分类
+              </Button>
+              <Button
+                type="button"
+                variant={!isRoot ? 'solid' : 'outline'}
+                size="sm"
+                onClick={() => setIsRoot(false)}
+                className="flex-1"
+              >
+                子分类
+              </Button>
+            </div>
+          </div>
+
+          {/* 父分类选择（仅子分类时显示） */}
+          {!isRoot && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">选择父分类（可多选）</Label>
+
+              {/* 搜索框 */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
+                <Input
+                  placeholder="搜索分类..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* 分类列表 */}
+              <ScrollArea className="h-48 border rounded-lg">
+                {filteredTopLevelCategories.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    {searchQuery ? '未找到匹配的分类' : '暂无分类'}
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {filteredTopLevelCategories.map((cat) => {
+                      const isSelected = selectedParentIds.has(cat.id)
+                      return (
+                        <div
+                          key={cat.id}
+                          onClick={() => toggleCategorySelection(cat.id)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted cursor-pointer transition-colors"
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => {}}
+                            className="shrink-0 pointer-events-none"
+                          />
+                          <span className="flex-1 truncate">{cat.name}</span>
+                          {isSelected && (
+                            <span className="text-xs text-muted-foreground">
+                              已选
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+
+              {selectedParentIds.size > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  已选择 {selectedParentIds.size} 个父分类
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 分类名称 */}
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">分类名称 *</Label>
+            <Input
+              id="name"
+              placeholder="输入分类名称"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={createMutation.isPending}
+            />
+          </div>
+
+          {/* Slug（可选） */}
+          <div className="space-y-2">
+            <Label htmlFor="slug" className="text-sm font-medium">
+              Slug（可选）
+            </Label>
+            <Input
+              id="slug"
+              placeholder="URL 友好标识，留空则自动生成"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              disabled={createMutation.isPending}
+            />
+          </div>
+
+          {/* 操作按钮 */}
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={createMutation.isPending}
+              className="flex-1"
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending || !name.trim() || (!isRoot && selectedParentIds.size === 0)}
+              className="flex-1"
+            >
+              {createMutation.isPending ? '创建中…' : '创建'}
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/**
+ * Function: CategoryEditModal
+ *
+ * Description: 分类编辑 Modal 组件，只包含分类编辑功能（不包含产品列表）
+ *
+ * Parameters:
+ *   category(AdminCategory | null): 当前编辑的分类
+ *   categories(AdminCategory[]): 所有分类列表（用于父分类选择）
+ *   onClose(function): 关闭 Modal 的回调
+ *   onSuccess(function): 编辑成功后的回调
+ *   onViewProducts(function): 查看产品的回调
+ */
+function CategoryEditModal({
+  category,
+  categories,
+  onClose,
+  onViewProducts,
+}: {
+  category: AdminCategory | null
+  categories: AdminCategory[]
+  onClose: () => void
+  onViewProducts: (categoryId: string) => void
+}) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  // 编辑表单状态
+  const [editName, setEditName] = React.useState('')
+  const [editSlug, setEditSlug] = React.useState('')
+  const [editParentId, setEditParentId] = React.useState<string>('__none__')
+  const [editStatus, setEditStatus] = React.useState<AdminCategoryStatus>('active')
+  const [editSortOrder, setEditSortOrder] = React.useState<string>('0')
+
+  React.useEffect(() => {
+    if (category) {
+      setEditName(category.name)
+      setEditSlug(category.slug ?? '')
+      setEditParentId(category.parentId ?? '__none__')
+      setEditStatus(category.status)
+      setEditSortOrder(String(category.sortOrder))
+    }
+  }, [category])
+
+  // 更新分类的 mutation
+  const updateMutation = useMutation({
+    mutationFn: async (params: {
+      id: string
+      name: string
+      slug: string | null
+      parentId: string | null
+      status: AdminCategoryStatus
+      sortOrder: number
+    }) => {
+      const res = await fetch(`/api/v1/admin/categories/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(params),
+      })
+
+      if (!res.ok) {
+        let errorMessage = res.statusText || '请求失败'
+        try {
+          const json = (await res.json()) as ApiResponse<unknown>
+          if (!json.success) errorMessage = json.error?.message || '请求失败'
+        } catch { /* ignore */ }
+        throw new Error(errorMessage)
+      }
+
+      const json = (await res.json()) as ApiResponse<AdminCategory>
+      if (!json.success) {
+        throw new Error(json.error.message)
+      }
+
+      return json.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] })
+      toast({ title: '保存成功', description: '分类已更新', variant: 'default' })
+      onClose() // 保存成功后关闭 Modal
+    },
+    onError: (error) => {
+      toast({
+        title: '保存失败',
+        description: error instanceof Error ? error.message : '网络错误，请稍后再试',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const isSubmitting = updateMutation.isPending
+
+  /**
+   * Function: handleSaveEdit
+   *
+   * Description: 保存分类编辑
+   */
+  function handleSaveEdit() {
+    if (!category) return
+
+    const trimmedName = editName.trim()
+    if (!trimmedName) {
+      toast({ title: '参数错误', description: '分类名称不能为空', variant: 'destructive' })
+      return
+    }
+
+    const sortOrderNumber = Number(editSortOrder)
+    if (!Number.isFinite(sortOrderNumber) || !Number.isInteger(sortOrderNumber)) {
+      toast({ title: '参数错误', description: '排序必须为整数', variant: 'destructive' })
+      return
+    }
+
+    const newParentId = editParentId === '__none__' ? null : editParentId
+    const nameToLower = trimmedName.toLowerCase()
+
+    const siblings = categories.filter((c) => {
+      if (c.id === category.id) return false
+      return c.parentId === newParentId
+    })
+
+    const nameExists = siblings.some((c) => c.name.toLowerCase() === nameToLower)
+    if (nameExists) {
+      const parentName = newParentId
+        ? categories.find((c) => c.id === newParentId)?.name || '该父分类'
+        : '一级分类'
+      toast({
+        title: '参数错误',
+        description: `「${parentName}」下已存在名为「${trimmedName}」的分类`,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    updateMutation.mutate({
+      id: category.id,
+      name: trimmedName,
+      slug: editSlug.trim() || null,
+      parentId: editParentId === '__none__' ? null : editParentId,
+      status: editStatus,
+      sortOrder: sortOrderNumber,
+    })
+  }
+
+  if (!category) return null
+
+  return (
+    <Dialog open={!!category} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>编辑分类</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* 名称 */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-name" className="text-sm font-medium">名称</Label>
+            <Input
+              id="edit-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              disabled={isSubmitting}
+              placeholder="分类名称"
+            />
+          </div>
+
+          {/* Slug */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-slug" className="text-sm font-medium">Slug（可选）</Label>
+            <Input
+              id="edit-slug"
+              value={editSlug}
+              onChange={(e) => setEditSlug(e.target.value)}
+              disabled={isSubmitting}
+              placeholder="URL 友好标识，留空则自动生成"
+            />
+          </div>
+
+          {/* 父分类 */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-parent" className="text-sm font-medium">父分类</Label>
+            <Select value={editParentId} onValueChange={setEditParentId} disabled={isSubmitting}>
+              <SelectTrigger id="edit-parent">
+                <SelectValue placeholder="（无）" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">（无）</SelectItem>
+                {categories
+                  .filter((c) => c.id !== category.id)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 状态和排序 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-status" className="text-sm font-medium">状态</Label>
+              <Select
+                value={editStatus}
+                onValueChange={(value) => setEditStatus(value as AdminCategoryStatus)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">启用</SelectItem>
+                  <SelectItem value="disabled">禁用</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-sort" className="text-sm font-medium">排序</Label>
+              <Input
+                id="edit-sort"
+                type="number"
+                value={editSortOrder}
+                onChange={(e) => setEditSortOrder(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="flex justify-between gap-2 pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onViewProducts(category.id)}
+            disabled={isSubmitting}
+          >
+            <Package className="h-4 w-4 mr-2" />
+            查看产品
+          </Button>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? '保存中…' : '保存'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * Function: CategoryProductsModal
+ *
+ * Description: 分类下的产品列表 Modal
+ *
+ * Parameters:
+ *   categoryId(string | null): 分类 ID
+ *   onClose(function): 关闭 Modal 的回调
+ */
+function CategoryProductsModal({
+  categoryId,
+  onClose,
+}: {
+  categoryId: string | null
+  onClose: () => void
+}) {
+  const { toast } = useToast()
+  const [productSearch, setProductSearch] = React.useState('')
+  const [products, setProducts] = React.useState<AdminProduct[]>([])
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+  const [totalCount, setTotalCount] = React.useState(0)
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false)
+  const [hasMore, setHasMore] = React.useState(true)
+  const [editingProductId, setEditingProductId] = React.useState<string | null>(null)
+  const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /**
+   * Function: loadProducts
+   *
+   * Description: 获取分类下的产品列表（支持游标分页）
+   */
+  const loadProducts = React.useCallback(async (
+    catId: string,
+    cursor: string | null = null,
+    searchQuery: string = ''
+  ) => {
+    const params = new URLSearchParams({
+      limit: '20',
+      categoryIds: catId,
+    })
+    if (cursor) params.append('cursor', cursor)
+    if (searchQuery) params.append('keyword', searchQuery)
+
+    try {
+      const res = await fetch(`/api/v1/admin/products?${params.toString()}`, {
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch products: ${res.statusText}`)
+      }
+
+      const json = await res.json() as ApiResponse<AdminProductListResponse>
+      if (!json.success) {
+        throw new Error(json.error.message)
+      }
+
+      const data = json.data
+      setProducts((prev) => (cursor === null ? data.items : [...prev, ...data.items]))
+      setNextCursor(data.nextCursor)
+      setTotalCount(data.totalCount)
+      setHasMore(data.nextCursor !== null)
+    } catch (error) {
+      browserLogger.error('加载产品列表失败', error instanceof Error ? error : undefined, { action: 'products:fetch' })
+      toast({
+        title: '加载失败',
+        description: '无法加载产品列表',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [toast])
+
+  /**
+   * Function: handleProductSearchChange
+   *
+   * Description: 处理产品搜索输入（防抖）
+   */
+  const handleProductSearchChange = React.useCallback((value: string) => {
+    setProductSearch(value)
+    setProducts([])
+    setNextCursor(null)
+    setHasMore(true)
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (categoryId) {
+      setIsLoadingMore(true)
+      searchTimeoutRef.current = setTimeout(() => {
+        loadProducts(categoryId, null, value)
+      }, 300)
+    }
+  }, [categoryId, loadProducts])
+
+  /**
+   * Function: handleLoadMore
+   *
+   * Description: 处理加载更多产品（无限滚动）
+   */
+  const handleLoadMore = React.useCallback(() => {
+    if (!hasMore || isLoadingMore || !categoryId) return
+    setIsLoadingMore(true)
+    loadProducts(categoryId, nextCursor, productSearch)
+  }, [hasMore, isLoadingMore, nextCursor, productSearch, categoryId, loadProducts])
+
+  /**
+   * Function: handleScroll
+   *
+   * Description: 处理滚动事件，触底时加载更多
+   */
+  const handleScroll = React.useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLDivElement
+      const { scrollTop, scrollHeight, clientHeight } = target
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        handleLoadMore()
+      }
+    },
+    [handleLoadMore]
+  )
+
+  React.useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (categoryId) {
+      setProducts([])
+      setNextCursor(null)
+      setProductSearch('')
+      setHasMore(true)
+      loadProducts(categoryId, null, '')
+    }
+  }, [categoryId, loadProducts])
+
+  return (
+    <>
+      {/* 产品编辑 Modal */}
+      {editingProductId && (
+        <AdminProductForm
+          productId={editingProductId}
+          mode="edit"
+          onSaved={() => {
+            setEditingProductId(null)
+            // 重新加载产品列表
+            if (categoryId) {
+              setProducts([])
+              loadProducts(categoryId, null, productSearch)
+            }
+          }}
+          onCancel={() => setEditingProductId(null)}
+        />
+      )}
+
+      {/* 产品列表 Modal */}
+      <Dialog open={!!categoryId && !editingProductId} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>分类下的产品</DialogTitle>
+            {totalCount > 0 && (
+              <p className="text-sm text-muted-foreground">
+                共 {totalCount} 个产品
+              </p>
+            )}
+          </DialogHeader>
+
+          {/* 搜索框 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
+            <Input
+              placeholder="搜索产品名称..."
+              value={productSearch}
+              onChange={(e) => handleProductSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* 产品列表 */}
+          <div className="flex-1 min-h-0 border rounded-lg">
+            <ScrollArea className="h-full max-h-[50vh]" onScroll={handleScroll}>
+              {products.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  {productSearch ? '未找到匹配的产品' : '该分类下暂无产品'}
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {products.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => setEditingProductId(product.id)}
+                      className="p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* 封面图占位 */}
+                        <div className="h-16 w-16 rounded-md bg-foreground/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs text-foreground/40">封面</span>
+                        </div>
+
+                        {/* 产品信息 */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{product.name}</h4>
+                          {product.summary && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {product.summary}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant={product.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+                              {product.status}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              ¥{product.price.amount}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* 加载更多指示器 */}
+                  {isLoadingMore && (
+                    <div className="py-4 text-center text-sm text-muted-foreground">
+                      加载中...
+                    </div>
+                  )}
+
+                  {!hasMore && products.length > 0 && (
+                    <div className="py-4 text-center text-sm text-muted-foreground/60">
+                      已加载全部产品
+                    </div>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+export function AdminCategoryTable({ categories, searchQuery = '' }: CategoryTableProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
+  const [editingCategory, setEditingCategory] = React.useState<AdminCategory | null>(null)
+  const [viewingProductsCategoryId, setViewingProductsCategoryId] = React.useState<string | null>(null)
+
+  // 构建树形结构并扁平化
+  const flatCategories = React.useMemo(() => {
+    const tree = buildCategoryTree(categories)
+    return flattenCategories(tree)
+  }, [categories])
+
+  // 根据搜索和展开状态过滤可见节点
+  const visibleNodes = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim()
+    if (!query) {
+      return getVisibleNodes(flatCategories, expandedIds)
+    }
+
+    // 搜索时展开所有匹配的节点
+    const matchedIds = new Set<string>()
+    flatCategories.forEach((node) => {
+      if (node.name.toLowerCase().includes(query)) {
+        // 展开该节点的所有祖先
+        let current = node
+        while (current.parentId) {
+          matchedIds.add(current.parentId)
+          const parent = flatCategories.find((n) => n.id === current.parentId)
+          if (parent) current = parent
+          else break
+        }
+      }
+    })
+
+    const newExpandedIds = new Set([...expandedIds, ...matchedIds])
+    return getVisibleNodes(flatCategories, newExpandedIds).filter((node) =>
+      node.name.toLowerCase().includes(query)
+    )
+  }, [flatCategories, expandedIds, searchQuery])
+
+  // 删除分类的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/admin/categories/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        let errorMessage = res.statusText || '请求失败'
+        try {
+          const json = (await res.json()) as ApiResponse<unknown>
+          if (!json.success) errorMessage = json.error?.message || '请求失败'
+        } catch { /* ignore */ }
+        throw new Error(errorMessage)
+      }
+
+      const json = (await res.json()) as ApiResponse<{ id: string }>
+      if (!json.success) {
+        throw new Error(json.error.message)
+      }
+
+      return json.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] })
+      toast({ title: '删除成功', description: '分类已删除', variant: 'default' })
+      setEditingCategory(null)
+    },
+    onError: (error) => {
+      toast({
+        title: '删除失败',
+        description: error instanceof Error ? error.message : '网络错误，请稍后再试',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const isSubmitting = deleteMutation.isPending
+
+  /**
+   * Function: handleDeleteCategory
+   *
+   * Description: 删除分类
+   *
+   * Parameters:
+   *   categoryId(string): 要删除的分类 ID
+   */
+  function handleDeleteCategory(categoryId: string) {
+    const confirmed = window.confirm('确认删除该分类？若存在子分类或商品归类将无法删除。')
+    if (!confirmed) return
+    deleteMutation.mutate(categoryId)
+  }
+
+  /**
+   * Function: toggleExpand
+   *
+   * Description: 切换分类节点的展开/折叠状态
+   *
+   * Parameters:
+   *   nodeId(string): 分类节点 ID
+   */
+  function toggleExpand(nodeId: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) {
+        next.delete(nodeId)
+      } else {
+        next.add(nodeId)
+      }
+      return next
+    })
+  }
+
+  return (
+    <>
+      {/* 统计信息 */}
+      <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>共 {categories.length} 个分类</span>
+          <span className="text-muted-foreground/30">|</span>
+          <span>一级分类: {categories.filter((c) => !c.parentId).length}</span>
+        </div>
+      </div>
+
+      {/* 表格 */}
+      <ScrollArea className="border border-border/60 rounded-lg shadow-sm">
+        <div className="min-w-[900px]">
+          {visibleNodes.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">
+              {searchQuery ? '未找到匹配的分类' : '暂无分类，请点击上方按钮创建'}
+            </div>
+          ) : (
+            <div className="divide-y">
+            {visibleNodes.map((node) => {
+              const isExpanded = expandedIds.has(node.id)
+              const paddingLeft = `${node.depth * 24}px`
+
+              return (
+                <div
+                  key={node.id}
+                  className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors"
+                >
+                  {/* 左侧：展开按钮 + 名称 */}
+                  <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft }}>
+                    {node.hasChildren && (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(node.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded hover:bg-muted shrink-0 transition-colors duration-200"
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? '折叠子分类' : '展开子分类'}
+                      >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </button>
+                    )}
+                    {!node.hasChildren && <span className="w-8 shrink-0" />}
+                    <span className="font-medium truncate">{node.name}</span>
+                  </div>
+
+                  {/* 右侧：状态 + 排序 + 操作 */}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <Badge variant={node.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                      {node.status === 'active' ? '启用' : '禁用'}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground w-12 text-center">
+                      {node.sortOrder}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingCategory(node)}
+                        disabled={isSubmitting}
+                        className="h-8"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 mr-1" />
+                        编辑
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteCategory(node.id)}
+                        disabled={isSubmitting}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        title="删除"
+                        aria-label="删除分类"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* 编辑 Modal */}
+      <CategoryEditModal
+        key={editingCategory?.id ?? 'closed'}
+        category={editingCategory}
+        categories={categories}
+        onClose={() => setEditingCategory(null)}
+        onViewProducts={(categoryId) => {
+          setEditingCategory(null)
+          setViewingProductsCategoryId(categoryId)
+        }}
+      />
+
+      {/* 产品列表 Modal */}
+      <CategoryProductsModal
+        categoryId={viewingProductsCategoryId}
+        onClose={() => setViewingProductsCategoryId(null)}
+      />
+    </>
+  )
+}

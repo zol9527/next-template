@@ -1,0 +1,166 @@
+/**
+ * File: test/api/auth/mfa/verify.test.ts
+ * Description: MFA 验证 API 测试（登录第二步）
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextRequest } from 'next/server'
+import { POST } from '@/app/api/v1/auth/mfa/verify/route'
+import * as MfaFactory from '@/repositories/factory'
+import * as AuthDeps from '@/app/api/v1/auth/auth-deps'
+import { TokenManager } from '@/lib/security/token-manager'
+import { MfaService } from '@/services/mfa.service'
+import { MFA_PENDING_TOKEN_COOKIE } from '@/lib/constants/token'
+import { extractClientIpSafe } from '@/lib/http/ip-extractor'
+import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
+
+vi.mock('@/repositories/factory', () => ({
+  createMfaRepository: vi.fn(),
+}))
+
+vi.mock('@/app/api/v1/auth/auth-deps', () => ({
+  createAuth: vi.fn(),
+}))
+
+vi.mock('@/lib/http', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/http')>()
+  return {
+    ...actual,
+    appendAuthCookies: vi.fn(),
+  }
+})
+
+vi.mock('@/lib/security/token-manager', () => ({
+  TokenManager: {
+    verifyMfaToken: vi.fn(),
+  }
+}))
+
+vi.mock('@/services/mfa.service', () => ({
+  MfaService: {
+    verifyMFA: vi.fn(),
+  }
+}))
+
+vi.mock('@/lib/http/ip-extractor', () => ({
+  extractClientIpSafe: vi.fn(),
+}))
+
+describe('API: POST /api/v1/auth/mfa/verify', () => {
+  const mockMfaRepository = {
+    getUserMfaData: vi.fn(),
+  } as unknown as MfaRepository
+
+  const mockAuth = {
+    issueSession: vi.fn(),
+    loginWithMfa: vi.fn(),
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.mocked(MfaFactory.createMfaRepository).mockResolvedValue(mockMfaRepository)
+    vi.mocked(AuthDeps.createAuth).mockResolvedValue(mockAuth as any)
+    vi.mocked(MfaService.verifyMFA).mockResolvedValue(true)
+    vi.mocked(TokenManager.verifyMfaToken).mockResolvedValue({ sub: '550e8400-e29b-41d4-a716-446655440000', type: 'mfa_pending' })
+    vi.mocked(extractClientIpSafe).mockReturnValue({ ip: '127.0.0.1' })
+  })
+
+  it('should return 400 for invalid body', async () => {
+    const body = { userId: 'invalid-uuid' } // invalid UUID and missing token
+    const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+
+    const response = await POST(req, { params: Promise.resolve({}) })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('should return 401 for missing mfa_pending_token cookie', async () => {
+    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'content-type': 'application/json',
+        'content-length': JSON.stringify(body).length.toString(),
+        'x-forwarded-for': '127.0.0.1',
+      }
+    })
+    // No cookies set
+
+    const response = await POST(req, { params: Promise.resolve({}) })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('should return 401 for invalid mfa_pending_token', async () => {
+    vi.mocked(TokenManager.verifyMfaToken).mockRejectedValue(new Error('Invalid token'))
+
+    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'content-type': 'application/json',
+        'content-length': JSON.stringify(body).length.toString(),
+        'x-forwarded-for': '127.0.0.1',
+      }
+    })
+    req.cookies.set(MFA_PENDING_TOKEN_COOKIE, 'invalid-token')
+
+    const response = await POST(req, { params: Promise.resolve({}) })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('should return 401 for user mismatch in mfa_pending_token', async () => {
+    vi.mocked(TokenManager.verifyMfaToken).mockResolvedValue({ sub: 'other-user', type: 'mfa_pending' })
+
+    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'content-type': 'application/json',
+        'content-length': JSON.stringify(body).length.toString(),
+        'x-forwarded-for': '127.0.0.1',
+      }
+    })
+    req.cookies.set(MFA_PENDING_TOKEN_COOKIE, 'valid-token')
+
+    const response = await POST(req, { params: Promise.resolve({}) })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('should return 200 for valid token and valid MFA', async () => {
+    vi.mocked(AuthDeps.createAuth).mockResolvedValue({
+      loginWithMfa: vi.fn().mockResolvedValue({
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        sessionId: 'session-id',
+      }),
+    } as any)
+
+    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '123456' }
+    const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'content-type': 'application/json',
+        'content-length': JSON.stringify(body).length.toString(),
+        'x-forwarded-for': '127.0.0.1',
+      }
+    })
+    req.cookies.set(MFA_PENDING_TOKEN_COOKIE, 'valid-token')
+
+    const response = await POST(req, { params: Promise.resolve({}) })
+
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.data.accessToken).toBe('access-token')
+  })
+})

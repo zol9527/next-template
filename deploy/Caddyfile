@@ -1,0 +1,96 @@
+# Caddy 配置文件 - 教育电商平台
+#
+# 功能:
+#   - 自动 HTTPS (Let's Encrypt)
+#   - 反向代理到 Next.js 应用
+#   - 静态文件缓存
+#   - 安全头部配置
+#   - 日志记录
+#
+# 部署位置: /etc/caddy/Caddyfile (或通过 caddy import 管理)
+#
+# 使用方式:
+#   1. 将此文件内容复制到服务器的 Caddyfile
+#   2. 或使用: caddy add-package --github caddy-dns/cloudflare (如需 DNS 验证)
+#   3. 重载: sudo systemctl reload caddy
+
+# ============== 生产环境配置 ==============
+# 将 www.shuoboda.cn 替换为你的真实域名
+
+# 显式强制 HTTP -> HTTPS
+http://www.shuoboda.cn {
+        redir https://www.shuoboda.cn{uri} 308
+}
+
+https://www.shuoboda.cn {
+        # HTTPS 响应压缩
+        encode zstd gzip
+
+        # 日志配置 (JSON 格式，便于 SIEM 分析)
+        log {
+                # 默认生产路径: /var/log/caddy/edu-app-access.log
+                # 日志保留: 14 天 (336h)
+                # 本地验证可通过环境变量覆盖:
+                # CADDY_ACCESS_LOG_PATH=/absolute/path/to/log caddy validate --config deploy/Caddyfile
+                output file {$CADDY_ACCESS_LOG_PATH:/var/log/caddy/edu-app-access.log} {
+                        roll_size 100mb
+                        roll_keep 10
+                        roll_keep_for 336h
+                }
+                format json
+                level INFO
+        }
+
+        # 安全头部
+        header {
+                # 安全头部建议由应用层（Next.js）统一下发，避免与 next.config.ts 重复/覆盖。
+                # 这里仅移除 Server 信息。
+                -Server
+        }
+
+        # Next.js 静态资源缓存
+        handle /_next/static/* {
+                reverse_proxy localhost:3000
+                header Cache-Control "public, max-age=31536000, immutable"
+        }
+
+        handle /static/* {
+                reverse_proxy localhost:3000
+                header Cache-Control "public, max-age=86400"
+        }
+
+        handle /images/* {
+                reverse_proxy localhost:3000
+                header Cache-Control "public, max-age=86400"
+        }
+
+        # favicon 等根目录资源
+        @root_assets path /favicon.ico /robots.txt /sitemap.xml
+        handle @root_assets {
+                reverse_proxy localhost:3000
+                header Cache-Control "public, max-age=86400"
+        }
+
+        # API 路由 (无缓存)
+        handle /api/* {
+                reverse_proxy localhost:3000
+                header Cache-Control "no-store"
+        }
+
+        # Next.js 页面请求
+        handle {
+                reverse_proxy localhost:3000 {
+                        # WebSocket 支持 (如开发场景需要)
+                        header_up Upgrade {>Upgrade}
+                        header_up Connection {>Connection}
+
+                        # Caddy 会自动注入标准的 X-Forwarded-* 头，无需手动覆盖
+
+                        # 超时配置
+                        transport http {
+                                dial_timeout 30s
+                                response_header_timeout 60s
+                        }
+                }
+        }
+}

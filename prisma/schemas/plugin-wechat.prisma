@@ -1,0 +1,38 @@
+// ============================================================================
+// 微信插件模型
+// 环境: PLUGIN_WECHAT=true 时由合并脚本追加
+// ============================================================================
+
+model WechatAccount {
+  id                  String    @id @default(uuid())
+  userId              String    @unique @map("user_id")
+  openid              String    @unique
+  unionid             String?   @unique
+  sessionKey          String?   @map("session_key")
+  sessionKeyUpdatedAt DateTime? @map("session_key_updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @map("updated_at")
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionKeyUpdatedAt])
+  @@map("wechat_accounts")
+}
+
+model MiniprogramCarousel {
+  id        String   @id @default(uuid())
+  title     String
+  imageUrl  String   @map("image_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sortOrder])
+  @@index([isActive])
+  @@map("miniprogram_carousels")
+}
+
+// ── 微信插件: User relation 字段 ──
+// {{PLUGIN_MODEL_INJECTIONS:User:wechat}}
+wechatAccounts                WechatAccount?
+
