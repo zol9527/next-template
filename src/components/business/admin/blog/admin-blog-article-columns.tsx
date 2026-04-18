@@ -6,7 +6,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CopyCell } from '@/components/ui/data-table/copy-cell'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import type { LucideIcon } from 'lucide-react'
 import type { AdminArticle } from '@/contracts/dtos/admin/blog/articles.dto'
+
+type PublishActionConfig = {
+  icon: LucideIcon
+  label: string
+  color: 'warning' | 'success'
+  onClick: () => void
+}
 
 const articleDateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
@@ -221,79 +230,78 @@ export function getArticleColumns({
   columns.push({
     id: 'actions',
     header: () => <div className="text-right">操作</div>,
-    cell: ({ row }) => (
-      <div className="flex items-center justify-end gap-1.5">
-        {onView && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
-            onClick={() => onView(row.original.id)}
-            title="查看"
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </Button>
-        )}
+    cell: ({ row }) => {
+      const { status, id } = row.original
+      const isPublished = status === 'PUBLISHED'
+      const isArchived = status === 'ARCHIVED'
 
-        {onSelect && (
-          <Button
-            type="button"
-            variant="solid"
-            size="icon"
-            className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
-            onClick={() => onSelect(row.original.id)}
-            title="编辑"
-          >
-            <Edit className="h-3.5 w-3.5" />
-          </Button>
-        )}
+      const publishAction: PublishActionConfig = isPublished
+        ? { icon: ArrowDownCircle, label: '下线', color: 'warning' as const, onClick: () => onUnpublish?.(id) }
+        : { icon: ArrowUpCircle, label: isArchived ? '重新上线' : '上线', color: 'success' as const, onClick: () => onPublish?.(id) }
 
-        {row.original.status === 'PUBLISHED' ? (
-          onUnpublish && (
+      return (
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center justify-end gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
+              onClick={() => onView?.(id)}
+              title="查看"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+
             <Button
               type="button"
               variant="solid"
-              color="warning"
               size="icon"
               className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
-              onClick={() => onUnpublish(row.original.id)}
-              title="下线"
+              onClick={() => onSelect?.(id)}
+              title="编辑"
             >
-              <ArrowDownCircle className="h-3.5 w-3.5" />
+              <Edit className="h-3.5 w-3.5" />
             </Button>
-          )
-        ) : (
-          row.original.status !== 'ARCHIVED' &&
-          onPublish && (
+
             <Button
               type="button"
               variant="solid"
-              color="success"
+              color={publishAction.color}
               size="icon"
               className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
-              onClick={() => onPublish(row.original.id)}
-              title="发布"
+              onClick={publishAction.onClick}
+              title={publishAction.label}
             >
-              <ArrowUpCircle className="h-3.5 w-3.5" />
+              <publishAction.icon className="h-3.5 w-3.5" />
             </Button>
-          )
-        )}
 
-        {row.original.status !== 'ARCHIVED' && onArchive && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
-            onClick={() => onArchive(row.original.id)}
-            title="归档"
-          >
-            <Archive className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </div>
-    ),
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={isArchived ? 0 : undefined}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 transition-all duration-200 hover:scale-105 active:scale-95"
+                    onClick={() => !isArchived && onArchive?.(id)}
+                    disabled={isArchived}
+                    title="归档"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isArchived && (
+                <TooltipContent side="top">
+                  <p>该文章已归档，无需重复操作</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      )
+    },
   })
 
   return columns

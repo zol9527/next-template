@@ -219,6 +219,51 @@ export function createAdminBlogArticleService(
     },
 
     /**
+    Function: unpublishArticle
+
+    Description: 取消发布文章，将状态从 PUBLISHED 改回 DRAFT（下线操作）
+
+    Parameters:
+        articleId(string): 文章 ID
+
+    Returns:
+        Promise<AdminArticle>: 下线后的文章
+    */
+    async unpublishArticle(articleId: string): Promise<AdminArticle> {
+      const article = await deps.articles.findById(repoCtx, { articleId })
+
+      if (!article) {
+        const error = new Error('文章不存在') as Error & { code?: string }
+        error.code = 'NOT_FOUND'
+        throw error
+      }
+
+      if (article.status !== 'PUBLISHED') {
+        const error = new Error('仅已发布的文章可以执行下线操作') as Error & { code?: string }
+        error.code = 'INVALID_STATE'
+        throw error
+      }
+
+      const updated = await deps.articles.update(repoCtx, {
+        articleId,
+        status: 'DRAFT',
+      })
+
+      if (!updated) {
+        const error = new Error('文章下线失败') as Error & { code?: string }
+        error.code = 'NOT_FOUND'
+        throw error
+      }
+
+      logger.info({
+        action: 'admin_blog_article.unpublish',
+        articleId,
+      })
+
+      return updated
+    },
+
+    /**
     Function: archiveArticle
 
     Description: 归档文章，将状态更改为 ARCHIVED

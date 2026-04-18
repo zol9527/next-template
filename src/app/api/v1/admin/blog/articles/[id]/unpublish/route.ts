@@ -10,13 +10,13 @@ import { createAdminBlogArticleService } from '@/services/content/admin-blog-art
 /**
  * Function: POST
  *
- * Description: 取消发布文章，将文章归档（管理员）
+ * Description: 取消发布文章，将文章状态从 PUBLISHED 改回 DRAFT（下线操作）
  *
  * Parameters:
  *     params({ id: string }): 路径参数，包含文章 ID
  *
  * Returns:
- *     Response: 包含归档后的文章信息的响应
+ *     Response: 包含下线后的文章信息的响应
  */
 export const POST = withV1Route<{ id: string }>({
   action: 'admin:blog:articles:execute',
@@ -27,7 +27,7 @@ export const POST = withV1Route<{ id: string }>({
     const service = createAdminBlogArticleService({ articles, tags }, serviceContext!)
 
     try {
-      const updated = await service.archiveArticle(params.id)
+      const updated = await service.unpublishArticle(params.id)
 
       if (!updated) {
         return createJsonApiResponse(req, fail('NOT_FOUND', '文章不存在'), { status: 404 })
@@ -38,6 +38,9 @@ export const POST = withV1Route<{ id: string }>({
       const err = error as Error & { code?: string }
       if (err.code === 'NOT_FOUND') {
         return createJsonApiResponse(req, fail('NOT_FOUND', '文章不存在'), { status: 404 })
+      }
+      if (err.code === 'INVALID_STATE') {
+        return createJsonApiResponse(req, fail('CONFLICT', err.message), { status: 409 })
       }
       throw error
     }
