@@ -72,7 +72,9 @@ export function ProcessSection() {
 						</p>
 
 						{/* PixelDivider */}
-						<PixelDivider className="my-4" />
+						<div className="my-4">
+							<PixelDivider />
+						</div>
 					</div>
 
 {/* 步骤 */}

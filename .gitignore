@@ -76,6 +76,8 @@ ov.conf
 CLAUDE.md
 AGENTS.md
 .beads/
+opencode.json
+.mcp.json
 
 # Git worktrees for isolated development
 .worktrees/
@@ -89,3 +91,6 @@ deploy-prepare/
 # 版本发布相关文件
 CHANGELOG.md
 RELEASE_NOTES.md
+
+# Beads / Dolt files (added by bd init)
+.beads-credential-key

@@ -47,6 +47,7 @@ export interface BlogArticleRepository {
     keyword?: string
     status?: string
     categoryId?: string
+    tagId?: string
   }): Promise<{ items: AdminArticle[]; nextCursor: string | null; totalCount: number }>
 
   slugExists(ctx: RepoContext, params: { slug: string; excludeId?: string }): Promise<boolean>

@@ -1,9 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-
-@plugin "@tailwindcss/typography";
-
-@custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================
    CSS 原始变量 — 浅色主题
@@ -41,6 +36,19 @@
   --sidebar-active-foreground: oklch(0 0 0);
 
   --radius: 0.375rem;
+
+  /* 像素风配色 — 始终深色，不跟随主题切换 */
+  --color-landing-background: #0F0F23;
+  --color-landing-foreground: #E8E8E8;
+  --color-landing-muted: #7B8794;
+  --color-landing-primary: #4CC9F0;
+  --color-landing-secondary: #3A86FF;
+  --color-landing-cta: #FF6B35;
+  --color-landing-card: #1A1A2E;
+  --color-landing-border: #2A2A4A;
+  --color-landing-success: #06D6A0;
+  --color-landing-gold: #FFD700;
+  --color-landing-heart: #FF6B35;
 
   /* TipTap Prose */
   --prose-code-background: oklch(0.96 0 0);
@@ -111,7 +119,6 @@
   /* Prose dark */
   --prose-code-background: oklch(0.15 0 0);
 
-  /* 像素风暗色主题 — 保持深色游戏风格 */
   --color-landing-background: #0A0A1A;
   --color-landing-foreground: #E8E8E8;
   --color-landing-muted: #7B8794;
@@ -120,6 +127,9 @@
   --color-landing-cta: #FF6B35;
   --color-landing-card: #1A1A2E;
   --color-landing-border: #2A2A4A;
+  --color-landing-success: #06D6A0;
+  --color-landing-gold: #FFD700;
+  --color-landing-heart: #FF6B35;
 }
 
 /* ============================================
@@ -292,6 +302,35 @@ html {
     0 -4px 0 0 var(--color-landing-border);
 }
 
+/*
+  轻微像素边框：比 .pixel-border 更克制（2px），适合 blog 等信息密度页面
+  注意：只改外观强度，不引入新颜色/主题
+*/
+.pixel-border-soft {
+  box-shadow:
+    2px 0 0 0 var(--color-landing-border),
+    -2px 0 0 0 var(--color-landing-border),
+    0 2px 0 0 var(--color-landing-border),
+    0 -2px 0 0 var(--color-landing-border);
+}
+
+/* 自定义类无法直接使用 `focus:` / `group-hover:` 变体，这里用 CSS 选择器实现 */
+.pixel-border-soft-focus-primary:focus {
+  box-shadow:
+    2px 0 0 0 var(--color-landing-primary),
+    -2px 0 0 0 var(--color-landing-primary),
+    0 2px 0 0 var(--color-landing-primary),
+    0 -2px 0 0 var(--color-landing-primary);
+}
+
+.group:hover .pixel-border-soft-hover-primary {
+  box-shadow:
+    2px 0 0 0 var(--color-landing-primary),
+    -2px 0 0 0 var(--color-landing-primary),
+    0 2px 0 0 var(--color-landing-primary),
+    0 -2px 0 0 var(--color-landing-primary);
+}
+
 /* 像素边框 — 主色版 */
 .pixel-border-primary {
   box-shadow:
@@ -301,6 +340,15 @@ html {
     0 -4px 0 0 var(--color-landing-primary);
 }
 
+/* 轻微像素边框 — 主色版 */
+.pixel-border-soft-primary {
+  box-shadow:
+    2px 0 0 0 var(--color-landing-primary),
+    -2px 0 0 0 var(--color-landing-primary),
+    0 2px 0 0 var(--color-landing-primary),
+    0 -2px 0 0 var(--color-landing-primary);
+}
+
 /* 像素边框 — CTA 版 */
 .pixel-border-cta {
   box-shadow:
@@ -308,6 +356,15 @@ html {
     -4px 0 0 0 var(--color-landing-cta),
     0 4px 0 0 var(--color-landing-cta),
     0 -4px 0 0 var(--color-landing-cta);
+}
+
+/* 轻微像素边框 — CTA 版 */
+.pixel-border-soft-cta {
+  box-shadow:
+    2px 0 0 0 var(--color-landing-cta),
+    -2px 0 0 0 var(--color-landing-cta),
+    0 2px 0 0 var(--color-landing-cta),
+    0 -2px 0 0 var(--color-landing-cta);
 }
 
 /* 像素网格背景 */
@@ -364,6 +421,22 @@ html {
   animation: pixel-float 2s steps(4) infinite;
 }
 
+/* 像素风格卡片进入动画 */
+@keyframes pixel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pixel-card-enter {
+  animation: pixel-fade-in 0.3s ease-out forwards;
+}
+
 /* 扫描线效果 — CRT 显示器复古感 */
 .pixel-scanlines::after {
   content: "";
@@ -377,4 +450,39 @@ html {
     rgba(0, 0, 0, 0.05) 4px
   );
   pointer-events: none;
+}
+
+/* ============================================
+   GlitchText 动画 — ReactBits 故障效果
+   ============================================ */
+@keyframes glitch {
+  0% { clip-path: inset(20% 0 50% 0); }
+  5% { clip-path: inset(10% 0 60% 0); }
+  10% { clip-path: inset(15% 0 55% 0); }
+  15% { clip-path: inset(25% 0 35% 0); }
+  20% { clip-path: inset(30% 0 40% 0); }
+  25% { clip-path: inset(40% 0 20% 0); }
+  30% { clip-path: inset(10% 0 60% 0); }
+  35% { clip-path: inset(15% 0 55% 0); }
+  40% { clip-path: inset(25% 0 35% 0); }
+  45% { clip-path: inset(30% 0 40% 0); }
+  50% { clip-path: inset(20% 0 50% 0); }
+  55% { clip-path: inset(10% 0 60% 0); }
+  60% { clip-path: inset(15% 0 55% 0); }
+  65% { clip-path: inset(25% 0 35% 0); }
+  70% { clip-path: inset(30% 0 40% 0); }
+  75% { clip-path: inset(40% 0 20% 0); }
+  80% { clip-path: inset(20% 0 50% 0); }
+  85% { clip-path: inset(10% 0 60% 0); }
+  90% { clip-path: inset(15% 0 55% 0); }
+  95% { clip-path: inset(25% 0 35% 0); }
+  100% { clip-path: inset(30% 0 40% 0); }
+}
+
+.animate-glitch-after {
+  animation: glitch var(--after-duration) infinite linear alternate-reverse;
+}
+
+.animate-glitch-before {
+  animation: glitch var(--before-duration) infinite linear alternate-reverse;
 }

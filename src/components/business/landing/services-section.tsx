@@ -1,5 +1,6 @@
 import { FileSearch, Code2 } from "lucide-react";
 import { PixelChest, PixelShield, PixelSword, PixelPotion, PixelStar, PixelDivider } from "@/components/business/landing/pixel-sprites";
+import BlurText from "@/components/BlurText";
 
 /**
  * Services Section 组件
@@ -61,16 +62,14 @@ export function ServicesSection() {
 		</div>
 {/* 标题 */}
 	<div className="text-center">
-		<h2
-			className="[font-family:var(--font-press-start)] text-lg font-bold text-[var(--color-landing-foreground)] sm:text-xl"
-			style={{ fontWeight: 700 }}
-		>
-			核心特性
-		</h2>
-		<p
-			className="mt-4 [font-family:var(--font-vt323)] text-lg text-[var(--color-landing-muted)]"
-			style={{ fontWeight: 400 }}
-		>
+		<BlurText
+			text="核心特性"
+			className="[font-family:var(--font-press-start)] text-lg font-bold text-[var(--color-landing-foreground)] sm:text-xl inline-flex"
+			animateBy="letters"
+			direction="top"
+			delay={50}
+		/>
+		<p className="mt-4 [font-family:var(--font-vt323)] text-lg text-[var(--color-landing-muted)]" style={{ fontWeight: 400 }}>
 			强大的功能特性，构建现代化管理系统
 		</p>
 	</div>

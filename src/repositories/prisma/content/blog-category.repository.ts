@@ -45,7 +45,7 @@ export function createPrismaBlogCategoryRepository(): BlogCategoryRepository {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         include: {
           _count: {
-            select: { articles: { where: { deletedAt: null } } },
+            select: { articles: { where: { deletedAt: null, status: 'PUBLISHED' } } },
           },
         },
       })
@@ -60,7 +60,7 @@ export function createPrismaBlogCategoryRepository(): BlogCategoryRepository {
         where: { id: params.categoryId },
         include: {
           _count: {
-            select: { articles: { where: { deletedAt: null } } },
+            select: { articles: { where: { deletedAt: null, status: 'PUBLISHED' } } },
           },
         },
       })
@@ -76,7 +76,7 @@ export function createPrismaBlogCategoryRepository(): BlogCategoryRepository {
         where: { slug: params.slug },
         include: {
           _count: {
-            select: { articles: { where: { deletedAt: null } } },
+            select: { articles: { where: { deletedAt: null, status: 'PUBLISHED' } } },
           },
         },
       })
@@ -99,7 +99,7 @@ export function createPrismaBlogCategoryRepository(): BlogCategoryRepository {
         },
         include: {
           _count: {
-            select: { articles: { where: { deletedAt: null } } },
+            select: { articles: { where: { deletedAt: null, status: 'PUBLISHED' } } },
           },
         },
       })
@@ -124,7 +124,7 @@ export function createPrismaBlogCategoryRepository(): BlogCategoryRepository {
           data: updates,
           include: {
             _count: {
-              select: { articles: { where: { deletedAt: null } } },
+              select: { articles: { where: { deletedAt: null, status: 'PUBLISHED' } } },
             },
           },
         })

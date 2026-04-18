@@ -9,6 +9,8 @@ import {
 	PixelHeart,
 	PixelDivider,
 } from "@/components/business/landing/pixel-sprites";
+import ClickSpark from "@/components/ClickSpark";
+import DecryptedText from "@/components/DecryptedText";
 
 /**
  * Hero Section 组件
@@ -20,6 +22,26 @@ import {
  * - 双 CTA 按钮设计
  * - 信任指标展示
  * - 硬边框像素艺术风格
+ * 
+ * 设计风格：
+ * - 使用 Press Start 2P 像素字体
+ * - Stardew Valley 风格的像素艺术设计
+ * - 简洁的动画效果（pixel-float, pixel-blink）
+ * - 通用冒险主题文案
+ */
+/**
+ * HeroSection 函数
+ * 
+ * 描述: 渲染主视觉区域，采用8-bit像素艺术复古游戏风格
+ * 
+ * 功能:
+ * - 渲染全宽布局的主视觉区域
+ * - 使用像素字体和装饰元素
+ * - 包含CTA按钮和信任指标
+ * - 实现响应式设计
+ * 
+ * 返回值:
+ * 	ReactElement: 主视觉区域的JSX元素
  */
 export function HeroSection() {
 	return (
@@ -59,60 +81,66 @@ export function HeroSection() {
 				<div className="flex flex-col lg:flex-row gap-12">
 					{/* 左侧列 - 文本内容 */}
 					<div className="flex-1 text-center lg:text-left">
-						{/* 主标题 - Press Start 2P字体 */}
-						<h1
-							className="text-lg font-bold leading-loose tracking-wider text-[var(--color-landing-primary)] sm:text-xl lg:text-2xl"
-							style={{ fontFamily: 'var(--font-press-start)' }}
-						>
-							构建你的
-							<br />
-							下一代管理系统
-						</h1>
+{/* 主标题 - Press Start 2P字体 */}
+<h1
+	style={{ fontFamily: 'var(--font-press-start)' }}
+	className="text-lg font-bold leading-loose tracking-wider text-[var(--color-landing-primary)] sm:text-xl lg:text-2xl [font-family:var(--font-press-start)]"
+>
+	<span className="text-[var(--color-landing-primary)]">探索</span>
+	<span className="text-[var(--color-landing-cta)]">无限</span>
+	<span className="text-[var(--color-landing-primary)]">可能</span>
+</h1>
 
-						{/* 描述 - VT323字体 */}
-						<p
-							className="mt-6 text-xl leading-relaxed text-[var(--color-landing-muted)] sm:text-2xl"
-							style={{ fontFamily: 'var(--font-vt323)' }}
-						>
-							基于插件化架构的现代后台系统。核心系统提供认证与权限，业务功能按需加载，灵活扩展。
-						</p>
+{/* 描述 - VT323字体 */}
+<DecryptedText
+	text="开启你的冒险之旅，构建属于你的数字世界。探索无限可能，创造独特体验。"
+	speed={40}
+	maxIterations={8}
+	sequential={true}
+	revealDirection="start"
+	animateOn="view"
+	className="[font-family:var(--font-vt323)] text-xl text-[var(--color-landing-muted)] sm:text-2xl"
+	parentClassName="mt-6 text-xl leading-relaxed sm:text-2xl"
+/>
 
 						{/* 像素分隔线 */}
 						<PixelDivider />
 
-						{/* CTA 按钮 - 像素风格 */}
-						<div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-							<Button
-								asChild
-								size="lg"
-								className="min-w-[160px] px-8 py-6 text-base font-semibold transition-colors duration-150 cursor-pointer"
-								style={{
-									fontFamily: 'var(--font-press-start)',
-									fontSize: '12px',
-									backgroundColor: 'var(--color-landing-primary)',
-									color: '#fff',
-									borderRadius: 0,
-									boxShadow: '4px 0 0 0 var(--color-landing-secondary), -4px 0 0 0 var(--color-landing-secondary), 0 4px 0 0 var(--color-landing-secondary), 0 -4px 0 0 var(--color-landing-secondary)',
-								}}
-							>
-								<Link href="#features">开始使用</Link>
-							</Button>
-							<Button
-								asChild
-								size="lg"
-								variant="outline"
-								className="min-w-[160px] px-8 py-6 text-base font-semibold transition-colors duration-150 cursor-pointer"
-								style={{
-									fontFamily: 'var(--font-press-start)',
-									fontSize: '12px',
-									borderColor: 'var(--color-landing-primary)',
-									color: 'var(--color-landing-primary)',
-									borderRadius: 0,
-								}}
-							>
-								<Link href="#process">查看文档</Link>
-							</Button>
-						</div>
+{/* CTA 按钮 - 像素风格 */}
+<ClickSpark sparkColor="#4CC9F0" sparkSize={10} sparkRadius={20} sparkCount={6}>
+	<div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+		<Button
+			asChild
+			size="lg"
+			className="min-w-[160px] px-8 py-6 text-base font-semibold transition-colors duration-150 cursor-pointer"
+			style={{
+				fontFamily: 'var(--font-press-start)',
+				fontSize: '12px',
+				backgroundColor: 'var(--color-landing-primary)',
+				color: '#fff',
+				borderRadius: 0,
+				boxShadow: '4px 0 0 0 var(--color-landing-secondary), -4px 0 0 0 var(--color-landing-secondary), 0 4px 0 0 var(--color-landing-secondary), 0 -4px 0 0 var(--color-landing-secondary)',
+			}}
+		>
+			<Link href="#features">开始使用</Link>
+		</Button>
+		<Button
+			asChild
+			size="lg"
+			variant="outline"
+			className="min-w-[160px] px-8 py-6 text-base font-semibold transition-colors duration-150 cursor-pointer"
+			style={{
+				fontFamily: 'var(--font-press-start)',
+				fontSize: '12px',
+				borderColor: 'var(--color-landing-primary)',
+				color: 'var(--color-landing-primary)',
+				borderRadius: 0,
+			}}
+		>
+			<Link href="#process">查看文档</Link>
+		</Button>
+	</div>
+</ClickSpark>
 
 						{/* 信任指标 - 像素艺术风格 */}
 						<div className="mt-16 flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-12">

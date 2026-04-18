@@ -17,12 +17,16 @@ if (typeof window !== 'undefined') {
       const newRel = [currentRel, 'noopener', 'noreferrer']
         .filter(Boolean)
         .join(' ')
-        // Remove duplicates if any (though unlikely to hurt)
         .split(' ')
         .filter((item, index, array) => array.indexOf(item) === index)
         .join(' ')
 
       node.setAttribute('rel', newRel)
+    }
+
+    // 移除 img 标签的空 src 属性，防止浏览器重复请求当前页面
+    if (node.nodeName === 'IMG' && node.getAttribute('src')?.trim() === '') {
+      node.removeAttribute('src')
     }
   })
 }

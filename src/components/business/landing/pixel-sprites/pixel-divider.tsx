@@ -1,10 +1,12 @@
+import React from "react";
+
 /**
  * PixelDivider 组件
  * 像素艺术风格的虚线分隔线
  */
-export function PixelDivider() {
+export function PixelDivider({ className }: React.HTMLAttributes<SVGSVGElement>) {
   return (
-    <svg width="200" height="2" viewBox="0 0 200 2" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="200" height="2" viewBox="0 0 200 2" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} role="img" aria-label="pixel divider">
       <rect x="0" y="0" width="4" height="2" fill="#000"/>
       <rect x="8" y="0" width="4" height="2" fill="#000"/>
       <rect x="16" y="0" width="4" height="2" fill="#000"/>

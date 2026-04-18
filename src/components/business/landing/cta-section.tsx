@@ -5,6 +5,8 @@ import { PixelRobot } from "@/components/business/landing/pixel-sprites/pixel-ro
 import { PixelStar } from "@/components/business/landing/pixel-sprites/pixel-star";
 import { PixelCoin } from "@/components/business/landing/pixel-sprites/pixel-coin";
 import { PixelHeart } from "@/components/business/landing/pixel-sprites/pixel-heart";
+import GlitchText from "@/components/GlitchText";
+import ClickSpark from "@/components/ClickSpark";
 
 /**
  * CTA Section 组件
@@ -95,13 +97,15 @@ export function CTASection() {
 					</div>
 				</div>
 
-				{/* 标题 - Press Start 2P 字体 */}
-				<h2
-					className="[font-family:var(--font-press-start)] text-2xl sm:text-3xl lg:text-4xl text-[var(--color-landing-primary)]"
-					style={{ fontWeight: 700 }}
-				>
-					准备好构建你的管理系统了吗？
-				</h2>
+{/* 标题 - Press Start 2P 字体 */}
+<GlitchText
+	speed={0.3}
+	enableShadows={true}
+	enableOnHover={true}
+	className="text-2xl sm:text-3xl lg:text-4xl [font-family:var(--font-press-start)] text-[var(--color-landing-primary)]"
+>
+	准备好构建你的管理系统了吗？
+</GlitchText>
 
 				{/* 描述 - VT323 字体 */}
 				<p
@@ -112,43 +116,45 @@ export function CTASection() {
 				</p>
 
 				{/* CTA 按钮 */}
-				<div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-					{/* 主要按钮 - 像素风格 */}
-					<Button
-						asChild
-						size="lg"
-						className="px-8 py-4 text-lg font-bold text-white cursor-pointer hover:text-[var(--color-landing-cta)] transition-colors"
-						style={{
-							backgroundColor: 'var(--color-landing-cta)',
-							borderRadius: 0,
-							boxShadow: '4px 0 0 0 var(--color-landing-cta), -4px 0 0 0 var(--color-landing-cta), 0 4px 0 0 var(--color-landing-cta), 0 -4px 0 0 var(--color-landing-cta), 0 0 0 2px var(--color-landing-cta)'
-						}}
-					>
-						<Link href="#">
-							&gt; 免费开始使用
-							<ArrowRight className="ml-2 h-5 w-5" />
-						</Link>
-					</Button>
+				<ClickSpark sparkColor="#FF6B35" sparkSize={12} sparkRadius={25} sparkCount={8}>
+					<div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+						{/* 主要按钮 - 像素风格 */}
+						<Button
+							asChild
+							size="lg"
+							className="px-8 py-4 text-lg font-bold text-white cursor-pointer hover:text-[var(--color-landing-cta)] transition-colors"
+							style={{
+								backgroundColor: 'var(--color-landing-cta)',
+								borderRadius: 0,
+								boxShadow: '4px 0 0 0 var(--color-landing-cta), -4px 0 0 0 var(--color-landing-cta), 0 4px 0 0 var(--color-landing-cta), 0 -4px 0 0 var(--color-landing-cta), 0 0 0 2px var(--color-landing-cta)'
+							}}
+						>
+							<Link href="#">
+								&gt; 免费开始使用
+								<ArrowRight className="ml-2 h-5 w-5" />
+							</Link>
+						</Button>
 
-					{/* 轮廓按钮 - 像素风格 */}
-					<Button
-						asChild
-						variant="outline"
-						size="lg"
-						className="px-8 py-4 text-lg font-bold cursor-pointer hover:text-[var(--color-landing-primary)] transition-colors"
-						style={{
-							backgroundColor: 'transparent',
-							borderColor: 'var(--color-landing-primary)',
-							color: 'var(--color-landing-primary)',
-							borderRadius: 0,
-							boxShadow: '4px 0 0 0 var(--color-landing-primary), -4px 0 0 0 var(--color-landing-primary), 0 4px 0 0 var(--color-landing-primary), 0 -4px 0 0 var(--color-landing-primary)'
-						}}
-					>
-						<Link href="#">
-							查看 GitHub
-						</Link>
-					</Button>
-				</div>
+						{/* 轮廓按钮 - 像素风格 */}
+						<Button
+							asChild
+							variant="outline"
+							size="lg"
+							className="px-8 py-4 text-lg font-bold cursor-pointer hover:text-[var(--color-landing-primary)] transition-colors"
+							style={{
+								backgroundColor: 'transparent',
+								borderColor: 'var(--color-landing-primary)',
+								color: 'var(--color-landing-primary)',
+								borderRadius: 0,
+								boxShadow: '4px 0 0 0 var(--color-landing-primary), -4px 0 0 0 var(--color-landing-primary), 0 4px 0 0 var(--color-landing-primary), 0 -4px 0 0 var(--color-landing-primary)'
+							}}
+						>
+							<Link href="#">
+								查看 GitHub
+							</Link>
+						</Button>
+					</div>
+				</ClickSpark>
 
 				{/* 底部信任指标 - VT323 字体 */}
 				<div className="[font-family:var(--font-vt323)] text-[var(--color-landing-muted)] mt-12" style={{ fontWeight: 400 }}>

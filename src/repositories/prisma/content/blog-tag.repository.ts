@@ -35,7 +35,7 @@ export function createPrismaBlogTagRepository(): BlogTagRepository {
         orderBy: { createdAt: 'desc' },
         include: {
           _count: {
-            select: { articles: { where: { article: { deletedAt: null } } } },
+            select: { articles: { where: { article: { deletedAt: null, status: 'PUBLISHED' } } } },
           },
         },
       })

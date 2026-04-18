@@ -187,23 +187,16 @@ export function createPublicBlogArticleService(
         tagId = tag.id
       }
 
-      // TODO: tagIds 过滤应在 repository 层实现以支持正确分页
-      const expandedLimit = tagId ? Math.min(limit * 3, 50) : limit
       const page = await deps.articles.list(repoCtx, {
-        limit: expandedLimit,
+        limit,
         cursor,
         keyword: params?.keyword,
         status: 'PUBLISHED',
         categoryId,
+        tagId,
       })
 
-      let filteredItems = page.items
-      if (tagId) {
-        filteredItems = page.items.filter(
-          a => a.tagIds?.includes(tagId),
-        )
-      }
-      const items = filteredItems.slice(0, limit).map(mapToPublicArticle)
+      const items = page.items.map(mapToPublicArticle)
 
       logger.info({
         action: 'public_blog_article.list_published',

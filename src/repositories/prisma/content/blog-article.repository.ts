@@ -179,6 +179,13 @@ export function createPrismaBlogArticleRepository(): BlogArticleRepository {
       if (params.categoryId) {
         where.categoryId = params.categoryId
       }
+      if (params.tagId) {
+        where.tags = {
+          some: {
+            tagId: params.tagId,
+          },
+        }
+      }
 
       const cursorWhere: Record<string, unknown> = { ...where }
       if (params.cursor) {
