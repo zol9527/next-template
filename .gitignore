@@ -67,6 +67,7 @@ prisma/schema.prisma
 next-env.d.ts
 
 # AI related files
+.codex/
 .claude/
 .opencode/
 memories/
