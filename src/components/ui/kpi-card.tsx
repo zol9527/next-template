@@ -43,7 +43,7 @@ interface KPICardProps {
 export function KPICard({ title, value, icon, trend, trendUp, onClick }: KPICardProps) {
   return (
     <article
-      className="bg-card rounded-lg border border-border/40 p-3 hover:border-border transition-all motion-safe:duration-200 group cursor-pointer"
+      className="bg-card rounded-xl border border-border/40 p-3 hover:border-border shadow-[var(--shadow-card,0_1px_3px_rgba(0,0,0,0.05))] transition-all motion-safe:duration-200 group cursor-pointer"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -75,7 +75,7 @@ export function KPICard({ title, value, icon, trend, trendUp, onClick }: KPICard
         )}
       </div>
       <div className="space-y-0.5">
-        <h3 className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           {title}
         </h3>
         <p className="text-lg font-bold text-foreground leading-tight">{value}</p>

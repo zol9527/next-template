@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Archivo, Space_Grotesk, Press_Start_2P, VT323 } from "next/font/google";
+import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Inter } from "next/font/google";
 import "./globals.css";
 import { ClientProvider } from "@/components/context/client-providers";
 import { Suspense } from "react";
@@ -51,10 +51,17 @@ const pressStart2P = Press_Start_2P({
 });
 
 const vt323 = VT323({
-	subsets: ["latin"],
-	variable: "--font-vt323",
-	display: "swap",
-	weight: "400",
+  subsets: ["latin"],
+  variable: "--font-vt323",
+  display: "swap",
+  weight: "400",
+});
+
+// Admin 后台字体：Inter（标题 + 正文 + 标签）
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -71,7 +78,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* use antialiased to improve font rendering */}
       <body
-        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} antialiased`}
+        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${inter.variable} antialiased`}
       >
         <ClientProvider>
           <Suspense fallback={null}>{children}</Suspense>

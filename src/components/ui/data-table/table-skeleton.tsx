@@ -28,7 +28,7 @@ interface TableSkeletonProps {
  */
 export function TableSkeleton({ rowCount = 10, columnCount = 6 }: TableSkeletonProps) {
   return (
-    <div className="flex flex-col gap-4 bg-card rounded-xl border border-border/40">
+    <div className="flex flex-col gap-4 bg-background rounded-xl border border-border/40">
       {/* 表头骨架 */}
       <div className="border-b border-border/40 bg-muted/10">
         <div className="flex items-center h-12 px-4 gap-4">

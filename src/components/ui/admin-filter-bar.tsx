@@ -11,7 +11,7 @@ interface AdminFilterBarProps {
 export function AdminFilterBar({ children, className }: AdminFilterBarProps) {
   return (
     <div className={cn(
-      'bg-muted/10 p-3 border border-border/30 rounded-xl',
+      'bg-muted/30 p-3 border border-border/40 rounded-lg',
       'flex flex-col md:flex-row gap-3 items-center',
       className
     )}>

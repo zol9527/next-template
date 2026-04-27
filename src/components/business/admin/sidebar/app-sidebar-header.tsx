@@ -84,13 +84,13 @@ export function AppSidebarHeader() {
           )}
         >
           {/* 用户头像 */}
-          <div className="flex shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground h-9 w-9 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4">
+          <div className="flex shrink-0 items-center justify-center rounded-lg bg-white/10 text-white h-9 w-9 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={avatarUrl}
                 alt={displayName}
-                className="h-full w-full rounded-lg object-cover"
+                className="h-full w-full rounded-lg object-cover ring-2 ring-white/20"
               />
             ) : (
               <User className="h-4 w-4 group-data-[collapsible=icon]:h-2 group-data-[collapsible=icon]:w-2" />

@@ -8,7 +8,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/business/admin/sidebar/app-sidebar";
-import { Separator } from "@/components/ui/separator";
 import { ChangelogDropdown } from "@/components/business/admin/changelog/changelog-dropdown";
 import { useSiteConfigContext } from "@/components/context/site-config-context";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -80,21 +79,15 @@ function AdminHeader({ pathname, groups }: { pathname: string; groups: SidebarGr
   return (
     <div className="flex items-center gap-2">
       <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
       {pageTitle && (
-        <>
-          <h1 className="text-lg font-semibold text-foreground">
-            {pageTitle}
-          </h1>
-          <Separator orientation="vertical" className="h-4" />
-        </>
+        <h1 className="text-lg font-semibold text-foreground">
+          {pageTitle}
+        </h1>
       )}
       {siteConfig?.siteName && (
-        <>
-          <span className="text-sm text-muted-foreground">
-            {siteConfig.siteName}
-          </span>
-        </>
+        <span className="text-sm text-muted-foreground">
+          {siteConfig.siteName}
+        </span>
       )}
     </div>
   );
@@ -112,23 +105,31 @@ export function AdminShellClient({
   }
 
   return (
-    <SidebarProvider defaultOpen={true} className="min-h-svh">
-      <AppSidebar enabledPlugins={enabledPlugins} />
+    <SidebarProvider defaultOpen={true}>
+      {/* Base Layer: h-svh 锁死视口高度，overflow-hidden 禁止窗口级滚动 */}
+      <div className="bg-[var(--stitch-base,#596060)] h-svh w-full overflow-hidden flex">
+        <AppSidebar enabledPlugins={enabledPlugins} />
 
-      <SidebarInset className="flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
-          <AdminHeader pathname={pathname} groups={filteredGroups} />
+        <SidebarInset className="flex-1 flex-col overflow-hidden">
+          {/* Surface Layer: 四周 margin 暴露深色背景，四角圆角 + 阴影营造悬浮感 */}
+          <div className="bg-background shadow-[var(--shadow-surface,0_4px_24px_rgba(0,0,0,0.12))] flex-1 m-0 md:m-4 rounded-none md:rounded-2xl h-full md:h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
+            {/* Header: 固定高度，不参与滚动 */}
+            <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-6">
+              <AdminHeader pathname={pathname} groups={filteredGroups} />
 
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <ChangelogDropdown />
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <ChangelogDropdown />
+              </div>
+            </header>
+
+            {/* Content: overflow-auto 滚动限制在此容器内 */}
+            <main className="flex flex-1 flex-col gap-6 p-6 overflow-auto">
+              {children}
+            </main>
           </div>
-        </header>
-
-        <div className="flex flex-1 flex-col gap-4 p-4 overflow-hidden">
-          {children}
-        </div>
-      </SidebarInset>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }

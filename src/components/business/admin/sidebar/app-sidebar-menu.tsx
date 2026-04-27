@@ -64,13 +64,13 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           isActive={isActive}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground transition-colors"
+          className="gap-3 rounded-lg px-3 text-white/90 hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white transition-colors"
         >
           <item.icon className="h-4 w-4 shrink-0" />
           <span className="truncate">{item.name}</span>
           <div className="ml-auto flex items-center gap-2">
             {isLocked && (
-              <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <Lock className="h-3.5 w-3.5 shrink-0 text-slate-500" />
             )}
             {!isLocked && (
               <ChevronDown
@@ -95,7 +95,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
       <item.icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{item.name}</span>
       {isLocked && (
-        <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500" />
       )}
     </>
   )
@@ -108,7 +108,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           onClick={() => showModal(item.name, `${item.requiredAccess?.action}:${item.requiredAccess?.scope}`)}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 text-muted-foreground hover:bg-sidebar-accent/50 transition-colors"
+          className="gap-3 rounded-lg px-3 text-white/40 hover:bg-white/5 transition-colors"
         >
           {menuContent}
         </SidebarMenuButton>
@@ -118,7 +118,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           isActive={isActive}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground transition-colors"
+          className="gap-3 rounded-lg px-3 text-white/90 hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white transition-colors"
         >
           <Link href={item.href}>{menuContent}</Link>
         </SidebarMenuButton>
@@ -181,7 +181,7 @@ export function AppSidebarMenu({ groups }: AppSidebarMenuProps) {
     <>
       {groups.map((group) => (
         <SidebarGroup key={group.group}>
-          <SidebarGroupLabel className="px-3 py-2 text-sidebar-foreground/50">
+          <SidebarGroupLabel className="px-3 py-2 text-white/50 text-xs font-semibold uppercase tracking-wider">
             {group.group}
           </SidebarGroupLabel>
           <SidebarGroupContent>
