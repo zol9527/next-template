@@ -461,27 +461,33 @@ export function AdminProductForm({
   const handleAiFieldGenerate = async (field: string) => {
     let endpoint = ''
     let previewValue = ''
+    let requestBody: Record<string, unknown> = {}
 
     switch (field) {
       case 'name':
         endpoint = '/api/v1/admin/ai/generate/text'
         previewValue = '生成商品名称...'
+        requestBody = { kind: 'name', prompt: `为商品生成名称。${name ? `现有名称参考：${name}` : ''}${summary ? `摘要：${summary}` : ''}` }
         break
       case 'summary':
         endpoint = '/api/v1/admin/ai/generate/text'
         previewValue = '生成营销摘要...'
+        requestBody = { kind: 'summary', prompt: `为商品生成营销摘要。${name ? `商品名称：${name}` : ''}${description ? `详细描述：${description.substring(0, 200)}` : ''}` }
         break
       case 'description':
         endpoint = '/api/v1/admin/ai/generate/text'
         previewValue = '生成详细描述...'
+        requestBody = { kind: 'description', prompt: `为商品生成详细描述。${name ? `商品名称：${name}` : ''}${summary ? `摘要：${summary}` : ''}` }
         break
       case 'cover':
         endpoint = '/api/v1/admin/ai/generate/image'
         previewValue = '生成封面图...'
+        requestBody = { prompt: `商品封面图。${name ? `商品：${name}` : ''}${summary ? ` ${summary}` : ''}` }
         break
       case 'price':
         endpoint = '/api/v1/admin/ai/generate/pricing'
         previewValue = '生成价格建议...'
+        requestBody = { prompt: `为商品生成价格建议。${name ? `商品名称：${name}` : ''}${summary ? `摘要：${summary}` : ''}` }
         break
       default:
         return
@@ -495,31 +501,69 @@ export function AdminProductForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          prompt: `为商品生成${field === 'name' ? '名称' : field === 'summary' ? '营销摘要' : field === 'description' ? '详细描述' : field === 'cover' ? '封面图' : '价格建议'}`,
-          context: { name, summary, description }
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
         throw new Error(await readApiErrorMessage(response))
       }
 
-      const data = await response.json() as ApiResponse<any>
-      if (!data.success) {
-        throw new Error(data.error.message)
+      // 所有 AI 端点都是 SSE 流式响应，需要解析事件流
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('无法读取响应流')
+
+      let buffer = ''
+      let accumulatedText = ''
+      let priceValue = ''
+      let imageUrl = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += new TextDecoder().decode(value)
+        const eventBlocks = buffer.split('\n\n')
+        buffer = eventBlocks.pop() || ''
+
+        for (const block of eventBlocks) {
+          if (!block.trim()) continue
+
+          let eventType = ''
+          let eventData: Record<string, unknown> = {}
+
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7).trim()
+            } else if (line.startsWith('data: ')) {
+              try { eventData = JSON.parse(line.slice(6)) } catch { /* skip */ }
+            }
+          }
+
+          if (eventType === 'text_delta') {
+            accumulatedText += (eventData.delta as string) || ''
+          } else if (eventType === 'step_complete') {
+            const stepData = eventData.data as Record<string, unknown> | undefined
+            if (stepData?.content) {
+              accumulatedText = stepData.content as string
+            } else if (stepData?.url) {
+              imageUrl = stepData.url as string
+            } else if (stepData?.suggestedPrice !== undefined) {
+              priceValue = String(stepData.suggestedPrice)
+            }
+          } else if (eventType === 'error') {
+            throw new Error((eventData.message as string) || '生成失败')
+          }
+        }
       }
 
-      if (field === 'name') {
-        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
-      } else if (field === 'summary') {
-        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
-      } else if (field === 'description') {
-        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
-      } else if (field === 'cover' && data.data?.url) {
-        setAiFieldPreview(prev => prev ? { ...prev, value: data.data.url } : null)
-      } else if (field === 'price' && data.data?.price) {
-        setAiFieldPreview(prev => prev ? { ...prev, value: data.data.price } : null)
+      if (field === 'cover' && imageUrl) {
+        setAiFieldPreview(prev => prev ? { ...prev, value: imageUrl } : null)
+      } else if (field === 'price' && priceValue) {
+        setAiFieldPreview(prev => prev ? { ...prev, value: priceValue } : null)
+      } else if (accumulatedText) {
+        setAiFieldPreview(prev => prev ? { ...prev, value: accumulatedText } : null)
+      } else {
+        throw new Error('未收到生成结果')
       }
     } catch (error) {
       toast({ title: 'AI 生成失败', description: error instanceof Error ? error.message : '网络错误', variant: 'destructive' })
