@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
-import { getEnabledPlugins } from '@/plugins/registry'
+import { getEnabledPlugins, refreshPluginCache } from '@/plugins/registry'
 import { AdminShell } from '@/components/layout/admin-shell'
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  await refreshPluginCache()
   const enabledPlugins = getEnabledPlugins()
   return (
     <AdminShell enabledPlugins={enabledPlugins}>

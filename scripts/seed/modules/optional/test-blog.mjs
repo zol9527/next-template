@@ -16,6 +16,8 @@
 
 import { randomUUID } from 'node:crypto'
 
+export const meta = { id: 'test-blog', name: '博客测试数据', description: '创建博客分类、标签和文章', type: 'optional', category: 'test-data', dependsOn: ['admin'], plugin: null }
+
 // 管理员用户 ID（来自 02-admin.mjs）
 const ADMIN_USER_ID = 'b5bd0ecf-69af-4c48-a89a-eb3d9bef0f91'
 
@@ -106,8 +108,12 @@ const ARTICLES = [
   },
 ]
 
-export default async function seedTestBlog(db, logger) {
+export default async function seedTestBlog(db, logger, ctx) {
   logger.info('开始创建博客测试数据...')
+
+  // 从上下文获取 admin 结果，回退到硬编码 ID（确保独立运行时也能工作）
+  const adminResult = ctx.getResult('admin')
+  const authorId = adminResult?.id || ADMIN_USER_ID
 
   // 1. 创建分类
   logger.info('创建博客分类...')
@@ -247,7 +253,7 @@ export default async function seedTestBlog(db, logger) {
           excerpt: article.excerpt,
           content: article.content,
           status: article.status,
-          authorId: ADMIN_USER_ID,
+          authorId: authorId,
           categoryId,
           sourceType: 'EDITOR',
           publishedAt: article.publishedAt,

@@ -14,6 +14,8 @@
  *   users(Array): 创建的用户列表
  */
 
+export const meta = { id: 'test-users', name: '测试用户', description: '创建测试用户数据', type: 'optional', category: 'test-data', dependsOn: [], plugin: null }
+
 // 固定的测试用户 ID
 const TEST_USERS = [
   {
@@ -34,7 +36,7 @@ const TEST_USERS = [
   },
 ]
 
-export default async function seedTestUsers(db, logger) {
+export default async function seedTestUsers(db, logger, ctx) {
   logger.info('开始创建测试用户...')
 
   const bcrypt = (await import('bcrypt')).default

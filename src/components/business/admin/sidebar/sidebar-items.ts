@@ -87,6 +87,7 @@ const coreSidebarGroups: SidebarGroupConfig[] = [
       { name: '公告管理', href: '/admin/announcements', icon: Bell, requiredAccess: { action: 'write', scope: 'site-config' } },
       { name: '协议管理', href: '/admin/agreements', icon: FileText, requiredAccess: { action: 'write', scope: 'site-config' } },
       { name: '功能开关', href: '/admin/feature-flags', icon: Shield, requiredAccess: { action: 'read', scope: 'feature-flags' } },
+      { name: '插件管理', href: '/admin/plugins', icon: Shield, requiredAccess: { action: 'read', scope: 'feature-flags' } },
       { name: '日志管理', href: '/admin/logs', icon: ScrollText, requiredAccess: { action: 'read', scope: 'logs' } },
     ],
   },

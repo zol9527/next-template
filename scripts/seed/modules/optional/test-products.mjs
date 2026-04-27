@@ -16,6 +16,8 @@
 
 import { randomUUID } from 'node:crypto'
 
+export const meta = { id: 'test-products', name: '测试产品', description: '创建测试产品和分类', type: 'optional', category: 'test-data', dependsOn: [], plugin: 'ecommerce' }
+
 // 分类数据
 const CATEGORIES = [
   { name: '职业资格证书', slug: 'zige-zhengshu' },
@@ -43,7 +45,7 @@ const PRODUCTS = [
   { name: '吉他弹唱入门', price: '249', categorySlug: 'xingqu-aihao', productKind: 'course', description: '吉他弹唱入门教学课程' },
 ]
 
-export default async function seedTestProducts(db, logger) {
+export default async function seedTestProducts(db, logger, ctx) {
   logger.info('开始创建测试产品和分类...')
 
   // 1. 创建分类

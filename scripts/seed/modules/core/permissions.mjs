@@ -15,6 +15,8 @@
  *   void
  */
 
+export const meta = { id: 'permissions', name: '权限系统', description: '初始化权限配置并绑定角色权限', type: 'core', category: 'foundation', dependsOn: ['roles'], plugin: null }
+
 /**
  * Function: flattenScopeTree
  *
@@ -69,7 +71,7 @@ function flattenScopeTree() {
   return result
 }
 
-export default async function seedPermissions(db, logger) {
+export default async function seedPermissions(db, logger, ctx) {
   logger.info('开始同步角色授权（RoleAccess）...')
 
   // Admin gets ALL grants from scope tree (full access)

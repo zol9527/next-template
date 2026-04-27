@@ -16,6 +16,8 @@
 
 import { randomUUID } from 'node:crypto'
 
+export const meta = { id: 'promoter-levels', name: '推广员等级', description: '创建推广员等级配置', type: 'core', category: 'config', dependsOn: [], plugin: 'promotion' }
+
 const LEVELS = [
   {
     level: 1,
@@ -51,7 +53,7 @@ const LEVELS = [
   },
 ]
 
-export default async function seedPromoterLevels(db, logger) {
+export default async function seedPromoterLevels(db, logger, ctx) {
   logger.info('开始创建推广员等级...')
 
   const levels = []

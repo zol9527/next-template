@@ -16,6 +16,8 @@
 
 import { randomUUID } from 'node:crypto'
 
+export const meta = { id: 'test-commission-data', name: '佣金测试数据', description: '创建佣金和订单数据', type: 'optional', category: 'test-data', dependsOn: ['test-users', 'test-promoter-data', 'test-products'], plugin: 'ecommerce' }
+
 /**
  * 生成订单号
  */
@@ -46,7 +48,7 @@ function computeCommission(baseAmount, rate) {
   return (base * rateVal).toFixed(2)
 }
 
-export default async function seedTestCommissionData(db, logger) {
+export default async function seedTestCommissionData(db, logger, ctx) {
   logger.info('开始创建测试佣金数据...')
 
   // 1. 获取必要的引用数据

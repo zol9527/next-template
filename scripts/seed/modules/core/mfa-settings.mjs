@@ -14,6 +14,8 @@
  *   settings(Object): 包含全局设置和角色策略的对象
  */
 
+export const meta = { id: 'mfa-settings', name: 'MFA 策略设置', description: '初始化全局 MFA 设置和角色策略', type: 'core', category: 'security', dependsOn: [], plugin: null }
+
 /**
  * MFA 全局设置默认值
  * 策略模式说明:
@@ -51,7 +53,7 @@ const MFA_ROLE_POLICIES = [
  * - 如果记录已存在，则跳过创建
  * - 如果记录不存在，则创建新记录
  */
-export default async function seedMfaSettings(db, logger) {
+export default async function seedMfaSettings(db, logger, ctx) {
   logger.info('开始初始化 MFA 策略设置...')
 
   const result = {

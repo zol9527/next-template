@@ -16,10 +16,12 @@
 
 import { randomUUID } from 'node:crypto'
 
-// 推广员用户 ID（固定）
-const PROMOTER_USER_ID = '9ad07202-d4ae-483b-ba9d-9106f1034c36'
+export const meta = { id: 'test-promoter-data', name: '推广员测试数据', description: '创建推广关系和绑定数据', type: 'optional', category: 'test-data', dependsOn: [], plugin: 'promotion' }
 
-export default async function seedTestPromoterData(db, logger) {
+// 推广员用户 ID（固定）
+const PROMOTER_USER_ID = 'f7a3b1c9-4e2d-8a6f-b5c3-d9e7f1a3b5c7'
+
+export default async function seedTestPromoterData(db, logger, ctx) {
   logger.info('开始创建推广员测试数据...')
 
   // 1. 检查测试用户是否存在

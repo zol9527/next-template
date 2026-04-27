@@ -14,6 +14,8 @@
  *   agreements(Array): 已创建或更新的协议列表
  */
 
+export const meta = { id: 'agreements', name: '站点协议', description: '初始化用户协议与隐私政策', type: 'core', category: 'config', dependsOn: [], plugin: null }
+
 const DEFAULT_AGREEMENTS = [
   {
     type: 'USER_AGREEMENT',
@@ -67,7 +69,7 @@ const DEFAULT_AGREEMENTS = [
   },
 ]
 
-export default async function seedAgreements(db, logger) {
+export default async function seedAgreements(db, logger, ctx) {
   logger.info('开始初始化协议数据...')
 
   const agreements = []

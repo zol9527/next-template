@@ -16,13 +16,15 @@
 
 import { randomUUID } from 'node:crypto'
 
+export const meta = { id: 'roles', name: '角色创建', description: '创建系统基础角色（user, admin, promoter）', type: 'core', category: 'foundation', dependsOn: [], plugin: null }
+
 const ROLES = [
   { name: 'user', description: '普通用户', isDefault: true },
   { name: 'admin', description: '管理员', isDefault: true },
   { name: 'promoter', description: '推广员', isDefault: true },
 ]
 
-export default async function seedRoles(db, logger) {
+export default async function seedRoles(db, logger, ctx) {
   logger.info('开始创建角色...')
 
   const roles = new Map()

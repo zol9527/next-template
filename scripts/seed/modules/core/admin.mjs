@@ -15,11 +15,16 @@
  *   admin(Object): 创建的管理员用户对象
  */
 
+export const meta = { id: 'admin', name: '初始管理员', description: '创建初始管理员账户', type: 'core', category: 'foundation', dependsOn: ['roles'], plugin: null }
+
 // 固定 ID 确保可重复执行时不会创建重复数据
 const ADMIN_USER_ID = 'b5bd0ecf-69af-4c48-a89a-eb3d9bef0f91'
 
-export default async function seedAdmin(db, logger, roles) {
+export default async function seedAdmin(db, logger, ctx) {
   logger.info('开始创建初始管理员...')
+
+  // 从上下文获取 roles 结果
+  const roles = ctx.getResult('roles')
 
   // 获取环境变量
   const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'admin'
