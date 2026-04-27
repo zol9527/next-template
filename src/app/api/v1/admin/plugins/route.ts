@@ -7,7 +7,7 @@ import { withV1Route } from '@/app/api/v1/_shared/route-handler'
 import { createSystemSettingsRepository } from '@/repositories/factory'
 import { createPluginActivateService } from '@/plugins/plugin-activate.service'
 import { PLUGIN_DEFINITIONS, isPluginInstalled } from '@/plugins/plugin-definitions'
-import { refreshPluginCache } from '@/plugins/registry'
+import { refreshPluginCacheWithStatuses } from '@/plugins/registry'
 
 export const GET = withV1Route({
   action: 'admin:plugins:view',
@@ -16,8 +16,8 @@ export const GET = withV1Route({
     const systemSettings = await createSystemSettingsRepository()
     const service = createPluginActivateService({ systemSettings }, serviceContext)
 
-    await refreshPluginCache()
     const activeStatuses = await service.getAllActivationStatuses()
+    refreshPluginCacheWithStatuses(activeStatuses)
 
     const plugins = Object.values(PLUGIN_DEFINITIONS).map((def) => ({
       name: def.name,

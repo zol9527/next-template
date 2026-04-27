@@ -101,6 +101,20 @@ export function getEnabledPlugins(): Record<string, boolean> {
 }
 
 /**
+ * Function: setPluginCache
+ *
+ * Description: 直接写入单个插件的激活状态到缓存，无 DB 开销。
+ *   用于 PATCH 后立即更新缓存，跳过 refreshPluginCache 的完整重载。
+ *
+ * Parameters:
+ *   pluginName(string): 插件名称
+ *   active(boolean): 激活状态
+ */
+export function setPluginCache(pluginName: string, active: boolean): void {
+  memoryCache.set(getCacheKey(pluginName), active, PLUGIN_ACTIVATE_TTL)
+}
+
+/**
  * Function: refreshPluginCache
  *
  * Description: 从数据库加载所有插件激活状态到内存缓存。
@@ -117,6 +131,22 @@ export async function refreshPluginCache(): Promise<void> {
   }
 
   const statuses = await activationService.getAllActivationStatuses()
+  for (const [name, active] of Object.entries(statuses)) {
+    memoryCache.set(getCacheKey(name), active, PLUGIN_ACTIVATE_TTL)
+  }
+}
+
+/**
+ * Function: refreshPluginCacheWithStatuses
+ *
+ * Description: 用已获取的激活状态批量刷新缓存，零 DB 开销。
+ *   用于 GET 接口已调用 getAllActivationStatuses 后顺便刷新缓存，
+ *   避免 refreshPluginCache 再次查库。
+ *
+ * Parameters:
+ *   statuses(Record<string, boolean>): 插件名称 → 激活状态映射
+ */
+export function refreshPluginCacheWithStatuses(statuses: Record<string, boolean>): void {
   for (const [name, active] of Object.entries(statuses)) {
     memoryCache.set(getCacheKey(name), active, PLUGIN_ACTIVATE_TTL)
   }

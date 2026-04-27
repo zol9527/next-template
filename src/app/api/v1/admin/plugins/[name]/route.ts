@@ -8,7 +8,7 @@ import { withV1Route } from '@/app/api/v1/_shared/route-handler'
 import { createSystemSettingsRepository } from '@/repositories/factory'
 import { createPluginActivateService } from '@/plugins/plugin-activate.service'
 import { isPluginInstalled, type PluginName } from '@/plugins/plugin-definitions'
-import { refreshPluginCache } from '@/plugins/registry'
+import { setPluginCache } from '@/plugins/registry'
 
 const PluginNameParamSchema = z.object({
   name: z.enum(['wechat', 'ecommerce', 'promotion']),
@@ -44,7 +44,7 @@ export const PATCH = withV1Route({
     const previousActive = await service.getActivationStatus(pluginName)
 
     await service.setActivationStatus(pluginName, body!.active)
-    await refreshPluginCache()
+    setPluginCache(pluginName, body!.active)
 
     // 仅在状态实际变更时记录审计日志，避免噪音
     if (previousActive !== body!.active) {

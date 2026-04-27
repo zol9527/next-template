@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { MessageCircle, ShoppingBag, TrendingUp, Info } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import { AdminPageLayout } from '@/components/ui/admin-page-layout'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,7 @@ interface PluginInfo {
 
 export default function AdminPluginsPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const queryClient = useQueryClient()
 
   const { data: plugins } = useQuery<PluginInfo[]>({
@@ -54,6 +56,7 @@ export default function AdminPluginsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'plugins'] })
+      router.refresh()
     },
     onError: (error: Error) => {
       toast({ title: '操作失败', description: error.message, variant: 'destructive' })
@@ -63,6 +66,9 @@ export default function AdminPluginsPage() {
   const handleToggle = (name: string, active: boolean) => {
     toggleMutation.mutate({ name, active })
   }
+
+  const isPendingFor = (name: string) =>
+    toggleMutation.isPending && toggleMutation.variables?.name === name
 
   return (
     <AdminPageLayout>
@@ -76,8 +82,6 @@ export default function AdminPluginsPage() {
             Info,
           }
           const IconComponent = iconComponent ? staticIconMap[iconComponent as keyof typeof staticIconMap] || null : null
-          
-          const isSubmitting = toggleMutation.isPending
 
           return (
             <Card
@@ -121,7 +125,7 @@ export default function AdminPluginsPage() {
                   <Switch
                     checked={plugin.active}
                     onCheckedChange={(checked) => handleToggle(plugin.name, checked)}
-                    disabled={!plugin.installed || isSubmitting}
+                    disabled={!plugin.installed || isPendingFor(plugin.name)}
                   />
                 </div>
               </CardContent>
