@@ -320,6 +320,27 @@ export function AdminProductForm({
     }
   }
 
+  /**
+   * Function: extractJsonFromContent
+   * 从 AI 返回的内容中提取 JSON 对象
+   * 支持纯 JSON 或被 markdown 代码块包裹的 JSON
+   */
+  const extractJsonFromContent = (content: string): Record<string, unknown> | null => {
+    // 尝试从 markdown 代码块中提取 JSON
+    const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+    const jsonStr = codeBlockMatch ? codeBlockMatch[1].trim() : content.trim()
+    try {
+      return JSON.parse(jsonStr)
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Function: processAiStream
+   * 处理后端 SSE 事件流，解析各步骤结果并更新表单
+   * 后端格式: pipeline_start → step_complete(text) → step_complete(image) → step_complete(pricing) → pipeline_complete
+   */
   const processAiStream = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
     let buffer = ''
 
@@ -357,31 +378,35 @@ export function AdminProductForm({
             setAiGenerationProgress('开始生成流程...')
             break
 
-          case 'text_delta': {
-            const field = eventData.field as string | undefined
-            const delta = eventData.delta as string | undefined
-            if (field && delta) {
-              switch (field) {
-                case 'name':
-                  setName(prev => prev + delta)
-                  aiGenerationResultRef.current.name = (aiGenerationResultRef.current.name ?? '') + delta
-                  break
-                case 'summary':
-                  setSummary(prev => prev + delta)
-                  aiGenerationResultRef.current.summary = (aiGenerationResultRef.current.summary ?? '') + delta
-                  break
-                case 'description':
-                  setDescription(prev => prev + delta)
-                  aiGenerationResultRef.current.description = (aiGenerationResultRef.current.description ?? '') + delta
-                  break
-              }
-            }
-            break
-          }
-
           case 'step_complete': {
+            const step = eventData.step as string | undefined
             const stepData = eventData.data as Record<string, unknown> | undefined
-            if (stepData?.url) {
+
+            if (step === 'text' && stepData?.content) {
+              // 文本步骤完成：从 content 中提取 JSON 并填充表单
+              setAiGenerationProgress('正在解析商品信息...')
+              const parsed = extractJsonFromContent(stepData.content as string)
+              if (parsed) {
+                const textName = (parsed.name as string) || ''
+                const textSummary = (parsed.summary as string) || ''
+                const textDescription = (parsed.description as string) || ''
+
+                if (textName) {
+                  setName(textName)
+                  aiGenerationResultRef.current.name = textName
+                }
+                if (textSummary) {
+                  setSummary(textSummary)
+                  aiGenerationResultRef.current.summary = textSummary
+                }
+                if (textDescription) {
+                  setDescription(textDescription)
+                  aiGenerationResultRef.current.description = textDescription
+                }
+                setAiGenerationProgress('已生成商品文本信息')
+              }
+            } else if (step === 'image' && stepData?.url) {
+              // 图片步骤完成
               const url = stepData.url as string
               const assetId = (stepData.assetId as string) || ''
               setCoverUrl(url)
@@ -389,11 +414,24 @@ export function AdminProductForm({
               setAiGenerationProgress('已生成封面图')
               aiGenerationResultRef.current.coverUrl = url
               aiGenerationResultRef.current.coverAssetId = assetId
-            } else if (stepData?.price) {
-              const price = String(stepData.price)
+            } else if (step === 'pricing' && stepData?.suggestedPrice !== undefined) {
+              // 价格步骤完成
+              const price = String(stepData.suggestedPrice)
               setPriceAmount(price)
               setAiGenerationProgress('已生成价格建议')
               aiGenerationResultRef.current.priceAmount = price
+            }
+            break
+          }
+
+          case 'step_error': {
+            const errorStep = eventData.step as string | undefined
+            const errorMessage = eventData.error as string | undefined
+            // 图片生成失败是可接受的（可能未配置 image model），仅提示
+            if (errorStep === 'image') {
+              setAiGenerationProgress('图片生成跳过（未配置）')
+            } else if (errorMessage) {
+              toast({ title: 'AI 步骤错误', description: errorMessage, variant: 'destructive' })
             }
             break
           }
@@ -942,8 +980,8 @@ export function AdminProductForm({
                                         {record.priceAmount && <span className="text-xs text-primary font-medium">¥{record.priceAmount}</span>}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button variant="outline" size="sm" className="h-7 px-3 text-xs" onClick={() => {
                                         // 应用记录到表单
                                         if (record.name) setName(record.name)
                                         if (record.summary) setSummary(record.summary)
@@ -955,7 +993,7 @@ export function AdminProductForm({
                                       }}>
                                         应用
                                       </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={() => deleteRecord(record.id)}>
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={() => deleteRecord(record.id)}>
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </Button>
                                     </div>
