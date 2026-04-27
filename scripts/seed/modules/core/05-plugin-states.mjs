@@ -16,6 +16,7 @@
  *   states(Map): 插件名称到 key 的映射对象
  */
 
+export const meta = { id: 'plugin-states', name: '插件状态初始化', description: '初始化已启用插件的基础状态，确保缓存系统正常工作', type: 'core', category: 'config', dependsOn: [], plugin: null }
 
 const PLUGINS = [
   { name: 'wechat', envVar: 'PLUGIN_WECHAT' },
