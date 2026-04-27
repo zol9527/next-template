@@ -265,6 +265,9 @@ export const FeatureFlagNameEnum = z.enum([
   'announcement_enabled',
   'promotion_enabled',
   'coupon_enabled',
+  'ai_text_generation',
+  'ai_image_generation',
+  'ai_pricing_suggestion',
 ])
 
 export type FeatureFlagName = z.infer<typeof FeatureFlagNameEnum>

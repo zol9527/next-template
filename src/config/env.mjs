@@ -113,6 +113,9 @@ export const env = createEnv({
     MFA_ACTION_TOKEN_TTL: z.coerce.number().default(300),
     MFA_PENDING_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 
+    // ==================== AI Configuration ====================
+    AI_API_KEY_ENCRYPTION_KEY: z.string().min(32, 'AI API Key 加密密钥必须至少 32 字节').optional(),
+
     // ==================== Rate Limit Configuration ====================
     RATE_LIMIT_TRUST_PROXY: z.coerce.boolean().default(false),
     RATE_LIMIT_ALLOW_PRIVATE_IP: z.coerce.boolean().default(false),
@@ -228,6 +231,9 @@ export const env = createEnv({
     TOTP_STEP: process.env.TOTP_STEP,
     MFA_ACTION_TOKEN_TTL: process.env.MFA_ACTION_TOKEN_TTL,
     MFA_PENDING_TOKEN_TTL_SECONDS: process.env.MFA_PENDING_TOKEN_TTL_SECONDS,
+
+    // ==================== AI Configuration ====================
+    AI_API_KEY_ENCRYPTION_KEY: process.env.AI_API_KEY_ENCRYPTION_KEY,
 
     // ==================== Rate Limit Configuration ====================
     RATE_LIMIT_TRUST_PROXY: process.env.RATE_LIMIT_TRUST_PROXY,

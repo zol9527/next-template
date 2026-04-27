@@ -52,7 +52,7 @@ function DataTableContent<TData, TValue>({
   pagination?: PaginationConfig
 }) {
   return (
-    <div className="flex flex-col gap-4 bg-card rounded-xl border border-border shadow-sm">
+    <div className="flex flex-col gap-4 bg-background rounded-xl border border-border/60 shadow-sm">
       {/* 表格区域：支持水平和垂直滚动，固定表头 */}
       <ScrollArea className="h-150 w-full backdrop-blur-sm">
         <Table className="min-w-[1200px]">
@@ -66,7 +66,7 @@ function DataTableContent<TData, TValue>({
                       key={header.id}
                       colSpan={header.colSpan}
                       style={{ width: header.getSize() }}
-                      className={`first:pl-4 last:pr-4 h-10 text-foreground/80 font-semibold bg-muted/10 border-r border-border/30 last:border-r-0 ${
+                      className={`first:pl-4 last:pr-4 h-10 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-r border-border/20 last:border-r-0 ${
                         isSelectColumn ? 'text-center' : ''
                       }`}
                     >
@@ -103,7 +103,7 @@ function DataTableContent<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
-                    className="hover:bg-primary/5 transition-colors duration-200 cursor-pointer border-b border-border/30 last:border-b-0"
+                    className="hover:bg-muted/30 transition-colors duration-200 cursor-pointer border-b border-border/20 last:border-b-0"
                     onClick={handleRowClick}
                   >
                     {row.getVisibleCells().map((cell) => {
@@ -127,7 +127,7 @@ function DataTableContent<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground bg-muted/10"
+                  className="h-24 text-center text-muted-foreground"
                 >
                   暂无数据
                 </TableCell>

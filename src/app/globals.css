@@ -2,40 +2,73 @@
 
 /* ============================================
    CSS 原始变量 — 浅色主题
-   所有颜色使用 oklch() 色彩空间
+   配色: #EF7324(橙) #38894C(绿) #69DEF8(蓝) #E4F2F2(薄荷) #596060(炭灰)
    ============================================ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.1 0 0);
-  --primary: oklch(0 0 0);
-  --primary-foreground: oklch(1 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.1 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.1 0 0);
-  --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.98 0 0);
-  --accent-foreground: oklch(0.1 0 0);
-  --border: oklch(0.91 0 0);
-  --input: oklch(1 0 0);
-  --ring: oklch(0 0 0);
+  /* 调色板 */
+  --palette-orange: #EF7324;
+  --palette-green: #38894C;
+  --palette-blue: #69DEF8;
+  --palette-mint: #E4F2F2;
+  --palette-charcoal: #596060;
 
-  /* Sidebar */
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.1 0 0);
-  --sidebar-primary: oklch(0 0 0);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
-  --sidebar-accent-foreground: oklch(0.1 0 0);
-  --sidebar-border: oklch(0.91 0 0);
-  --sidebar-ring: oklch(0 0 0);
-  --sidebar-active: oklch(0.88 0 0);
-  --sidebar-active-foreground: oklch(0 0 0);
+  /* 布局层 */
+  --background: #E4F2F2;
+  --foreground: #596060;
+  --card: #FFFFFF;
+  --card-foreground: #596060;
+  --popover: #FFFFFF;
+  --popover-foreground: #596060;
 
-  --radius: 0.375rem;
+  /* 主操作 */
+  --primary: #EF7324;
+  --primary-foreground: #FFFFFF;
+
+  /* 辅助 */
+  --secondary: #D0DEDE;
+  --secondary-foreground: #596060;
+
+  /* 柔和 */
+  --muted: #D0DEDE;
+  --muted-foreground: #8A9191;
+
+  /* 信息/高亮 */
+  --accent: #69DEF8;
+  --accent-foreground: #3A5560;
+
+  /* 边框/输入 */
+  --border: #C4CCCC;
+  --input: #C4CCCC;
+  --ring: #EF7324;
+
+  /* Sidebar — 深色融合式（透明背景，继承 Base 层 #596060） */
+  --sidebar: transparent;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #FFFFFF;
+  --sidebar-primary-foreground: #596060;
+  --sidebar-accent: rgba(255, 255, 255, 0.10);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: transparent;
+  --sidebar-ring: #69DEF8;
+  --sidebar-active: rgba(255, 255, 255, 0.18);
+  --sidebar-active-foreground: #FFFFFF;
+
+  --radius: 0.25rem;
+
+  /* Stitch Admin 间距令牌（4px 基线） */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Stitch Admin 阴影令牌 */
+  --shadow-surface: 0 4px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  /* Stitch Admin 布局色彩 */
+  --stitch-base: #596060;
+  --stitch-surface: #E4F2F2;
 
   /* 像素风配色 — 始终深色，不跟随主题切换 */
   --color-landing-background: #0F0F23;
@@ -50,8 +83,8 @@
   --color-landing-gold: #FFD700;
   --color-landing-heart: #FF6B35;
 
-  /* TipTap Prose */
-  --prose-code-background: oklch(0.96 0 0);
+  /* TipTap Prose — 保持不变 */
+  --prose-code-background: #F1F5F9;
   --prose-font-size-h1: 2.25em;
   --prose-font-size-h2: 1.8em;
   --prose-font-size-h3: 1.5em;
@@ -84,40 +117,41 @@
 
 /* ============================================
    CSS 原始变量 — 暗色主题
+   基于 #596060 炭灰色系派生
    ============================================ */
 .dark {
-  --background: oklch(0.1 0 0);
-  --foreground: oklch(0.98 0 0);
-  --primary: oklch(1 0 0);
-  --primary-foreground: oklch(0 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.98 0 0);
-  --secondary-foreground: oklch(0.1 0 0);
-  --muted: oklch(0.15 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.15 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.12 0 0);
-  --ring: oklch(1 0 0);
+  --background: #2A2E2E;
+  --foreground: #E2E8F0;
+  --primary: #EF7324;
+  --primary-foreground: #FFFFFF;
+  --card: #353A3A;
+  --card-foreground: #E2E8F0;
+  --popover: #353A3A;
+  --popover-foreground: #E2E8F0;
+  --secondary: #3A3E3E;
+  --secondary-foreground: #E2E8F0;
+  --muted: #3A3E3E;
+  --muted-foreground: #9A9F9F;
+  --accent: #69DEF8;
+  --accent-foreground: #2A2E2E;
+  --border: #4A4E4E;
+  --input: #4A4E4E;
+  --ring: #EF7324;
 
-  /* Sidebar dark */
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.20 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(1 0 0);
-  --sidebar-active: oklch(0.25 0 0);
-  --sidebar-active-foreground: oklch(1 0 0);
+  /* Sidebar dark — 保持深色融合式 */
+  --sidebar: transparent;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: #FFFFFF;
+  --sidebar-primary-foreground: #596060;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #E2E8F0;
+  --sidebar-border: transparent;
+  --sidebar-ring: #69DEF8;
+  --sidebar-active: rgba(255, 255, 255, 0.12);
+  --sidebar-active-foreground: #FFFFFF;
 
   /* Prose dark */
-  --prose-code-background: oklch(0.15 0 0);
+  --prose-code-background: #2A2B35;
 
   --color-landing-background: #0A0A1A;
   --color-landing-foreground: #E8E8E8;
@@ -166,18 +200,19 @@
   --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
 
-  --color-success: oklch(0.55 0.18 145);
-  --color-success-foreground: oklch(1 0 0);
-  --color-info: oklch(0.55 0.18 250);
-  --color-info-foreground: oklch(1 0 0);
-  --color-warning: oklch(0.58 0.18 50);
-  --color-warning-foreground: oklch(1 0 0);
-  --color-error: oklch(0.5 0.18 25);
-  --color-error-foreground: oklch(1 0 0);
-  --color-neutral: oklch(0.45 0 0);
-  --color-neutral-foreground: oklch(0.98 0 0);
+  /* 语义色彩 — 状态 */
+  --color-success: #38894C;
+  --color-success-foreground: #FFFFFF;
+  --color-info: #69DEF8;
+  --color-info-foreground: #2A4A50;
+  --color-warning: #F59E0B;
+  --color-warning-foreground: #FFFFFF;
+  --color-error: #EF4444;
+  --color-error-foreground: #FFFFFF;
+  --color-neutral: #596060;
+  --color-neutral-foreground: #FFFFFF;
 
-  /* 像素风配色 — 8-bit 经典游戏调色板 */
+  /* 像素风配色 */
   --color-landing-primary: #4CC9F0;
   --color-landing-secondary: #3A86FF;
   --color-landing-cta: #FF6B35;
@@ -189,17 +224,25 @@
   --color-landing-success: #06D6A0;
   --color-landing-gold: #FFD700;
 
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* 圆角 — Stitch 规范 */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 
+  /* 阴影 */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
+  /* Stitch 阴影令牌 */
+  --shadow-surface: var(--shadow-surface);
+  --shadow-card: var(--shadow-card);
+
+  /* 字体 */
+  --font-sans: "Inter", var(--font-inter), -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -287,6 +330,38 @@
 
 html {
   font-size: clamp(16px, 0.5vw + 14px, 18px);
+}
+
+@layer components {
+  /* Stitch Admin — 融合式布局覆盖 */
+
+  /* SidebarInset: 透明背景，让 Base Layer 深色底色透出 */
+  [data-slot="sidebar-inset"] {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  /* Sidebar Wrapper: h-svh 锁死视口，覆盖默认 min-h-svh */
+  [data-slot="sidebar-wrapper"] {
+    height: 100vh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Sidebar Container: 移除右侧竖线，让 sidebar 融入深色背景 */
+  [data-slot="sidebar-container"] {
+    border-right: none !important;
+    border-left: none !important;
+  }
+
+  /* 移动端：Surface 面板全宽，无圆角/间距 */
+  @media (max-width: 767px) {
+    [data-slot="sidebar-inset"] > div:first-child {
+      border-radius: 0 !important;
+      margin: 0 !important;
+      height: 100vh !important;
+    }
+  }
 }
 
 /* ============================================

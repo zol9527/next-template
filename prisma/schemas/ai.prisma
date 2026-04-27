@@ -1,0 +1,55 @@
+// ============================================================================
+// AI 功能 - Prompt 模板与使用日志
+// ============================================================================
+
+model AiPromptTemplate {
+  id          String   @id @default(uuid())
+  slug        String
+  name        String
+  category    String   @map("category")
+  content     String   @db.Text
+  variables   Json
+  version     Int
+  isActive    Boolean  @default(true) @map("is_active")
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  createdBy User? @relation(fields: [createdById], references: [id])
+
+  @@unique([slug, version])
+  @@index([slug, isActive])
+  @@index([category])
+  @@map("ai_prompt_templates")
+}
+
+model AiUsageLog {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  capability   String
+  provider     String
+  model        String
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  costAmount   Decimal  @default(0) @map("cost_amount") @db.Decimal(precision: 10, scale: 6)
+  currencyCode String   @default("CNY") @map("currency_code")
+  durationMs   Int      @default(0) @map("duration_ms")
+  status       String   @default("success")
+  errorMessage String?  @map("error_message") @db.Text
+  entity       String?
+  entityId     String?  @map("entity_id")
+  traceId      String?  @map("trace_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([provider, createdAt])
+  @@index([capability, createdAt])
+  @@index([status])
+  @@map("ai_usage_logs")
+}
+
+// ── AI 功能: User relation 字段 ──
+// {{PLUGIN_MODEL_INJECTIONS:User:ai}}
+aiPromptTemplates AiPromptTemplate[]
+aiUsageLogs       AiUsageLog[]

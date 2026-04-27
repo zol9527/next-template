@@ -13,6 +13,9 @@ export type FeatureFlagName =
   | 'announcement_enabled' // 公告功能开关
   | 'promotion_enabled' // 推广功能开关
   | 'coupon_enabled' // 优惠券功能开关
+  | 'ai_text_generation' // AI 文本生成
+  | 'ai_image_generation' // AI 图片生成
+  | 'ai_pricing_suggestion' // AI 价格建议
 
 /**
  * 功能开关值类型
@@ -61,6 +64,21 @@ export const FEATURE_FLAGS: Record<FeatureFlagName, FeatureFlagConfig> = {
     name: 'coupon_enabled',
     defaultValue: true,
     description: '优惠券功能开关（禁用时不允许使用优惠券）',
+  },
+  ai_text_generation: {
+    name: 'ai_text_generation',
+    defaultValue: false,
+    description: 'AI 文本生成功能（禁用时商品名称/描述/标签等 AI 生成不可用）',
+  },
+  ai_image_generation: {
+    name: 'ai_image_generation',
+    defaultValue: false,
+    description: 'AI 图片生成功能（禁用时商品封面图 AI 生成不可用）',
+  },
+  ai_pricing_suggestion: {
+    name: 'ai_pricing_suggestion',
+    defaultValue: false,
+    description: 'AI 价格建议功能（禁用时商品价格 AI 建议不可用）',
   },
 } as const
 
