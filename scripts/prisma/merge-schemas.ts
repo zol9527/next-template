@@ -42,6 +42,9 @@ const PLUGINS = [
   },
 ] as const;
 
+// ── 常驻 schema（不受 PLUGIN_* 环境变量控制）──
+const ALWAYS_INCLUDE_SCHEMAS = ["ai.prisma"] as const;
+
 // ── 工具函数 ──
 
 /**
@@ -227,9 +230,34 @@ function main(): void {
   let merged = readFileSync(basePath, "utf-8");
   console.log(`✅ 读取 base.prisma (${merged.split("\n").length} 行)`);
 
-  // 2. 遍历插件，根据环境变量决定是否追加
+  // 2. 处理常驻 schema（不受 PLUGIN_* 环境变量控制）
   const allModelInjections = new Map<string, string>();
 
+  for (const schemaFile of ALWAYS_INCLUDE_SCHEMAS) {
+    const schemaPath = resolve(SCHEMAS_DIR, schemaFile);
+    if (!existsSync(schemaPath)) {
+      console.warn(`⚠️  常驻 schema 文件不存在: ${schemaPath}`);
+      continue;
+    }
+
+    const content = readFileSync(schemaPath, "utf-8");
+    const modelDefs = extractModelDefinitions(content);
+
+    if (modelDefs.trim()) {
+      merged += `\n\n${modelDefs}`;
+      console.log(`✅ 常驻 schema ${schemaFile}: 已追加模型`);
+    }
+
+    // 提取各 base 模型的字段注入
+    const injections = extractModelInjections(content, "ai");
+    for (const [modelName, fields] of injections) {
+      const existing = allModelInjections.get(modelName) || "";
+      allModelInjections.set(modelName, existing ? `${existing}\n${fields}` : fields);
+      console.log(`✅ 常驻 schema ${schemaFile}: 已收集 ${modelName} 注入字段`);
+    }
+  }
+
+  // 3. 遍历插件，根据环境变量决定是否追加
   for (const plugin of PLUGINS) {
     const enabled = isPluginEnabled(plugin);
 
