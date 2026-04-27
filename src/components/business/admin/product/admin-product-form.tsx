@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { Textarea } from '@/components/ui/textarea'
 import type { ApiResponse } from '@/contracts/api-response.schema'
 import type { AdminCategory } from '@/plugins/ecommerce/contracts/admin-categories.dto'
 import {
@@ -60,6 +61,7 @@ import { MaterialPicker } from '../media/material-picker'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import Image from 'next/image'
+import { useFeatureFlag } from '@/hooks/use-feature-flag'
 
 async function readApiErrorMessage(res: Response): Promise<string> {
   try {
@@ -135,6 +137,14 @@ export function AdminProductForm({
 
   // 已删除的 API 图片索引集合
   const [deletedApiMediaIndices, setDeletedApiMediaIndices] = React.useState<Set<number>>(new Set())
+
+  // AI 相关状态
+  const [aiGenerationOpen, setAiGenerationOpen] = React.useState(false)
+  const [aiGenerationPrompt, setAiGenerationPrompt] = React.useState('')
+  const [aiGenerationProgress, setAiGenerationProgress] = React.useState<string | null>(null)
+  const [aiGenerationStream, setAiGenerationStream] = React.useState(false)
+  const [aiFieldPreview, setAiFieldPreview] = React.useState<{ field: string; value: string; type: 'text' | 'image' | 'pricing' } | null>(null)
+  const [aiFieldPreviewOpen, setAiFieldPreviewOpen] = React.useState(false)
 
   // 使用 useQuery 获取分类列表
   const { data: categoriesData } = useQuery<{ items: AdminCategory[] }>({
@@ -265,6 +275,220 @@ export function AdminProductForm({
       default:
         return asset.url || ''
     }
+  }
+
+  // AI 功能相关
+  const { isEnabled: isAiTextGenerationEnabled } = useFeatureFlag('ai_text_generation')
+  const { isEnabled: isAiPricingSuggestionEnabled } = useFeatureFlag('ai_pricing_suggestion')
+
+// AI 一键生成处理
+  const handleAiGenerate = async () => {
+    if (!aiGenerationPrompt.trim()) return
+
+    setAiGenerationProgress('正在生成商品信息...')
+    setAiGenerationOpen(false)
+
+    try {
+      const response = await fetch('/api/v1/admin/ai/generate/product-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ prompt: aiGenerationPrompt }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await readApiErrorMessage(response))
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('无法读取响应流')
+
+      // 启动流式处理
+      setAiGenerationStream(true)
+      processAiStream(reader)
+    } catch (error) {
+      toast({ title: 'AI 生成失败', description: error instanceof Error ? error.message : '网络错误', variant: 'destructive' })
+      setAiGenerationProgress(null)
+      setAiGenerationStream(false)
+    }
+  }
+
+  // 处理 AI 流式数据
+  const processAiStream = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
+    let accumulatedText = ''
+    let currentField: string | null = null
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        setAiGenerationStream(false)
+        break
+      }
+
+      const text = new TextDecoder().decode(value)
+      accumulatedText += text
+
+      // 处理 JSON 事件
+      try {
+        const events = accumulatedText.split('\n').filter(line => line.trim())
+        accumulatedText = ''
+
+        for (const event of events) {
+          if (event.startsWith('data: ')) {
+            const data = JSON.parse(event.slice(6))
+            
+            switch (data.type) {
+              case 'pipeline_start':
+                setAiGenerationProgress('开始生成流程...')
+                break
+              
+              case 'text_delta':
+                if (data.field) {
+                  currentField = data.field
+                  if (data.text) {
+                    // 根据字段更新相应的表单状态
+                    switch (data.field) {
+                      case 'name':
+                        setName(prev => prev + data.text)
+                        break
+                      case 'summary':
+                        setSummary(prev => prev + data.text)
+                        break
+                      case 'description':
+                        setDescription(prev => prev + data.text)
+                        break
+                    }
+                  }
+                }
+                break
+                
+              case 'step_complete':
+                if (data.field === 'image' && data.url) {
+                  setCoverUrl(data.url)
+                  setCoverAssetId(data.assetId || '')
+                  setAiGenerationProgress('已生成封面图')
+                } else if (data.field === 'pricing' && data.price) {
+                  setPriceAmount(data.price)
+                  setAiGenerationProgress('已生成价格建议')
+                }
+                break
+                
+              case 'pipeline_complete':
+                setAiGenerationProgress('生成完成')
+                setAiGenerationStream(false)
+                setTimeout(() => setAiGenerationProgress(null), 2000)
+                break
+                
+              case 'error':
+                toast({ title: 'AI 生成错误', description: data.message, variant: 'destructive' })
+                setAiGenerationProgress(null)
+                setAiGenerationStream(false)
+                break
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略部分解析错误，继续处理
+      }
+    }
+  }
+
+  // 单字段 AI 生成处理
+  const handleAiFieldGenerate = async (field: string) => {
+    let endpoint = ''
+    let previewValue = ''
+
+    switch (field) {
+      case 'name':
+        endpoint = '/api/v1/admin/ai/generate/text'
+        previewValue = '生成商品名称...'
+        break
+      case 'summary':
+        endpoint = '/api/v1/admin/ai/generate/text'
+        previewValue = '生成营销摘要...'
+        break
+      case 'description':
+        endpoint = '/api/v1/admin/ai/generate/text'
+        previewValue = '生成详细描述...'
+        break
+      case 'cover':
+        endpoint = '/api/v1/admin/ai/generate/image'
+        previewValue = '生成封面图...'
+        break
+      case 'price':
+        endpoint = '/api/v1/admin/ai/generate/pricing'
+        previewValue = '生成价格建议...'
+        break
+      default:
+        return
+    }
+
+    setAiFieldPreview({ field, value: previewValue, type: field === 'cover' ? 'image' : field === 'price' ? 'pricing' : 'text' })
+    setAiFieldPreviewOpen(true)
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          prompt: `为商品生成${field === 'name' ? '名称' : field === 'summary' ? '营销摘要' : field === 'description' ? '详细描述' : field === 'cover' ? '封面图' : '价格建议'}`,
+          context: { name, summary, description }
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await readApiErrorMessage(response))
+      }
+
+      const data = await response.json() as ApiResponse<any>
+      if (!data.success) {
+        throw new Error(data.error.message)
+      }
+
+      if (field === 'name') {
+        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
+      } else if (field === 'summary') {
+        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
+      } else if (field === 'description') {
+        setAiFieldPreview(prev => prev ? { ...prev, value: data.data } : null)
+      } else if (field === 'cover' && data.data?.url) {
+        setAiFieldPreview(prev => prev ? { ...prev, value: data.data.url } : null)
+      } else if (field === 'price' && data.data?.price) {
+        setAiFieldPreview(prev => prev ? { ...prev, value: data.data.price } : null)
+      }
+    } catch (error) {
+      toast({ title: 'AI 生成失败', description: error instanceof Error ? error.message : '网络错误', variant: 'destructive' })
+      setAiFieldPreview(null)
+      setAiFieldPreviewOpen(false)
+    }
+  }
+
+  // 采纳 AI 预览值
+  const adoptAiPreview = () => {
+    if (!aiFieldPreview) return
+
+    switch (aiFieldPreview.field) {
+      case 'name':
+        setName(aiFieldPreview.value as string)
+        break
+      case 'summary':
+        setSummary(aiFieldPreview.value as string)
+        break
+      case 'description':
+        setDescription(aiFieldPreview.value as string)
+        break
+      case 'cover':
+        setCoverUrl(aiFieldPreview.value as string)
+        setCoverAssetId('ai-generated')
+        break
+      case 'price':
+        setPriceAmount(aiFieldPreview.value as string)
+        break
+    }
+
+    setAiFieldPreview(null)
+    setAiFieldPreviewOpen(false)
   }
 
   // 保存商品的 mutation
@@ -563,6 +787,17 @@ export function AdminProductForm({
                 {productStatus === 'published' ? '已上架' : '草稿状态'}
               </Badge>
             )}
+            {isAiTextGenerationEnabled && !viewing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAiGenerationOpen(true)}
+                className="text-xs h-9 gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                ✨ AI 一键生成
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -589,24 +824,75 @@ export function AdminProductForm({
                       </div>
                     )}
 
+                    {/* AI 一键生成对话框 */}
+                    <Dialog open={aiGenerationOpen} onOpenChange={setAiGenerationOpen}>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                            AI 一键生成商品信息
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-sm font-medium">生成提示</Label>
+                            <Textarea
+                              placeholder="描述您想要生成的商品，例如：'一款高级瑜伽垫，环保材料，适合初学者和专业人士使用'"
+                              value={aiGenerationPrompt}
+                              onChange={(e) => setAiGenerationPrompt(e.target.value)}
+                              className="mt-1"
+                              rows={4}
+                            />
+                          </div>
+                          {aiGenerationProgress && (
+                            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                              <p className="text-sm text-primary">{aiGenerationProgress}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                          <Button
+                            variant="outline"
+                            onClick={() => setAiGenerationOpen(false)}
+                          >
+                            取消
+                          </Button>
+                          <Button onClick={handleAiGenerate} disabled={!!aiGenerationStream}>
+                            {aiGenerationStream ? '生成中...' : '开始生成'}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2 md:col-span-2">
                         <Label className="text-sm font-semibold text-foreground/70">
                           商品名称 <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                          placeholder="这里输入商品名称..."
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          disabled={viewing}
-                          className={cn(
-                            "h-12 bg-muted/10 border-border/30",
-                            "hover:bg-muted/15 hover:border-border/40",
-                            "focus:bg-transparent focus:border-transparent focus:ring-2 focus:ring-primary/20",
-                            "transition-all duration-200",
-                            errors.name && "focus:ring-destructive/50"
+                        <div className="relative">
+                          <Input
+                            placeholder="这里输入商品名称..."
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            disabled={viewing}
+                            className={cn(
+                              "h-12 bg-muted/10 border-border/30",
+                              "hover:bg-muted/15 hover:border-border/40",
+                              "focus:bg-transparent focus:border-transparent focus:ring-2 focus:ring-primary/20",
+                              "transition-all duration-200",
+                              errors.name && "focus:ring-destructive/50"
+                            )}
+                          />
+                          {isAiTextGenerationEnabled && !viewing && (
+                            <button
+                              onClick={() => handleAiFieldGenerate('name')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                              title="AI 生成名称"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
                           )}
-                        />
+                        </div>
                         {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                       </div>
 
@@ -614,18 +900,29 @@ export function AdminProductForm({
                         <Label className="text-sm font-semibold text-foreground/70">
                           营销摘要
                         </Label>
-                        <Input
-                          placeholder="简单概括商品核心卖点，展示在列表页..."
-                          value={summary}
-                          onChange={(e) => setSummary(e.target.value)}
-                          disabled={viewing}
-                          className={cn(
-                            "h-12 bg-muted/10 border-border/30",
-                            "hover:bg-muted/15 hover:border-border/40",
-                            "focus:bg-transparent focus:border-transparent focus:ring-2 focus:ring-primary/20",
-                            "transition-all duration-200"
+                        <div className="relative">
+                          <Input
+                            placeholder="简单概括商品核心卖点，展示在列表页..."
+                            value={summary}
+                            onChange={(e) => setSummary(e.target.value)}
+                            disabled={viewing}
+                            className={cn(
+                              "h-12 bg-muted/10 border-border/30",
+                              "hover:bg-muted/15 hover:border-border/40",
+                              "focus:bg-transparent focus:border-transparent focus:ring-2 focus:ring-primary/20",
+                              "transition-all duration-200"
+                            )}
+                          />
+                          {isAiTextGenerationEnabled && !viewing && (
+                            <button
+                              onClick={() => handleAiFieldGenerate('summary')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                              title="AI 生成摘要"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
                           )}
-                        />
+                        </div>
                       </div>
 
                       <div className="flex flex-col gap-2">
@@ -817,7 +1114,7 @@ export function AdminProductForm({
                               "h-8 w-28 text-xs bg-transparent border-dashed border-border/20",
                               "focus:border-primary/50 focus:ring-0 transition-all"
                             )}
-                            onKeyDown={(e) => {
+                            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault()
                                 const val = e.currentTarget.value.trim()
@@ -950,6 +1247,15 @@ export function AdminProductForm({
                             onChange={(e) => handlePriceChange(e.target.value)}
                             disabled={viewing}
                           />
+                          {isAiPricingSuggestionEnabled && !viewing && (
+                            <button
+                              onClick={() => handleAiFieldGenerate('price')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                              title="AI 价格建议"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           请输入商品的销售价格，支持最多两位小数
@@ -1211,6 +1517,57 @@ export function AdminProductForm({
           setNewMediaUrlList(prev => [...prev, ...newUrls])
         }}
       />
+
+      {/* AI 预览对话框 */}
+      <Dialog open={aiFieldPreviewOpen} onOpenChange={setAiFieldPreviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI 生成预览
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {aiFieldPreview && (
+              <div>
+                <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+                  <p className="text-sm text-primary font-medium mb-2">
+                    {aiFieldPreview.field === 'name' && '商品名称预览'}
+                    {aiFieldPreview.field === 'summary' && '营销摘要预览'}
+                    {aiFieldPreview.field === 'description' && '详细描述预览'}
+                    {aiFieldPreview.field === 'cover' && '封面图预览'}
+                    {aiFieldPreview.field === 'price' && '价格建议预览'}
+                  </p>
+                  {aiFieldPreview.type === 'image' ? (
+                    <div className="w-full h-32 bg-muted/10 rounded-lg overflow-hidden">
+                      <img 
+                        src={aiFieldPreview.value as string} 
+                        alt="AI 生成预览" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-primary">
+                      {aiFieldPreview.value}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setAiFieldPreviewOpen(false)}
+              >
+                取消
+              </Button>
+              <Button onClick={adoptAiPreview}>
+                采纳
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 零价格确认对话框 */}
       <Dialog open={showZeroPriceConfirm} onOpenChange={setShowZeroPriceConfirm}>
