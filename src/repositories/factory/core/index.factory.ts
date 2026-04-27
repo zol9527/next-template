@@ -54,6 +54,7 @@
 
 export * from './core.factory'
 export * from './admin.factory'
+export * from './ai.factory'
 export * from './auth.factory'
 export * from './mfa.factory'
 export * from '../commerce/commerce.factory'
