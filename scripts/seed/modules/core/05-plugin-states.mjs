@@ -16,7 +16,6 @@
  *   states(Map): 插件名称到 key 的映射对象
  */
 
-import { processEnv } from '../lib/env.mjs'
 
 const PLUGINS = [
   { name: 'wechat', envVar: 'PLUGIN_WECHAT' },
@@ -30,7 +29,7 @@ export default async function seedPluginStates(db, logger) {
   const states = new Map()
 
   for (const plugin of PLUGINS) {
-    const isInstalled = processEnv[plugin.envVar] === 'true'
+    const isInstalled = process.env[plugin.envVar] === 'true'
     const settingKey = `plugin.${plugin.name}.active`
 
     // 使用 upsert：已存在的记录不覆盖（保留管理员的运行时配置）
@@ -55,7 +54,7 @@ export default async function seedPluginStates(db, logger) {
 
   logger.success('插件激活状态初始化完成', {
     count: states.size,
-    installedCount: PLUGINS.filter(p => processEnv[p.envVar] === 'true').length,
+    installedCount: PLUGINS.filter(p => process.env[p.envVar] === 'true').length,
   })
 
   return states
