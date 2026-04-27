@@ -11,7 +11,7 @@ import { isPluginInstalled, type PluginName } from '@/plugins/plugin-definitions
 import { refreshPluginCache } from '@/plugins/registry'
 
 const PluginNameParamSchema = z.object({
-  name: z.enum(['wechat', 'ecommerce', 'promotion']),
+  name: z.string(),
 })
 
 const TogglePluginRequestSchema = z.object({
@@ -26,10 +26,10 @@ export const PATCH = withV1Route({
     body: TogglePluginRequestSchema,
   },
   handler: async ({ req, serviceContext, params, body, userId }) => {
-    const pluginName = params.name as PluginName
+    const pluginName = params.name
 
     // 安全约束：未安装的插件不允许切换激活状态
-    if (!isPluginInstalled(pluginName)) {
+    if (!isPluginInstalled(pluginName as PluginName)) {
       return createJsonApiResponse(
         req,
         fail('INVALID_INPUT', `插件 ${pluginName} 未安装，无法切换激活状态`),
@@ -41,9 +41,9 @@ export const PATCH = withV1Route({
     const service = createPluginActivateService({ systemSettings }, serviceContext)
 
     // 获取当前激活状态，用于审计日志对比
-    const previousActive = await service.getActivationStatus(pluginName)
+    const previousActive = await service.getActivationStatus(pluginName as PluginName)
 
-    await service.setActivationStatus(pluginName, body!.active)
+    await service.setActivationStatus(pluginName as PluginName, body!.active)
     await refreshPluginCache()
 
     // 仅在状态实际变更时记录审计日志，避免噪音

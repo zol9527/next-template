@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -62,6 +63,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import Image from 'next/image'
 import { useFeatureFlag } from '@/hooks/use-feature-flag'
+import { useAiGenerationHistory, type AiGenerationRecord } from '@/hooks/use-ai-generation-history'
 
 async function readApiErrorMessage(res: Response): Promise<string> {
   try {
@@ -145,6 +147,11 @@ export function AdminProductForm({
   const [aiGenerationStream, setAiGenerationStream] = React.useState(false)
   const [aiFieldPreview, setAiFieldPreview] = React.useState<{ field: string; value: string; type: 'text' | 'image' | 'pricing' } | null>(null)
   const [aiFieldPreviewOpen, setAiFieldPreviewOpen] = React.useState(false)
+
+  // AI 生成历史相关
+  const { history, addRecord, deleteRecord, clearHistory } = useAiGenerationHistory()
+  const [aiHistoryOpen, setAiHistoryOpen] = React.useState(false)
+  const aiGenerationResultRef = React.useRef<Partial<AiGenerationRecord>>({})
 
   // 使用 useQuery 获取分类列表
   const { data: categoriesData } = useQuery<{ items: AdminCategory[] }>({
@@ -293,7 +300,7 @@ export function AdminProductForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ prompt: aiGenerationPrompt }),
+        body: JSON.stringify({ kind: 'product', prompt: aiGenerationPrompt }),
       })
 
       if (!response.ok) {
@@ -313,10 +320,8 @@ export function AdminProductForm({
     }
   }
 
-  // 处理 AI 流式数据
   const processAiStream = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
-    let accumulatedText = ''
-    let currentField: string | null = null
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
@@ -325,70 +330,91 @@ export function AdminProductForm({
         break
       }
 
-      const text = new TextDecoder().decode(value)
-      accumulatedText += text
+      buffer += new TextDecoder().decode(value)
 
-      // 处理 JSON 事件
-      try {
-        const events = accumulatedText.split('\n').filter(line => line.trim())
-        accumulatedText = ''
+      // 标准 SSE 解析：按双换行分割事件块
+      const eventBlocks = buffer.split('\n\n')
+      buffer = eventBlocks.pop() || ''
 
-        for (const event of events) {
-          if (event.startsWith('data: ')) {
-            const data = JSON.parse(event.slice(6))
-            
-            switch (data.type) {
-              case 'pipeline_start':
-                setAiGenerationProgress('开始生成流程...')
-                break
-              
-              case 'text_delta':
-                if (data.field) {
-                  currentField = data.field
-                  if (data.text) {
-                    // 根据字段更新相应的表单状态
-                    switch (data.field) {
-                      case 'name':
-                        setName(prev => prev + data.text)
-                        break
-                      case 'summary':
-                        setSummary(prev => prev + data.text)
-                        break
-                      case 'description':
-                        setDescription(prev => prev + data.text)
-                        break
-                    }
-                  }
-                }
-                break
-                
-              case 'step_complete':
-                if (data.field === 'image' && data.url) {
-                  setCoverUrl(data.url)
-                  setCoverAssetId(data.assetId || '')
-                  setAiGenerationProgress('已生成封面图')
-                } else if (data.field === 'pricing' && data.price) {
-                  setPriceAmount(data.price)
-                  setAiGenerationProgress('已生成价格建议')
-                }
-                break
-                
-              case 'pipeline_complete':
-                setAiGenerationProgress('生成完成')
-                setAiGenerationStream(false)
-                setTimeout(() => setAiGenerationProgress(null), 2000)
-                break
-                
-              case 'error':
-                toast({ title: 'AI 生成错误', description: data.message, variant: 'destructive' })
-                setAiGenerationProgress(null)
-                setAiGenerationStream(false)
-                break
-            }
+      for (const block of eventBlocks) {
+        if (!block.trim()) continue
+
+        let eventType = ''
+        let eventData: Record<string, unknown> = {}
+
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            try {
+              eventData = JSON.parse(line.slice(6))
+            } catch { /* skip malformed JSON */ }
           }
         }
-      } catch (e) {
-        // 忽略部分解析错误，继续处理
+
+        switch (eventType) {
+          case 'pipeline_start':
+            setAiGenerationProgress('开始生成流程...')
+            break
+
+          case 'text_delta': {
+            const field = eventData.field as string | undefined
+            const delta = eventData.delta as string | undefined
+            if (field && delta) {
+              switch (field) {
+                case 'name':
+                  setName(prev => prev + delta)
+                  aiGenerationResultRef.current.name = (aiGenerationResultRef.current.name ?? '') + delta
+                  break
+                case 'summary':
+                  setSummary(prev => prev + delta)
+                  aiGenerationResultRef.current.summary = (aiGenerationResultRef.current.summary ?? '') + delta
+                  break
+                case 'description':
+                  setDescription(prev => prev + delta)
+                  aiGenerationResultRef.current.description = (aiGenerationResultRef.current.description ?? '') + delta
+                  break
+              }
+            }
+            break
+          }
+
+          case 'step_complete': {
+            const stepData = eventData.data as Record<string, unknown> | undefined
+            if (stepData?.url) {
+              const url = stepData.url as string
+              const assetId = (stepData.assetId as string) || ''
+              setCoverUrl(url)
+              setCoverAssetId(assetId)
+              setAiGenerationProgress('已生成封面图')
+              aiGenerationResultRef.current.coverUrl = url
+              aiGenerationResultRef.current.coverAssetId = assetId
+            } else if (stepData?.price) {
+              const price = String(stepData.price)
+              setPriceAmount(price)
+              setAiGenerationProgress('已生成价格建议')
+              aiGenerationResultRef.current.priceAmount = price
+            }
+            break
+          }
+
+          case 'pipeline_complete':
+            setAiGenerationProgress('生成完成')
+            setAiGenerationStream(false)
+            addRecord({
+              prompt: aiGenerationPrompt,
+              ...aiGenerationResultRef.current,
+            })
+            aiGenerationResultRef.current = {}
+            setTimeout(() => setAiGenerationProgress(null), 2000)
+            break
+
+          case 'error':
+            toast({ title: 'AI 生成错误', description: (eventData.message as string) || '未知错误', variant: 'destructive' })
+            setAiGenerationProgress(null)
+            setAiGenerationStream(false)
+            break
+        }
       }
     }
   }
@@ -787,17 +813,25 @@ export function AdminProductForm({
                 {productStatus === 'published' ? '已上架' : '草稿状态'}
               </Badge>
             )}
-            {isAiTextGenerationEnabled && !viewing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAiGenerationOpen(true)}
-                className="text-xs h-9 gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                ✨ AI 一键生成
-              </Button>
-            )}
+{isAiTextGenerationEnabled && !viewing && (
+  <>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setAiGenerationOpen(true)}
+      className="text-xs h-9 gap-1.5"
+    >
+      <Sparkles className="h-3.5 w-3.5" />
+      ✨ AI 一键生成
+    </Button>
+    {history.length > 0 && (
+      <Button variant="ghost" size="sm" onClick={() => setAiHistoryOpen(true)} className="text-xs h-9 gap-1.5 text-muted-foreground">
+        <History className="h-3.5 w-3.5" />
+        历史 ({history.length})
+      </Button>
+    )}
+  </>
+)}
           </div>
         </DialogHeader>
 
@@ -817,6 +851,22 @@ export function AdminProductForm({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {aiGenerationStream && (
+                      <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex h-5 w-5 shrink-0">
+                            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-primary">{aiGenerationProgress || '正在生成...'}</p>
+                            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+                              <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: '60%' }} />
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0">AI 生成中</span>
+                        </div>
+                      </div>
+                    )}
                     {!viewing && !productStatus && (
                       <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-start gap-3 text-warning-foreground mb-6">
                         <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -861,6 +911,68 @@ export function AdminProductForm({
                             {aiGenerationStream ? '生成中...' : '开始生成'}
                           </Button>
                         </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* AI 生成历史对话框 */}
+                    <Dialog open={aiHistoryOpen} onOpenChange={setAiHistoryOpen}>
+                      <DialogContent className="max-w-lg max-h-[80vh]">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <History className="h-5 w-5 text-primary" />
+                            AI 生成历史
+                          </DialogTitle>
+                          <DialogDescription>选择一条历史记录应用到当前表单</DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[60vh] pr-2">
+                          {history.length === 0 ? (
+                            <div className="py-8 text-center text-muted-foreground text-sm">暂无生成记录</div>
+                          ) : (
+                            <div className="space-y-3">
+                              {history.map((record) => (
+                                <Card key={record.id} className="p-3 hover:border-primary/40 transition-colors cursor-pointer group">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{record.name || '未命名生成'}</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{record.prompt}</p>
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                        <span className="text-xs text-muted-foreground">
+                                          {new Date(record.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        {record.priceAmount && <span className="text-xs text-primary font-medium">¥{record.priceAmount}</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                                        // 应用记录到表单
+                                        if (record.name) setName(record.name)
+                                        if (record.summary) setSummary(record.summary)
+                                        if (record.description) setDescription(record.description)
+                                        if (record.priceAmount) setPriceAmount(record.priceAmount)
+                                        if (record.coverUrl) { setCoverUrl(record.coverUrl); if (record.coverAssetId) setCoverAssetId(record.coverAssetId) }
+                                        setAiHistoryOpen(false)
+                                        toast({ title: '已应用', description: '历史记录已填入表单' })
+                                      }}>
+                                        应用
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={() => deleteRecord(record.id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </Card>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                        {history.length > 0 && (
+                          <div className="flex justify-end border-t pt-3">
+                            <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => { clearHistory(); toast({ title: '已清空' }) }}>
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                              清空全部
+                            </Button>
+                          </div>
+                        )}
                       </DialogContent>
                     </Dialog>
 

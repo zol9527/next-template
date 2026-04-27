@@ -220,6 +220,7 @@ export function createAiGenerationService(
         name: 'product_text_generation',
         description: 'product_text_generation',
         tags: 'product_text_generation',
+        product: 'product_one_click',
       }
       const templateSlug = kindToSlug[kind] ?? `product_${kind}`
 
