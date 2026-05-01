@@ -25,6 +25,33 @@ const PROJECT_ROOT = resolve(__dirname, "../..");
 const SCHEMAS_DIR = resolve(PROJECT_ROOT, "prisma/schemas");
 const OUTPUT_PATH = resolve(PROJECT_ROOT, "prisma/schema.prisma");
 
+/**
+ * Function: loadScriptEnvFiles
+ *
+ * Description: 为独立脚本显式加载环境变量，避免依赖运行时的自动加载策略。
+ *   development 环境允许 .env.local 参与覆盖；production/test 则只读取对应环境文件，
+ *   避免打包时被开发者本地 .env.local 污染。
+ */
+function loadScriptEnvFiles(): void {
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const envFiles = [`.env.${nodeEnv}.local`];
+
+  if (nodeEnv === "development") {
+    envFiles.push(".env.local");
+  }
+
+  envFiles.push(`.env.${nodeEnv}`, ".env");
+
+  for (const file of envFiles) {
+    try {
+      process.loadEnvFile(resolve(PROJECT_ROOT, file));
+      return;
+    } catch {
+      // 文件不存在，继续尝试下一个
+    }
+  }
+}
+
 // ── 插件配置 ──
 // 每个 plugin 声明: 文件名、主环境变量 key、备用环境变量 key
 const PLUGINS = [
@@ -218,6 +245,7 @@ function injectModelFields(
 // ── 主流程 ──
 
 function main(): void {
+  loadScriptEnvFiles();
   console.log("🔄 Prisma Schema 合并开始...\n");
 
   // 1. 读取 base.prisma

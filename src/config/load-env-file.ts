@@ -6,7 +6,9 @@
  * - Prisma CLI (prisma.config.ts)
  * - 其他独立 Node.js 脚本
  *
- * 加载优先级：.env.{NODE_ENV}.local > .env.local > .env.{NODE_ENV} > .env
+ * 加载优先级：
+ * - development: .env.development.local > .env.local > .env.development > .env
+ * - production/test: .env.{NODE_ENV}.local > .env.{NODE_ENV} > .env
  *
  * @example
  * import { loadEnvFile } from '@/config/load-env-file'
@@ -18,12 +20,16 @@ export function loadEnvFile() {
   const nodeEnv = process.env.NODE_ENV || 'development'
 
   // 按优先级尝试加载环境变量文件
-  const envFiles = [
-    `.env.${nodeEnv}.local`,   // 当前环境的本地覆盖
-    '.env.local',              // 通用本地覆盖
+  const envFiles = [`.env.${nodeEnv}.local`] // 当前环境的本地覆盖
+
+  if (nodeEnv === 'development') {
+    envFiles.push('.env.local') // 仅开发环境允许通用本地覆盖
+  }
+
+  envFiles.push(
     `.env.${nodeEnv}`,         // 环境特定配置
     '.env',                    // 默认配置
-  ]
+  )
 
   for (const file of envFiles) {
     const filePath = `${process.cwd()}/${file}`

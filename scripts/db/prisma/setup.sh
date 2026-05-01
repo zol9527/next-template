@@ -81,9 +81,14 @@ mask_database_url() {
 
 load_database_env() {
     local node_env="${NODE_ENV:-development}"
-    local env_files=(
-        "${PROJECT_ROOT}/.env.${node_env}.local"
-        "${PROJECT_ROOT}/.env.local"
+    local env_files=("${PROJECT_ROOT}/.env.${node_env}.local")
+
+    # 仅在开发环境允许通用 .env.local 覆盖，避免打包/部署时被本地配置污染
+    if [[ "${node_env}" == "development" ]]; then
+        env_files+=("${PROJECT_ROOT}/.env.local")
+    fi
+
+    env_files+=(
         "${PROJECT_ROOT}/.env.${node_env}"
         "${PROJECT_ROOT}/.env"
     )
@@ -100,11 +105,22 @@ load_database_env() {
         return
     fi
 
+    read_env_value() {
+        local env_file_path="$1"
+        local env_key="$2"
+
+        sed -nE "/^[[:space:]]*(export[[:space:]]+)?${env_key}[[:space:]]*=/ {
+            s/^[[:space:]]*(export[[:space:]]+)?${env_key}[[:space:]]*=[[:space:]]*//
+            s/^['\"]//
+            s/['\"]$//
+            p
+            q
+        }" "${env_file_path}"
+    }
+
     if [[ -z "${DATABASE_URL:-}" ]]; then
         local url
-        url=$(grep -E '^[[:space:]]*(export[[:space:]]+)?DATABASE_URL[[:space:]]*=' "${env_file}" | head -1 \
-            | sed -E 's/^[[:space:]]*(export[[:space:]]+)?DATABASE_URL[[:space:]]*=[[:space:]]*//' \
-            | tr -d '"' | tr -d "'")
+        url=$(read_env_value "${env_file}" "DATABASE_URL")
         if [[ -n "${url}" ]]; then
             DATABASE_URL="${url}"
         fi
@@ -112,17 +128,30 @@ load_database_env() {
 
     if [[ -z "${DATABASE_PROVIDER:-}" ]]; then
         local database_provider
-        database_provider=$(grep -E '^[[:space:]]*(export[[:space:]]+)?DATABASE_PROVIDER[[:space:]]*=' "${env_file}" | head -1 \
-            | sed -E 's/^[[:space:]]*(export[[:space:]]+)?DATABASE_PROVIDER[[:space:]]*=[[:space:]]*//' \
-            | tr -d '"' | tr -d "'")
+        database_provider=$(read_env_value "${env_file}" "DATABASE_PROVIDER")
         if [[ -n "${database_provider}" ]]; then
             DATABASE_PROVIDER="${database_provider}"
         fi
     fi
 }
 
+ensure_generate_database_url() {
+    if [[ -n "${DATABASE_URL:-}" ]]; then
+        export DATABASE_URL
+        return
+    fi
+
+    if [[ "${GENERATE_ONLY}" != "1" ]]; then
+        return
+    fi
+
+    export PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL="1"
+    export DATABASE_URL="${PRISMA_GENERATE_DATABASE_URL:-mysql://root:password@127.0.0.1:3306/prisma_generate_placeholder}"
+    echo "⚠️  未提供 DATABASE_URL，generate-only 模式下使用占位连接串生成 Prisma Client"
+}
+
 merge_prisma_schema() {
-    bun run prisma:merge
+    bun --no-env-file run scripts/prisma/merge-schemas.ts
 }
 
 check_prisma_schema() {
@@ -200,6 +229,7 @@ main() {
     require_cmd bun
     require_cmd npx
     load_database_env
+    ensure_generate_database_url
     merge_prisma_schema
     check_prisma_schema
     clean_prisma_client
