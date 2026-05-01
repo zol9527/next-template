@@ -7,10 +7,10 @@ import type { PrismaConfig } from 'prisma'
  * 注意：此文件在部署包中独立存在，不能依赖 src/ 目录下的其他文件。
  * 直接使用 Node.js 内置的 process.loadEnvFile() 加载环境变量（Node.js 20.12+）。
  *
- * 加载优先级：.env.${NODE_ENV} > .env
+ * 加载优先级：.env.${NODE_ENV}.local > .env.local > .env.${NODE_ENV} > .env
  */
 const nodeEnv = process.env.NODE_ENV || 'development'
-const envFiles = [`.env.${nodeEnv}`, '.env']
+const envFiles = [`.env.${nodeEnv}.local`, '.env.local', `.env.${nodeEnv}`, '.env']
 
 for (const file of envFiles) {
   try {

@@ -415,6 +415,8 @@ def _ensure_remote_runtime(config: DeployConfig, command: str, *, set_pm2_home: 
 
 
 def start_dev() -> None:
+    bootstrap_script = _project_path(_env("DEV_BOOTSTRAP_SCRIPT", "scripts/dev/bootstrap-worktree.sh"))
+    _run([str(bootstrap_script)])
     _run(["bun", "run", "dev"])
 
 

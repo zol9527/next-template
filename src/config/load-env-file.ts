@@ -6,7 +6,7 @@
  * - Prisma CLI (prisma.config.ts)
  * - 其他独立 Node.js 脚本
  *
- * 加载优先级：.env.{NODE_ENV} > .env
+ * 加载优先级：.env.{NODE_ENV}.local > .env.local > .env.{NODE_ENV} > .env
  *
  * @example
  * import { loadEnvFile } from '@/config/load-env-file'
@@ -19,6 +19,8 @@ export function loadEnvFile() {
 
   // 按优先级尝试加载环境变量文件
   const envFiles = [
+    `.env.${nodeEnv}.local`,   // 当前环境的本地覆盖
+    '.env.local',              // 通用本地覆盖
     `.env.${nodeEnv}`,         // 环境特定配置
     '.env',                    // 默认配置
   ]

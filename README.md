@@ -259,20 +259,11 @@ cd generic-admin
 bun install
 
 # 复制环境变量模板
-cp .env.example.local .env.development
-# 编辑 .env.development 填入实际配置
+cp .env.example.local .env.local
+# 编辑 .env.local 填入实际配置
 
-# 生成 Prisma Client（会先合并 schema）
-bun run prisma:generate
-
-# 同步数据库 schema
-./scripts/db/prisma/setup.sh --force
-
-# 初始化种子数据（仅核心数据）
-bun run seed:minimal
-
-# 启动开发服务器
-bun run dev
+# 直接启动开发服务器（会自动补齐 worktree 所需前置步骤）
+make dev
 ```
 
 ### 环境变量
@@ -331,11 +322,11 @@ make release VERSION=1.2.3     # 指定明确版本号
 make release-sync              # 同步版本记录到数据库
 ```
 
-也可使用 Makefile：
+推荐直接使用 Makefile：
 
 ```bash
 make help          # 查看所有可用命令
-make dev           # 启动开发
+make dev           # 自动补齐 worktree 前置步骤后启动开发
 make setup-db      # 数据库初始化
 make seed-minimal  # 核心种子数据
 make pack          # 生产构建打包

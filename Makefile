@@ -18,7 +18,7 @@ help:
 	@echo "🚀 部署命令"
 	@echo ""
 	@echo "  开发环境:"
-	@echo "    dev      本地开发 (bun run dev)"
+	@echo "    dev      自动预处理后启动本地开发"
 	@echo "    check    检查服务器依赖"
 	@echo "    dev-deploy      上传并部署（使用已存在的 deploy.zip）"
 	@echo "    pack     生产构建后使用 release-cli 打包"

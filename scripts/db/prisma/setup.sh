@@ -81,7 +81,12 @@ mask_database_url() {
 
 load_database_env() {
     local node_env="${NODE_ENV:-development}"
-    local env_files=("${PROJECT_ROOT}/.env.${node_env}" "${PROJECT_ROOT}/.env")
+    local env_files=(
+        "${PROJECT_ROOT}/.env.${node_env}.local"
+        "${PROJECT_ROOT}/.env.local"
+        "${PROJECT_ROOT}/.env.${node_env}"
+        "${PROJECT_ROOT}/.env"
+    )
     local env_file=""
 
     for candidate in "${env_files[@]}"; do
@@ -114,6 +119,10 @@ load_database_env() {
             DATABASE_PROVIDER="${database_provider}"
         fi
     fi
+}
+
+merge_prisma_schema() {
+    bun run prisma:merge
 }
 
 check_prisma_schema() {
@@ -188,11 +197,11 @@ run_seed_if_needed() {
 }
 
 main() {
+    require_cmd bun
     require_cmd npx
     load_database_env
+    merge_prisma_schema
     check_prisma_schema
-    ensure_mysql_prisma_mode
-    confirm_if_needed
     clean_prisma_client
     generate_prisma_client
 
@@ -200,6 +209,9 @@ main() {
         echo "✅ Prisma Client 已生成（未执行数据库变更）"
         exit 0
     fi
+
+    ensure_mysql_prisma_mode
+    confirm_if_needed
 
     if [[ "${RESET_MODE}" == "1" ]]; then
         reset_database
