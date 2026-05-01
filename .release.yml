@@ -9,12 +9,8 @@
 # -----------------------------------------------------------------------------
 version:
   # 版本来源:
-  # file    -> 从 VERSION 文件读取
   # git-tag -> 从最近的 Git tag 读取
-  source: 'file'
-
-  # VERSION 文件路径（source 为 file 时有效）
-  file: VERSION
+  source: 'git-tag'
 
   # 写入版本后执行的 Hook 脚本
   # release-cli 会把一个 payload.json 的路径作为唯一参数传给它

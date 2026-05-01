@@ -325,8 +325,10 @@ bun run lint                   # 代码规范检查
 bun run build                  # 生产构建
 
 # 发布
-bun run release:prepare        # 准备发布（计算版本 + 生成 changelog）
-bun run release:sync           # 同步版本记录到数据库
+make release                   # 准备发布（默认 patch）
+make release TYPE=minor        # 准备 minor 版本发布
+make release VERSION=1.2.3     # 指定明确版本号
+make release-sync              # 同步版本记录到数据库
 ```
 
 也可使用 Makefile：

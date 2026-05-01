@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import json
+import re
 import shlex
 import shutil
 import subprocess
@@ -14,6 +16,8 @@ from pathlib import Path
 
 FLOW_ROOT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT_DIR = FLOW_ROOT_DIR.parent.parent
+SEMVER_TAG_PATTERN = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+SEMVER_VERSION_PATTERN = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
 class StepError(RuntimeError):
@@ -59,6 +63,18 @@ def _run(command: list[str], *, cwd: Path | None = None, env: dict[str, str] | N
     )
 
 
+def _run_output(command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> str:
+    result = subprocess.run(
+        command,
+        check=True,
+        cwd=cwd or PROJECT_ROOT_DIR,
+        env=env or os.environ.copy(),
+        text=True,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
 def _command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
@@ -67,6 +83,278 @@ def _normalize_yes_no(value: str) -> str:
     if value.lower() in {"1", "y", "yes", "true"}:
         return "y"
     return "n"
+
+
+def _package_json_path() -> Path:
+    return PROJECT_ROOT_DIR / "package.json"
+
+
+def _read_package_version() -> str:
+    package_path = _package_json_path()
+    if not package_path.is_file():
+        raise StepError(f"未找到 package.json: {package_path}")
+
+    with package_path.open("r", encoding="utf-8") as file:
+        package_data = json.load(file)
+
+    version = str(package_data.get("version", "")).strip()
+    if not SEMVER_VERSION_PATTERN.fullmatch(version):
+        raise StepError(f"package.json 中的 version 非法: {version or '<empty>'}")
+    return version
+
+
+def _git_output(args: list[str]) -> str:
+    return _run_output(["git", *args], cwd=PROJECT_ROOT_DIR)
+
+
+def _git_tracked_path(path: str) -> bool:
+    result = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", path],
+        check=False,
+        cwd=PROJECT_ROOT_DIR,
+        text=True,
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def _git_branch_name() -> str:
+    result = subprocess.run(
+        ["git", "symbolic-ref", "--short", "-q", "HEAD"],
+        check=False,
+        cwd=PROJECT_ROOT_DIR,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def _git_status_short() -> list[str]:
+    output = _git_output(["status", "--short"])
+    if not output:
+        return []
+    return [line for line in output.splitlines() if line.strip()]
+
+
+def _collect_semver_tags() -> list[tuple[int, int, int, str]]:
+    tag_output = _git_output(["tag", "--list", "v*"])
+    if not tag_output:
+        return []
+
+    versions: list[tuple[int, int, int, str]] = []
+    for tag in tag_output.splitlines():
+        match = SEMVER_TAG_PATTERN.fullmatch(tag.strip())
+        if not match:
+            continue
+        major, minor, patch = (int(value) for value in match.groups())
+        versions.append((major, minor, patch, tag.strip()))
+
+    versions.sort(reverse=True)
+    return versions
+
+
+def _latest_semver_tag() -> str:
+    tags = _collect_semver_tags()
+    return tags[0][3] if tags else ""
+
+
+def _parse_semver(version: str) -> tuple[int, int, int]:
+    match = SEMVER_VERSION_PATTERN.fullmatch(version)
+    if not match:
+        raise StepError(f"版本号格式非法: {version}")
+    return tuple(int(value) for value in match.groups())
+
+
+def _bump_version(version: str, release_type: str) -> str:
+    major, minor, patch = _parse_semver(version)
+    if release_type == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    if release_type == "minor":
+        return f"{major}.{minor + 1}.0"
+    if release_type == "major":
+        return f"{major + 1}.0.0"
+    raise StepError(f"不支持的 RELEASE_TYPE: {release_type}")
+
+
+def _resolve_release_target_version() -> str:
+    explicit_version = _env("RELEASE_VERSION")
+    if explicit_version:
+        _parse_semver(explicit_version)
+        return explicit_version
+
+    release_type = _env("RELEASE_TYPE", "patch").lower()
+    if release_type not in {"patch", "minor", "major"}:
+        raise StepError("RELEASE_TYPE 仅支持 patch/minor/major")
+
+    latest_tag = _latest_semver_tag()
+    base_version = latest_tag[1:] if latest_tag else _read_package_version()
+    return _bump_version(base_version, release_type)
+
+
+def _resolve_release_from_ref() -> str:
+    explicit_from_ref = _env("RELEASE_FROM")
+    if explicit_from_ref:
+        return explicit_from_ref
+    return _latest_semver_tag()
+
+
+def _validate_release_branch(branch_name: str) -> None:
+    allowed_patterns = [pattern for pattern in _env("RELEASE_ALLOWED_BRANCHES", r"^dev$|^hotfix/.+$").split(",") if pattern.strip()]
+    if any(re.fullmatch(pattern.strip(), branch_name) for pattern in allowed_patterns):
+        return
+    raise StepError(
+        f"当前分支 {branch_name} 不允许执行发布，允许模式: {', '.join(pattern.strip() for pattern in allowed_patterns)}"
+    )
+
+
+def _release_commit_message(version: str) -> str:
+    return (
+        f"🔧 chore(release): 准备 v{version} 发布\n\n"
+        f"1. 生成 v{version} 的发布说明。\n"
+        f"2. 同步 package.json 版本号。\n"
+        "3. 准备后续 release 分支发布。\n"
+    )
+
+
+def _has_change_file_for_version(version: str) -> bool:
+    changes_dir = PROJECT_ROOT_DIR / "docs" / "changes"
+    if not changes_dir.is_dir():
+        return False
+    return any(changes_dir.glob(f"*-v{version}.md"))
+
+
+def release_preflight() -> None:
+    required_commands = ["git", "release-cli"]
+    missing = [command for command in required_commands if not _command_exists(command)]
+    if missing:
+        raise StepError(f"缺少必要命令: {' '.join(missing)}")
+
+    if _env("RELEASE_CREATE_PR", "0") == "1" and not _command_exists("gh"):
+        raise StepError("RELEASE_CREATE_PR=1 时必须安装 gh CLI")
+
+    branch_name = _git_branch_name()
+    if not branch_name:
+        raise StepError("当前处于 detached HEAD，无法安全执行发布；请切到 dev 或 hotfix/* 分支")
+    _validate_release_branch(branch_name)
+
+    dirty_lines = _git_status_short()
+    if dirty_lines and _env("ALLOW_DIRTY", "0") != "1":
+        raise StepError("工作区存在未提交变更，请先清理，或显式传入 ALLOW_DIRTY=1")
+
+    package_version = _read_package_version()
+    latest_tag_value = _latest_semver_tag()
+    if not _env("RELEASE_VERSION"):
+        if latest_tag_value and _parse_semver(package_version) > _parse_semver(latest_tag_value[1:]):
+            raise StepError(
+                f"检测到 package.json.version({package_version}) 高于最新 Tag({latest_tag_value})，"
+                "疑似已有待发布版本；请先完成该版本发布，或显式传入 RELEASE_VERSION"
+            )
+        if not latest_tag_value and _has_change_file_for_version(package_version):
+            raise StepError(
+                f"检测到 docs/changes 中已存在 v{package_version}，疑似已有待发布版本；"
+                "请显式传入 RELEASE_VERSION，或先完成当前版本发布"
+            )
+
+    target_version = _resolve_release_target_version()
+    latest_tag = latest_tag_value or "无"
+    from_ref = _resolve_release_from_ref() or "仓库首个提交"
+    print(f"📌 当前分支: {branch_name}")
+    print(f"📦 当前最新 Tag: {latest_tag}")
+    print(f"🎯 目标版本: v{target_version}")
+    print(f"🧭 变更起点: {from_ref}")
+
+    existing_tag = _git_output(["tag", "--list", f"v{target_version}"])
+    if existing_tag:
+        raise StepError(f"目标 Tag 已存在: v{target_version}")
+
+    if from_ref:
+        commit_count = _git_output(["rev-list", "--count", f"{from_ref}..HEAD"])
+        if commit_count == "0":
+            raise StepError(f"从 {from_ref} 到 HEAD 没有新的提交，无法生成发布")
+
+
+def release_prepare() -> None:
+    target_version = _resolve_release_target_version()
+    release_title = _env("RELEASE_TITLE", "发布新版本")
+    release_date = _env("RELEASE_DATE")
+    from_ref = _resolve_release_from_ref()
+    command = ["release-cli", "version", target_version, "--write", "--title", release_title]
+    if from_ref:
+        command.extend(["--from", from_ref])
+    if release_date:
+        command.extend(["--date", release_date])
+
+    print(f"🛠️  生成发布文件: v{target_version}")
+    _run(command, cwd=PROJECT_ROOT_DIR)
+
+    version_file = PROJECT_ROOT_DIR / "VERSION"
+    if version_file.exists() and not _git_tracked_path("VERSION"):
+        version_file.unlink()
+        print("🧹 已移除 release-cli 生成的临时 VERSION 文件")
+
+
+def release_commit() -> None:
+    if _env("RELEASE_NO_COMMIT", "0") == "1":
+        print("⏭️  检测到 RELEASE_NO_COMMIT=1，跳过提交步骤")
+        return
+
+    version = _read_package_version()
+    release_file = next(
+        (line for line in _git_status_short() if "docs/changes/" in line or "package.json" in line),
+        None,
+    )
+    if release_file is None and not _git_output(["diff", "--cached", "--name-only"]):
+        raise StepError("未检测到待提交的发布文件，请先执行 prepare 步骤")
+
+    _run(["git", "add", "package.json", "docs/changes"], cwd=PROJECT_ROOT_DIR)
+    message = _release_commit_message(version)
+    _run(["git", "commit", "-m", message], cwd=PROJECT_ROOT_DIR)
+    print(f"✅ 已生成发布提交: v{version}")
+
+
+def release_pr() -> None:
+    if _env("RELEASE_CREATE_PR", "0") != "1":
+        print("⏭️  默认不自动创建 PR；如需创建，请传入 RELEASE_CREATE_PR=1")
+        return
+
+    branch_name = _git_branch_name()
+    if not branch_name:
+        raise StepError("创建 PR 前必须位于可识别分支上")
+
+    base_branch = _env("RELEASE_BASE_BRANCH", "release")
+    version = _read_package_version()
+    title = f"🔧 chore(release): 准备 v{version} 发布"
+    body = (
+        "## 发布信息\n"
+        f"- 目标版本: v{version}\n"
+        f"- 来源分支: {branch_name}\n\n"
+        "## 说明\n"
+        "- 该 PR 由 `make release` 自动创建。\n"
+        "- 请在合并前确认 docs/changes 与版本号是否正确。\n"
+    )
+
+    if _env("RELEASE_PUSH", "0") == "1":
+        _run(["git", "push", "origin", branch_name], cwd=PROJECT_ROOT_DIR)
+
+    _run(
+        [
+            "gh",
+            "pr",
+            "create",
+            "--base",
+            base_branch,
+            "--head",
+            branch_name,
+            "--title",
+            title,
+            "--body",
+            body,
+        ],
+        cwd=PROJECT_ROOT_DIR,
+    )
+    print(f"✅ 已创建到 {base_branch} 的发布 PR")
 
 
 def _require_deploy_config() -> DeployConfig:

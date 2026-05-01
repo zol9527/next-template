@@ -1,7 +1,7 @@
 .PHONY: help dev check dev-deploy clean status logs shell pack pack-if-needed \
   seed-minimal seed-development seed-full seed-remote seed-help \
   setup-db reset-db reset-db-empty fix-prisma \
-  release-patch release-minor release-major release-version release-commit
+  release release-sync release-patch release-minor release-major release-version release-commit
 
 .DEFAULT_GOAL := help
 .EXPORT_ALL_VARIABLES:
@@ -28,11 +28,12 @@ help:
 	@echo "    shell    SSH 登录服务器"
 	@echo ""
 	@echo "  版本发布 (release-cli):"
-	@echo "    release-patch    发布 patch 版本 (0.0.x)"
-	@echo "    release-minor    发布 minor 版本 (0.x.0)"
-	@echo "    release-major    发布 major 版本 (x.0.0)"
-	@echo "    release-version  自定义版本号 (make release-version V=1.2.3)"
-	@echo "    release-commit   生成发布提交"
+	@echo "    release          统一发布入口 (默认 patch，可传 TYPE=minor)"
+	@echo "    release-sync     同步 docs/changes 到数据库"
+	@echo "    release-patch    兼容别名，等价于 make release TYPE=patch"
+	@echo "    release-minor    兼容别名，等价于 make release TYPE=minor"
+	@echo "    release-major    兼容别名，等价于 make release TYPE=major"
+	@echo "    release-version  兼容别名，自定义版本号 (make release-version V=1.2.3)"
 	@echo ""
 	@echo "  Seed 数据:"
 	@echo "    seed-minimal       执行核心 seed (admin + permission)"
@@ -53,6 +54,9 @@ help:
 	@echo "    make dev-deploy FLOW_ONLY=deploy"
 	@echo "    make dev-deploy FLOW_SKIP=check"
 	@echo "    make dev-deploy FLOW_DRY_RUN=1"
+	@echo "    make release TYPE=minor"
+	@echo "    make release VERSION=1.2.3 RELEASE_TITLE='发布新版本'"
+	@echo "    make release RELEASE_CREATE_PR=1 RELEASE_PUSH=1"
 
 # ============================================
 # 本地开发
@@ -138,33 +142,31 @@ shell:
 # 版本发布 (使用 release-cli)
 # ============================================
 
-# 版本号参数（用于 release-version 命令）
-V ?= patch
+TYPE ?= patch
+V ?=
+
+release:
+	@RELEASE_TYPE=$(TYPE) $(FLOW_RUNNER) release
+
+release-sync:
+	@$(RELEASE_SYNC_SCRIPT)
 
 release-patch:
-	@echo "📌 发布 patch 版本..."
-	@release-cli version patch --write
-	@echo "✅ 版本已更新并生成 changelog"
-
-release-minor:
-	@echo "📌 发布 minor 版本..."
-	@release-cli version minor --write
-	@echo "✅ 版本已更新并生成 changelog"
-
-release-major:
-	@echo "📌 发布 major 版本..."
-	@release-cli version major --write
-	@echo "✅ 版本已更新并生成 changelog"
+	@$(MAKE) release TYPE=patch
 
 release-version:
-	@echo "📌 发布自定义版本: $(V)"
-	@release-cli version $(V) --write
-	@echo "✅ 版本已更新并生成 changelog"
+	@if [ -z "$(V)" ]; then echo "❌ 请传入 V=1.2.3"; exit 1; fi
+	@RELEASE_VERSION=$(V) $(FLOW_RUNNER) release
+
+release-minor:
+	@$(MAKE) release TYPE=minor
+
+release-major:
+	@$(MAKE) release TYPE=major
 
 release-commit:
-	@echo "📝 生成发布提交..."
-	@release-cli commit --all
-	@echo "✅ 发布提交已生成"
+	@echo "⚠️ release-commit 已废弃，请直接使用 make release"
+	@exit 1
 
 # ============================================
 # 数据库初始化/重置

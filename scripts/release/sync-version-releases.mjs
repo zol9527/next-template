@@ -64,6 +64,7 @@ async function deleteStaleVersionReleases(prisma, versionsInFiles) {
 
 async function main() {
   const prisma = await createPrismaClient()
+  const shouldPrune = process.argv.includes('--prune')
 
   console.log('🔄 开始同步版本发布记录...\n')
 
@@ -122,10 +123,12 @@ async function main() {
       }
     }
 
-    if (errors === 0) {
+    if (errors === 0 && shouldPrune) {
       deleted = await deleteStaleVersionReleases(prisma, versionsInFiles)
-    } else {
+    } else if (errors > 0) {
       console.log('\n⚠️ 由于存在同步错误，已跳过删除旧版本记录。')
+    } else {
+      console.log('\nℹ️ 默认只执行 upsert；如需清理数据库中的旧版本记录，请显式传入 --prune。')
     }
 
     console.log('\n✅ 同步完成!')

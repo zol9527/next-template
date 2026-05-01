@@ -15,8 +15,8 @@ class HookContext:
     previous_version: str
     version_source: str
     project_root: Path
-    config_file: Path
-    version_file: Path
+    config_file: Path | None
+    version_file: Path | None
     git_tag: str
 
 
@@ -24,12 +24,12 @@ def load_context(payload_path: Path) -> HookContext:
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
     return HookContext(
         version=payload["version"],
-        previous_version=payload["previous_version"],
-        version_source=payload["version_source"],
+        previous_version=payload.get("previous_version", ""),
+        version_source=payload.get("version_source", ""),
         project_root=Path(payload["project_root"]),
-        config_file=Path(payload["config_file"]),
-        version_file=Path(payload["version_file"]),
-        git_tag=payload["git_tag"],
+        config_file=Path(payload["config_file"]) if payload.get("config_file") else None,
+        version_file=Path(payload["version_file"]) if payload.get("version_file") else None,
+        git_tag=payload.get("git_tag", ""),
     )
 
 
@@ -42,17 +42,13 @@ def write_json_version(file_path: Path, version: str, key: str = "version") -> N
     )
 
 
-def write_text(file_path: Path, content: str) -> None:
-    file_path.write_text(content, encoding="utf-8")
-
-
 def apply_version_update(context: HookContext) -> None:
-    write_text(context.version_file, f"v{context.version}\n")
-
     package_json = context.project_root / "package.json"
-    if package_json.exists():
-        write_json_version(package_json, context.version)
-        print(f"✅ 已同步 package.json 版本号: {context.version}")
+    if not package_json.exists():
+        raise SystemExit(f"package.json 不存在: {package_json}")
+
+    write_json_version(package_json, context.version)
+    print(f"✅ 已同步 package.json 版本号: {context.version}")
 
 
 def main() -> None:

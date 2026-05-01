@@ -14,6 +14,7 @@
 - `scripts/release-version-hook.py` 按当前 release-cli 配置保留在根目录
 - `Makefile` 与 `package.json` 优先调用分层目录中的脚本
 - 新增脚本请放入对应子目录，不再直接堆到 `scripts/` 根目录
+- 发布流程统一通过 `make release` / `scripts/flow/` 调度，`release-cli` 只作为底层工具
 
 ## Flow 编排
 

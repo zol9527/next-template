@@ -1,0 +1,4 @@
+{
+  "name": "Release Prepare",
+  "steps": ["preflight", "prepare", "commit", "pr"]
+}
