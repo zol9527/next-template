@@ -1,7 +1,8 @@
 /**
- * Unit: 阿里云 OSS Provider 测试
+ * Unit: 阿里云 OSS Provider 测试 (S3 兼容模式)
  *
  * Description: 测试阿里云对象存储 Provider 的功能
+ * 基于 @aws-sdk/client-s3 和 @aws-sdk/s3-request-presigner
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
@@ -26,23 +27,27 @@ vi.mock('@/config/env', () => ({
 }))
 
 // ============================================================
-// Mock ali-oss SDK
+// Mock @aws-sdk/client-s3
 // ============================================================
 
-const mockPut = vi.fn()
-const mockDelete = vi.fn()
-const mockList = vi.fn()
-const mockSignatureUrl = vi.fn()
-const mockGet = vi.fn()
+const mockSend = vi.fn()
 
-vi.mock('ali-oss', () => ({
-  default: vi.fn(() => ({
-    put: mockPut,
-    delete: mockDelete,
-    list: mockList,
-    signatureUrl: mockSignatureUrl,
-    get: mockGet,
-  })),
+vi.mock('@aws-sdk/client-s3', () => ({
+  S3Client: vi.fn(() => ({ send: mockSend })),
+  PutObjectCommand: vi.fn((input: unknown) => input),
+  DeleteObjectCommand: vi.fn((input: unknown) => input),
+  ListObjectsV2Command: vi.fn((input: unknown) => input),
+  GetObjectCommand: vi.fn((input: unknown) => input),
+}))
+
+// ============================================================
+// Mock @aws-sdk/s3-request-presigner
+// ============================================================
+
+const mockSignedUrl = vi.fn()
+
+vi.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: (...args: unknown[]) => mockSignedUrl(...args),
 }))
 
 // 动态导入 createAliyun（在 mock 之后）
@@ -72,6 +77,7 @@ describe('阿里云 OSS Provider 测试', () => {
       endpoint: mockEnv.ALIYUN_OSS_UPLOAD_HOST,
       dirPrefix: mockEnv.ALIYUN_OSS_DIR_PREFIX,
       ttlSeconds: mockEnv.ALIYUN_OSS_POLICY_TTL_SECONDS,
+      signedUrlTtlSeconds: 3600,
     })
   })
 
@@ -89,7 +95,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: issueUploadPolicy
      *
-     * Description: 测试获取上传策略（用于客户端直传）
+     * Description: 测试获取上传策略（用于客户端直传，S3 预签名 PUT URL）
      *
      * Parameters:
      *   params(object): 包含 contentType, sizeBytes, purpose 的参数
@@ -98,6 +104,9 @@ describe('阿里云 OSS Provider 测试', () => {
      *   policy(UploadPolicyResponse): 上传策略响应
      */
     it('应该生成有效的上传策略', async () => {
+      const presignedUrl = 'https://oss-cn-chengdu.aliyuncs.com/test-bucket/uploads/test.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test'
+      mockSignedUrl.mockResolvedValue(presignedUrl)
+
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/jpeg',
         sizeBytes: 1024 * 1024, // 1MB
@@ -106,14 +115,8 @@ describe('阿里云 OSS Provider 测试', () => {
 
       expect(policy).toBeDefined()
       expect(policy.provider).toBe('aliyun_oss')
-      expect(policy.uploadUrl).toBe(`${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/`)
-      expect(policy.formFields).toBeDefined()
-      expect(policy.formFields.bucket).toBe('test-bucket')
-      expect(policy.formFields.key).toBeDefined()
-      expect(policy.formFields.policy).toBeDefined()
-      expect(policy.formFields.OSSAccessKeyId).toBe('test-access-key-id')
-      expect(policy.formFields.Signature).toBeDefined()
-      expect(policy.formFields['Content-Type']).toBe('image/jpeg')
+      expect(policy.uploadUrl).toContain('X-Amz-')
+      expect(policy.formFields).toEqual({})
       expect(policy.expireAt).toBeDefined()
       expect(policy.objectKey).toBeDefined()
       expect(policy.fileUrl).toContain(mockEnv.ALIYUN_OSS_UPLOAD_HOST)
@@ -125,6 +128,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试不指定 purpose 时的策略生成
      */
     it('应该在没有 purpose 时生成策略', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/png',
         sizeBytes: 2048,
@@ -141,6 +146,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试指定 purpose 时的策略生成
      */
     it('应该在有 purpose 时在路径中包含 purpose', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/webp',
         sizeBytes: 4096,
@@ -157,6 +164,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试根据 Content-Type 正确映射文件扩展名
      */
     it('应该根据 Content-Type 正确映射文件扩展名', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const testCases = [
         { contentType: 'image/jpeg', ext: 'jpg' },
         { contentType: 'image/png', ext: 'png' },
@@ -182,6 +191,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试每次生成的 objectKey 都是唯一的
      */
     it('应该每次生成唯一的 objectKey', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const policy1 = await provider.issueUploadPolicy({
         contentType: 'image/jpeg',
         sizeBytes: 1024,
@@ -200,6 +211,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试生成的过期时间应该在未来 60 秒内
      */
     it('应该生成正确的过期时间', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/jpeg',
         sizeBytes: 1024,
@@ -220,6 +233,8 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试生成的 fileUrl 格式正确
      */
     it('应该生成正确的文件 URL', async () => {
+      mockSignedUrl.mockResolvedValue('https://example.com/signed?X-Amz-Algorithm=test')
+
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/jpeg',
         sizeBytes: 1024,
@@ -261,7 +276,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: uploadFile
      *
-     * Description: 测试服务端上传文件到阿里云 OSS
+     * Description: 测试服务端上传文件到阿里云 OSS（S3 PutObjectCommand）
      *
      * Parameters:
      *   params(object): 包含 file (Buffer), key, contentType 的参数
@@ -273,15 +288,7 @@ describe('阿里云 OSS Provider 测试', () => {
       const fileContent = Buffer.from('test file content')
       const key = 'uploads/test/test-file.jpg'
 
-      mockPut.mockResolvedValue({
-        name: key,
-        url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}`,
-        res: {
-          status: 200,
-          statusCode: 200,
-          headers: {},
-        },
-      })
+      mockSend.mockResolvedValue({})
 
       const result = await provider.uploadFile({
         file: fileContent,
@@ -292,8 +299,14 @@ describe('阿里云 OSS Provider 测试', () => {
       expect(result).toBeDefined()
       expect(result.key).toBe(key)
       expect(result.url).toBe(`${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}`)
-      expect(mockPut).toHaveBeenCalledWith(key, fileContent, {
-        headers: { 'Content-Type': 'image/jpeg' },
+      expect(mockSend).toHaveBeenCalledTimes(1)
+      // 验证 S3Client.send 被调用时传入了 PutObjectCommand 的参数
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: key,
+        Body: fileContent,
+        ContentType: 'image/jpeg',
       })
     })
 
@@ -306,11 +319,7 @@ describe('阿里云 OSS Provider 测试', () => {
       const binaryContent = Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd])
       const key = 'uploads/binary/test.bin'
 
-      mockPut.mockResolvedValue({
-        name: key,
-        url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}`,
-        res: { status: 200, statusCode: 200, headers: {} },
-      })
+      mockSend.mockResolvedValue({})
 
       const result = await provider.uploadFile({
         file: binaryContent,
@@ -319,17 +328,21 @@ describe('阿里云 OSS Provider 测试', () => {
       })
 
       expect(result.key).toBe(key)
-      expect(mockPut).toHaveBeenCalledWith(key, binaryContent, {
-        headers: { 'Content-Type': 'application/octet-stream' },
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: key,
+        Body: binaryContent,
+        ContentType: 'application/octet-stream',
       })
     })
 
     /**
      * Function: uploadFile (缺少配置)
      *
-     * Description: 测试缺少 ALIYUN_OSS_UPLOAD_HOST 时抛出错误
+     * Description: 测试缺少 endpoint 时抛出错误
      */
-    it('应该在缺少 ALIYUN_OSS_UPLOAD_HOST 时抛出错误', async () => {
+    it('应该在缺少 endpoint 时抛出错误', async () => {
       mockEnv.ALIYUN_OSS_UPLOAD_HOST = undefined as any
 
       expect(() =>
@@ -353,7 +366,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: deleteFile
      *
-     * Description: 测试删除 OSS 上的文件
+     * Description: 测试删除 OSS 上的文件（S3 DeleteObjectCommand）
      *
      * Parameters:
      *   key(string): 文件的对象键
@@ -361,11 +374,15 @@ describe('阿里云 OSS Provider 测试', () => {
     it('应该成功删除已存在的文件', async () => {
       const key = 'uploads/test/test-file.jpg'
 
-      mockDelete.mockResolvedValue({})
+      mockSend.mockResolvedValue({})
 
       await provider.deleteFile(key)
 
-      expect(mockDelete).toHaveBeenCalledWith(key)
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: key,
+      })
     })
 
     /**
@@ -376,11 +393,15 @@ describe('阿里云 OSS Provider 测试', () => {
     it('应该正确处理包含特殊字符的路径', async () => {
       const key = 'uploads/test folder/image with spaces.jpg'
 
-      mockDelete.mockResolvedValue({})
+      mockSend.mockResolvedValue({})
 
       await provider.deleteFile(key)
 
-      expect(mockDelete).toHaveBeenCalledWith(key)
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: key,
+      })
     })
 
     /**
@@ -391,7 +412,7 @@ describe('阿里云 OSS Provider 测试', () => {
     it('应该在删除失败时抛出错误', async () => {
       const key = 'uploads/nonexistent/file.jpg'
 
-      mockDelete.mockRejectedValue(new Error('Network error'))
+      mockSend.mockRejectedValue(new Error('Network error'))
 
       await expect(provider.deleteFile(key)).rejects.toThrow('Network error')
     })
@@ -416,11 +437,7 @@ describe('阿里云 OSS Provider 测试', () => {
       const newContent = Buffer.from('new content')
 
       // 第一次上传
-      mockPut.mockResolvedValueOnce({
-        name: key,
-        url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}`,
-        res: { status: 200, statusCode: 200, headers: {} },
-      })
+      mockSend.mockResolvedValueOnce({})
 
       await provider.uploadFile({
         file: originalContent,
@@ -429,11 +446,7 @@ describe('阿里云 OSS Provider 测试', () => {
       })
 
       // 覆盖上传
-      mockPut.mockResolvedValueOnce({
-        name: key,
-        url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}`,
-        res: { status: 200, statusCode: 200, headers: {} },
-      })
+      mockSend.mockResolvedValueOnce({})
 
       const result = await provider.uploadFile({
         file: newContent,
@@ -442,9 +455,14 @@ describe('阿里云 OSS Provider 测试', () => {
       })
 
       expect(result.key).toBe(key)
-      expect(mockPut).toHaveBeenCalledTimes(2)
-      expect(mockPut).toHaveBeenLastCalledWith(key, newContent, {
-        headers: { 'Content-Type': 'image/jpeg' },
+      expect(mockSend).toHaveBeenCalledTimes(2)
+      // 验证第二次调用（覆盖）的参数
+      const sentCommand = mockSend.mock.calls[1][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: key,
+        Body: newContent,
+        ContentType: 'image/jpeg',
       })
     })
   })
@@ -457,7 +475,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: listFiles
      *
-     * Description: 测试列出目录下的文件
+     * Description: 测试列出目录下的文件（S3 ListObjectsV2Command）
      *
      * Parameters:
      *   params(object): 包含 prefix, maxKeys 的参数
@@ -466,29 +484,23 @@ describe('阿里云 OSS Provider 测试', () => {
      *   result(ListFilesResponse): 包含文件列表的响应
      */
     it('应该列出指定前缀的文件', async () => {
-      const mockObjects = [
-        {
-          name: 'uploads/images/photo1.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/images/photo1.jpg`,
-          lastModified: new Date('2025-01-15T10:00:00Z'),
-          size: 1024,
-          etag: '"abc123"',
-          type: 'image/jpeg',
-        },
-        {
-          name: 'uploads/images/photo2.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/images/photo2.jpg`,
-          lastModified: new Date('2025-01-15T11:00:00Z'),
-          size: 2048,
-          etag: '"def456"',
-          type: 'image/jpeg',
-        },
-      ]
-
-      mockList.mockResolvedValue({
-        objects: mockObjects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [
+          {
+            Key: 'uploads/images/photo1.jpg',
+            Size: 1024,
+            LastModified: new Date('2025-01-15T10:00:00Z'),
+            ETag: '"abc123"',
+          },
+          {
+            Key: 'uploads/images/photo2.jpg',
+            Size: 2048,
+            LastModified: new Date('2025-01-15T11:00:00Z'),
+            ETag: '"def456"',
+          },
+        ],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.listFiles({ prefix: 'uploads/images', maxKeys: 100 })
@@ -497,15 +509,18 @@ describe('阿里云 OSS Provider 测试', () => {
       expect(result.files).toHaveLength(2)
       expect(result.files[0].key).toBe('uploads/images/photo1.jpg')
       expect(result.files[0].size).toBe(1024)
-      expect(result.files[0].contentType).toBe('image/jpeg')
       expect(result.files[0].etag).toBe('abc123')
       expect(result.isTruncated).toBe(false)
       expect(result.nextContinuationToken).toBeNull()
       expect(result.prefix).toBe('uploads/images')
-      expect(mockList).toHaveBeenCalledWith(
-        { prefix: 'uploads/images', 'max-keys': 100, marker: undefined },
-        {}
-      )
+      // 验证 S3Client.send 被调用时传入了 ListObjectsV2Command 的参数
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Prefix: 'uploads/images',
+        MaxKeys: 100,
+        ContinuationToken: undefined,
+      })
     })
 
     /**
@@ -514,10 +529,10 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试列出空目录
      */
     it('应该返回空列表当没有文件', async () => {
-      mockList.mockResolvedValue({
-        objects: [],
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.listFiles({ prefix: 'uploads/empty', maxKeys: 100 })
@@ -534,30 +549,23 @@ describe('阿里云 OSS Provider 测试', () => {
      */
     it('应该支持分页列出文件', async () => {
       // 第一页数据
-      const page1Objects = [
-        {
-          name: 'uploads/page/file1.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/page/file1.jpg`,
-          lastModified: new Date(),
-          size: 1024,
-          etag: '"1"',
-          type: 'image/jpeg',
-        },
-        {
-          name: 'uploads/page/file2.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/page/file2.jpg`,
-          lastModified: new Date(),
-          size: 2048,
-          etag: '"2"',
-          type: 'image/jpeg',
-        },
-      ]
-
-      mockList.mockResolvedValueOnce({
-        objects: page1Objects,
-        prefixes: [],
-        isTruncated: true,
-        nextMarker: 'marker-123',
+      mockSend.mockResolvedValueOnce({
+        Contents: [
+          {
+            Key: 'uploads/page/file1.jpg',
+            Size: 1024,
+            LastModified: new Date(),
+            ETag: '"1"',
+          },
+          {
+            Key: 'uploads/page/file2.jpg',
+            Size: 2048,
+            LastModified: new Date(),
+            ETag: '"2"',
+          },
+        ],
+        IsTruncated: true,
+        NextContinuationToken: 'marker-123',
       })
 
       const page1 = await provider.listFiles({ prefix: 'uploads/page', maxKeys: 2 })
@@ -567,21 +575,17 @@ describe('阿里云 OSS Provider 测试', () => {
       expect(page1.nextContinuationToken).toBe('marker-123')
 
       // 第二页数据
-      const page2Objects = [
-        {
-          name: 'uploads/page/file3.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/page/file3.jpg`,
-          lastModified: new Date(),
-          size: 3072,
-          etag: '"3"',
-          type: 'image/jpeg',
-        },
-      ]
-
-      mockList.mockResolvedValueOnce({
-        objects: page2Objects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValueOnce({
+        Contents: [
+          {
+            Key: 'uploads/page/file3.jpg',
+            Size: 3072,
+            LastModified: new Date(),
+            ETag: '"3"',
+          },
+        ],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const page2 = await provider.listFiles({
@@ -593,33 +597,33 @@ describe('阿里云 OSS Provider 测试', () => {
       expect(page2.files.length).toBe(1)
       expect(page2.isTruncated).toBe(false)
       expect(page2.nextContinuationToken).toBeNull()
-      expect(mockList).toHaveBeenLastCalledWith(
-        { prefix: 'uploads/page', 'max-keys': 2, marker: 'marker-123' },
-        {}
-      )
+      // 验证第二页请求传入 continuationToken
+      const sentCommand = mockSend.mock.calls[1][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Prefix: 'uploads/page',
+        MaxKeys: 2,
+        ContinuationToken: 'marker-123',
+      })
     })
 
     /**
      * Function: listFiles (缺少 etag)
      *
-     * Description: 测试处理缺少 etag 的文件对象
+     * Description: 测试处理缺少 ETag 的文件对象
      */
     it('应该正确处理缺少 etag 的文件对象', async () => {
-      const mockObjects = [
-        {
-          name: 'uploads/test/file.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/test/file.jpg`,
-          lastModified: new Date(),
-          size: 1024,
-          // 没有 etag
-          type: 'image/jpeg',
-        },
-      ]
-
-      mockList.mockResolvedValue({
-        objects: mockObjects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [
+          {
+            Key: 'uploads/test/file.jpg',
+            Size: 1024,
+            LastModified: new Date(),
+            // 没有 ETag
+          },
+        ],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.listFiles({ prefix: 'uploads/test', maxKeys: 100 })
@@ -636,7 +640,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: searchFiles
      *
-     * Description: 测试搜索文件
+     * Description: 测试搜索文件（基于 listFiles + 关键字过滤）
      *
      * Parameters:
      *   params(object): 包含 query, maxResults 的参数
@@ -645,37 +649,29 @@ describe('阿里云 OSS Provider 测试', () => {
      *   result(SearchFilesResponse): 包含匹配文件的响应
      */
     it('应该根据关键字搜索文件', async () => {
-      const mockObjects = [
-        {
-          name: 'uploads/images/avatar-1.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/images/avatar-1.jpg`,
-          lastModified: new Date(),
-          size: 1024,
-          etag: '"1"',
-          type: 'image/jpeg',
-        },
-        {
-          name: 'uploads/images/avatar-2.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/images/avatar-2.jpg`,
-          lastModified: new Date(),
-          size: 2048,
-          etag: '"2"',
-          type: 'image/jpeg',
-        },
-        {
-          name: 'uploads/images/other.png',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/images/other.png`,
-          lastModified: new Date(),
-          size: 512,
-          etag: '"3"',
-          type: 'image/png',
-        },
-      ]
-
-      mockList.mockResolvedValue({
-        objects: mockObjects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [
+          {
+            Key: 'uploads/images/avatar-1.jpg',
+            Size: 1024,
+            LastModified: new Date(),
+            ETag: '"1"',
+          },
+          {
+            Key: 'uploads/images/avatar-2.jpg',
+            Size: 2048,
+            LastModified: new Date(),
+            ETag: '"2"',
+          },
+          {
+            Key: 'uploads/images/other.png',
+            Size: 512,
+            LastModified: new Date(),
+            ETag: '"3"',
+          },
+        ],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.searchFiles({ query: 'avatar', maxResults: 10 })
@@ -691,10 +687,10 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试搜索无匹配结果
      */
     it('应该返回空列表当没有匹配文件', async () => {
-      mockList.mockResolvedValue({
-        objects: [],
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.searchFiles({ query: 'nonexistent', maxResults: 10 })
@@ -709,22 +705,20 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试限制返回结果数量
      */
     it('应该限制返回结果数量', async () => {
-      const mockObjects = []
+      const contents = []
       for (let i = 1; i <= 5; i++) {
-        mockObjects.push({
-          name: `uploads/test/match${i}.txt`,
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/test/match${i}.txt`,
-          lastModified: new Date(),
-          size: 1024,
-          etag: `"${i}"`,
-          type: 'text/plain',
+        contents.push({
+          Key: `uploads/test/match${i}.txt`,
+          Size: 1024,
+          LastModified: new Date(),
+          ETag: `"${i}"`,
         })
       }
 
-      mockList.mockResolvedValue({
-        objects: mockObjects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: contents,
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.searchFiles({ query: 'match', maxResults: 3 })
@@ -739,21 +733,17 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试大小写不敏感搜索
      */
     it('应该支持大小写不敏感搜索', async () => {
-      const mockObjects = [
-        {
-          name: 'uploads/test/FOO.jpg',
-          url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/test/FOO.jpg`,
-          lastModified: new Date(),
-          size: 1024,
-          etag: '"1"',
-          type: 'image/jpeg',
-        },
-      ]
-
-      mockList.mockResolvedValue({
-        objects: mockObjects,
-        prefixes: [],
-        isTruncated: false,
+      mockSend.mockResolvedValue({
+        Contents: [
+          {
+            Key: 'uploads/test/FOO.jpg',
+            Size: 1024,
+            LastModified: new Date(),
+            ETag: '"1"',
+          },
+        ],
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const result = await provider.searchFiles({ query: 'foo', maxResults: 10 })
@@ -771,7 +761,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: getFileUrl
      *
-     * Description: 测试获取文件访问 URL
+     * Description: 测试获取文件访问 URL（纯 URL 拼接，无 SDK 调用）
      *
      * Parameters:
      *   key(string): 文件的对象键
@@ -781,7 +771,6 @@ describe('阿里云 OSS Provider 测试', () => {
      */
     it('应该返回正确的文件 URL', async () => {
       const key = 'uploads/test/image.jpg'
-      mockSignatureUrl.mockResolvedValue(`${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}?signature=xxx`)
 
       const url = await provider.getFileUrl(key)
 
@@ -791,11 +780,10 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: getFileUrl (文件不存在)
      *
-     * Description: 测试文件不存在时仍然返回 URL
+     * Description: 测试文件不存在时仍然返回 URL（纯拼接不验证存在性）
      */
     it('应该在文件不存在时仍然返回 URL', async () => {
       const key = 'uploads/nonexistent/file.jpg'
-      mockSignatureUrl.mockRejectedValue(new Error('File not found'))
 
       const url = await provider.getFileUrl(key)
 
@@ -809,7 +797,6 @@ describe('阿里云 OSS Provider 测试', () => {
      */
     it('应该正确处理包含特殊字符的路径', async () => {
       const key = 'uploads/test folder/image with spaces.jpg'
-      mockSignatureUrl.mockResolvedValue(`${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${key}?signature=xxx`)
 
       const url = await provider.getFileUrl(key)
 
@@ -819,9 +806,9 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: getFileUrl (缺少配置)
      *
-     * Description: 测试缺少 ALIYUN_OSS_UPLOAD_HOST 时抛出错误
+     * Description: 测试缺少 endpoint 时抛出错误
      */
-    it('应该在缺少 ALIYUN_OSS_UPLOAD_HOST 时抛出错误', async () => {
+    it('应该在缺少 endpoint 时抛出错误', async () => {
       mockEnv.ALIYUN_OSS_UPLOAD_HOST = undefined as any
 
       expect(() =>
@@ -849,6 +836,7 @@ describe('阿里云 OSS Provider 测试', () => {
      */
     it('应该支持完整的文件生命周期', async () => {
       // 1. 获取上传策略
+      mockSignedUrl.mockResolvedValue('https://oss-cn-chengdu.aliyuncs.com/signed?X-Amz-Algorithm=test')
       const policy = await provider.issueUploadPolicy({
         contentType: 'image/jpeg',
         sizeBytes: 2048,
@@ -859,11 +847,7 @@ describe('阿里云 OSS Provider 测试', () => {
 
       // 2. 上传文件
       const fileContent = Buffer.from('lifecycle test content')
-      mockPut.mockResolvedValue({
-        name: policy.objectKey!,
-        url: `${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/${policy.objectKey}`,
-        res: { status: 200, statusCode: 200, headers: {} },
-      })
+      mockSend.mockResolvedValueOnce({})
 
       const uploadResult = await provider.uploadFile({
         file: fileContent,
@@ -873,25 +857,22 @@ describe('阿里云 OSS Provider 测试', () => {
 
       expect(uploadResult.key).toBe(policy.objectKey)
 
-      // 3. 获取文件 URL
-      mockSignatureUrl.mockResolvedValue(uploadResult.url)
+      // 3. 获取文件 URL（纯拼接）
       const fileUrl = await provider.getFileUrl(uploadResult.key)
       expect(fileUrl).toBe(uploadResult.url)
 
       // 4. 列出文件
-      mockList.mockResolvedValue({
-        objects: [
+      mockSend.mockResolvedValueOnce({
+        Contents: [
           {
-            name: uploadResult.key,
-            url: uploadResult.url,
-            lastModified: new Date(),
-            size: fileContent.length,
-            etag: '"abc123"',
-            type: 'image/jpeg',
+            Key: uploadResult.key,
+            Size: fileContent.length,
+            LastModified: new Date(),
+            ETag: '"abc123"',
           },
         ],
-        prefixes: [],
-        isTruncated: false,
+        IsTruncated: false,
+        NextContinuationToken: null,
       })
 
       const listResult = await provider.listFiles({ prefix: 'uploads/lifecycle-test', maxKeys: 10 })
@@ -899,10 +880,14 @@ describe('阿里云 OSS Provider 测试', () => {
       expect(listResult.files[0].key).toBe(uploadResult.key)
 
       // 5. 删除文件
-      mockDelete.mockResolvedValue({})
+      mockSend.mockResolvedValueOnce({})
       await provider.deleteFile(uploadResult.key)
 
-      expect(mockDelete).toHaveBeenCalledWith(uploadResult.key)
+      const deleteCommand = mockSend.mock.calls[2][0]
+      expect(deleteCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: uploadResult.key,
+      })
     })
   })
 
@@ -914,7 +899,7 @@ describe('阿里云 OSS Provider 测试', () => {
     /**
      * Function: getSignedUrl
      *
-     * Description: 测试生成签名 URL（支持私有 Bucket 访问）
+     * Description: 测试生成签名 URL（S3 预签名 GetObject）
      *
      * Parameters:
      *   key(string): 对象键
@@ -924,16 +909,21 @@ describe('阿里云 OSS Provider 测试', () => {
      *   url(string): 签名 URL
      */
     it('应该生成包含签名参数的 URL', async () => {
-      const signedUrl = 'https://test-bucket.oss-cn-chengdu.aliyuncs.com/uploads/test.jpg?OSSAccessKeyId=test&Expires=1234567890&Signature=abc123'
-      mockSignatureUrl.mockReturnValue(signedUrl)
+      const signedUrl = 'https://oss-cn-chengdu.aliyuncs.com/test-bucket/uploads/test.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test&X-Amz-Signature=abc123'
+      mockSignedUrl.mockResolvedValue(signedUrl)
 
       const url = await provider.getSignedUrl('uploads/test.jpg')
 
-      expect(mockSignatureUrl).toHaveBeenCalledWith('uploads/test.jpg', { expires: 3600 })
       expect(url).toBe(signedUrl)
-      expect(url).toContain('OSSAccessKeyId=')
-      expect(url).toContain('Expires=')
-      expect(url).toContain('Signature=')
+      // 验证 mockSignedUrl 被调用，且第二参数是 GetObjectCommand 的输入
+      expect(mockSignedUrl).toHaveBeenCalledTimes(1)
+      const [client, command, options] = mockSignedUrl.mock.calls[0]
+      expect(client).toBeDefined()
+      expect(command).toEqual({
+        Bucket: 'test-bucket',
+        Key: 'uploads/test.jpg',
+      })
+      expect(options).toEqual({ expiresIn: 3600 })
     })
 
     /**
@@ -949,13 +939,14 @@ describe('阿里云 OSS Provider 测试', () => {
      *   url(string): 带自定义过期时间的签名 URL
      */
     it('应该支持自定义过期时间', async () => {
-      const signedUrl = 'https://test-bucket.oss-cn-chengdu.aliyuncs.com/test.jpg?Expires=1734567890'
-      mockSignatureUrl.mockReturnValue(signedUrl)
+      const signedUrl = 'https://oss-cn-chengdu.aliyuncs.com/test-bucket/test.jpg?X-Amz-Expires=7200'
+      mockSignedUrl.mockResolvedValue(signedUrl)
 
       const url = await provider.getSignedUrl('test.jpg', 7200)
 
-      expect(mockSignatureUrl).toHaveBeenCalledWith('test.jpg', { expires: 7200 })
       expect(url).toBe(signedUrl)
+      const [,, options] = mockSignedUrl.mock.calls[0]
+      expect(options).toEqual({ expiresIn: 7200 })
     })
 
     /**
@@ -964,11 +955,233 @@ describe('阿里云 OSS Provider 测试', () => {
      * Description: 测试使用默认过期时间（3600 秒）
      */
     it('应该使用默认过期时间 3600 秒', async () => {
-      mockSignatureUrl.mockReturnValue('signed-url')
+      mockSignedUrl.mockResolvedValue('signed-url')
 
       await provider.getSignedUrl('test.jpg')
 
-      expect(mockSignatureUrl).toHaveBeenCalledWith('test.jpg', { expires: 3600 })
+      const [,, options] = mockSignedUrl.mock.calls[0]
+      expect(options).toEqual({ expiresIn: 3600 })
+    })
+  })
+
+  // ============================================================
+  // getImageProcessingUrl / getImageProcessingUrls 测试
+  // ============================================================
+
+  describe('getImageProcessingUrl', () => {
+    /**
+     * Function: getImageProcessingUrl
+     *
+     * Description: 测试获取带图片处理参数的签名 URL
+     * 使用手动 OSS V1 签名（S3 预签名不支持 x-oss-process 参数）
+     *
+     * Parameters:
+     *   key(string): 对象键
+     *   options(ImageProcessingOptions): 图片处理选项
+     *   expiresIn(number): 签名有效期（秒）
+     *
+     * Returns:
+     *   url(string): 带 OSS V1 签名和图片处理参数的 URL
+     */
+    it('应该生成包含 OSS 签名和图片处理参数的 URL', async () => {
+      const url = await provider.getImageProcessingUrl('uploads/test.jpg', {
+        size: 'thumbnail',
+      })
+
+      expect(url).toContain('OSSAccessKeyId=')
+      expect(url).toContain('Expires=')
+      expect(url).toContain('Signature=')
+      expect(url).toContain('x-oss-process=')
+      expect(url).toContain('resize%2Cw_150%2Ch_150') // URL encoded resize params
+    })
+
+    /**
+     * Function: getImageProcessingUrl (自定义格式和质量)
+     *
+     * Description: 测试指定格式和质量参数
+     */
+    it('应该支持自定义格式和质量参数', async () => {
+      const url = await provider.getImageProcessingUrl('uploads/test.png', {
+        size: 'medium',
+        format: 'webp',
+        quality: 90,
+      })
+
+      expect(url).toContain('OSSAccessKeyId=')
+      expect(url).toContain('Signature=')
+      expect(url).toContain('x-oss-process=')
+      // 检查 URL 中包含图片处理相关参数
+      expect(url).toContain('resize')
+      expect(url).toContain('format')
+      expect(url).toContain('quality')
+    })
+
+    /**
+     * Function: getImageProcessingUrl (自定义宽高)
+     *
+     * Description: 测试指定自定义宽高
+     */
+    it('应该支持自定义宽高', async () => {
+      const url = await provider.getImageProcessingUrl('uploads/test.jpg', {
+        width: 800,
+        height: 600,
+      })
+
+      expect(url).toContain('OSSAccessKeyId=')
+      expect(url).toContain('Signature=')
+      expect(url).toContain('x-oss-process=')
+    })
+  })
+
+  describe('getImageProcessingUrls', () => {
+    /**
+     * Function: getImageProcessingUrls
+     *
+     * Description: 测试获取多个尺寸的图片处理 URL
+     *
+     * Parameters:
+     *   key(string): 对象键
+     *   sizes(ImageProcessingOptions[]): 图片处理选项数组
+     *   expiresIn(number): 签名有效期（秒）
+     *
+     * Returns:
+     *   results(ImageProcessingResult[]): 包含原图和多个处理后 URL 的数组
+     */
+    it('应该生成多个尺寸的图片处理 URL', async () => {
+      const sizes = [
+        { size: 'thumbnail' as const },
+        { size: 'medium' as const },
+        { size: 'large' as const },
+      ]
+
+      const results = await provider.getImageProcessingUrls('uploads/test.jpg', sizes)
+
+      expect(results).toHaveLength(3)
+
+      for (const result of results) {
+        expect(result.originalUrl).toBe(`${mockEnv.ALIYUN_OSS_UPLOAD_HOST}/uploads/test.jpg`)
+        expect(result.processedUrl).toContain('OSSAccessKeyId=')
+        expect(result.processedUrl).toContain('Expires=')
+        expect(result.processedUrl).toContain('Signature=')
+        expect(result.processedUrl).toContain('x-oss-process=')
+        expect(result.processParams).toContain('image/')
+        expect(result.processParams).toContain('resize')
+      }
+    })
+
+    /**
+     * Function: getImageProcessingUrls (空数组)
+     *
+     * Description: 测试传入空数组时返回空结果
+     */
+    it('应该在传入空数组时返回空结果', async () => {
+      const results = await provider.getImageProcessingUrls('uploads/test.jpg', [])
+
+      expect(results).toEqual([])
+    })
+  })
+
+  // ============================================================
+  // downloadFile / downloadFileStream 测试
+  // ============================================================
+
+  describe('downloadFile', () => {
+    /**
+     * Function: downloadFile
+     *
+     * Description: 测试下载文件返回完整 Buffer（S3 GetObjectCommand + 流式读取）
+     *
+     * Parameters:
+     *   key(string): 对象键
+     *
+     * Returns:
+     *   buffer(Buffer): 文件内容的 Buffer
+     */
+    it('应该成功下载文件并返回 Buffer', async () => {
+      const fileContent = Buffer.from('downloaded file content')
+      const mockStream = {
+        [Symbol.asyncIterator]() {
+          let done = false
+          return {
+            next() {
+              if (done) return Promise.resolve({ done: true })
+              done = true
+              return Promise.resolve({ value: fileContent, done: false })
+            },
+          }
+        },
+      }
+
+      mockSend.mockResolvedValue({ Body: mockStream })
+
+      const result = await provider.downloadFile('uploads/test/download.jpg')
+
+      expect(result).toBeInstanceOf(Buffer)
+      expect(result.toString()).toBe('downloaded file content')
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: 'uploads/test/download.jpg',
+      })
+    })
+
+    /**
+     * Function: downloadFile (大文件分块)
+     *
+     * Description: 测试下载大文件时正确合并多个 chunk
+     */
+    it('应该正确合并多个数据块', async () => {
+      const chunk1 = Buffer.from('chunk1')
+      const chunk2 = Buffer.from('chunk2')
+      const chunk3 = Buffer.from('chunk3')
+      const chunks = [chunk1, chunk2, chunk3]
+      let index = 0
+
+      const mockStream = {
+        [Symbol.asyncIterator]() {
+          return {
+            next() {
+              if (index >= chunks.length) return Promise.resolve({ done: true })
+              return Promise.resolve({ value: chunks[index++], done: false })
+            },
+          }
+        },
+      }
+
+      mockSend.mockResolvedValue({ Body: mockStream })
+
+      const result = await provider.downloadFile('uploads/test/large.bin')
+
+      expect(result.toString()).toBe('chunk1chunk2chunk3')
+    })
+  })
+
+  describe('downloadFileStream', () => {
+    /**
+     * Function: downloadFileStream
+     *
+     * Description: 测试下载文件返回流式 Readable（S3 GetObjectCommand）
+     *
+     * Parameters:
+     *   key(string): 对象键
+     *
+     * Returns:
+     *   stream(Readable): 文件内容的流
+     */
+    it('应该成功返回文件流', async () => {
+      const { Readable } = await import('node:stream')
+      const mockStream = Readable.from([Buffer.from('stream content')])
+
+      mockSend.mockResolvedValue({ Body: mockStream })
+
+      const stream = await provider.downloadFileStream('uploads/test/stream.jpg')
+
+      expect(stream).toBeInstanceOf(Readable)
+      const sentCommand = mockSend.mock.calls[0][0]
+      expect(sentCommand).toEqual({
+        Bucket: 'test-bucket',
+        Key: 'uploads/test/stream.jpg',
+      })
     })
   })
 })

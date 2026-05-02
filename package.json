@@ -55,7 +55,7 @@
     "@tiptap/extension-underline": "^3.22.5",
     "@tiptap/react": "^3.22.5",
     "@tiptap/starter-kit": "^3.22.5",
-    "ali-oss": "^6.23.0",
+
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -93,7 +93,7 @@
     "@tailwindcss/postcss": "^4.2.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/ali-oss": "^6.23.3",
+
     "@types/csv-stringify": "^1.4.3",
     "@types/decimal.js": "^0.0.32",
     "@types/dotenv": "^6.1.1",
