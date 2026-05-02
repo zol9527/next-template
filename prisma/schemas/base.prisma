@@ -373,6 +373,35 @@ model ExportJob {
 }
 
 // ============================================================================
+// 备份任务
+// ============================================================================
+
+model BackupJob {
+  id            String    @id @default(uuid())
+  jobType       String    @map("job_type")              // "db_backup" | "file_backup"
+  status        String    @default("pending")            // pending | processing | completed | failed
+  requestedBy   String    @map("requested_by")
+  options       String    @default("{}")             // 备份选项 JSON
+  backupFileKey String?   @map("backup_file_key")        // ZIP 文件在 OSS 中的 key
+  fileName      String?   @map("file_name")              // 下载时的文件名
+  fileSize      BigInt?   @map("file_size")              // ZIP 文件大小
+  stats         String?   @map("stats")              // 实时进度 JSON
+  snapshotTime  DateTime? @map("snapshot_time")          // 备份快照时间
+  errorMessage  String?   @map("error_message")          // 错误信息
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @map("updated_at")
+
+  @@index([status])
+  @@index([jobType])
+  @@index([requestedBy])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@map("backup_jobs")
+}
+
+// ============================================================================
 // 版本发布
 // ============================================================================
 
