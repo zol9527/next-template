@@ -32,7 +32,7 @@ export default async function seedAdmin(db, logger, ctx) {
   const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminPassw0rd!'
 
   // 密码哈希
-  const bcrypt = (await import('bcrypt')).default
+  const bcrypt = (await import('bcryptjs')).default
   const passwordHash = await bcrypt.hash(adminPassword, 12)
 
   // 检查是否已存在

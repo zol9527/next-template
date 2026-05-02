@@ -39,7 +39,7 @@ const TEST_USERS = [
 export default async function seedTestUsers(db, logger, ctx) {
   logger.info('开始创建测试用户...')
 
-  const bcrypt = (await import('bcrypt')).default
+  const bcrypt = (await import('bcryptjs')).default
   const users = []
 
   for (const testUser of TEST_USERS) {

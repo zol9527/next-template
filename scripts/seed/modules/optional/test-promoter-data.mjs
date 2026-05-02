@@ -32,7 +32,7 @@ export default async function seedTestPromoterData(db, logger, ctx) {
   // 如果不存在，创建测试用户
   if (!promoterUser) {
     logger.info('创建测试用户作为推广员...')
-    const bcrypt = (await import('bcrypt')).default
+    const bcrypt = (await import('bcryptjs')).default
     const passwordHash = await bcrypt.hash('EduTest#12345', 12)
 
     promoterUser = await db.user.create({

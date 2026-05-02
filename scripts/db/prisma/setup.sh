@@ -133,6 +133,17 @@ load_database_env() {
             DATABASE_PROVIDER="${database_provider}"
         fi
     fi
+
+    # 加载 PLUGIN_* 变量，供 merge-schemas.ts 判断插件是否启用
+    local plugin_key
+    while IFS='=' read -r plugin_key plugin_value; do
+        plugin_key="${plugin_key#export }"
+        plugin_key="$(echo "${plugin_key}" | xargs)"
+        plugin_value="$(echo "${plugin_value}" | sed "s/^['\"]//;s/['\"]$//")"
+        if [[ -z "${!plugin_key:-}" ]]; then
+            export "${plugin_key}=${plugin_value}"
+        fi
+    done < <(grep -E '^[[:space:]]*(export[[:space:]]+)?PLUGIN_' "${env_file}" 2>/dev/null)
 }
 
 ensure_generate_database_url() {
@@ -152,6 +163,16 @@ ensure_generate_database_url() {
 
 merge_prisma_schema() {
     bun --no-env-file run scripts/prisma/merge-schemas.ts
+}
+
+# --no-env-file 下 bun 不会读取 .env，需显式 export 已加载的 PLUGIN_* 变量
+export_plugin_env_vars() {
+    # shellcheck disable=SC2046
+    while IFS='=' read -r key value; do
+        case "${key}" in
+            PLUGIN_*) export "${key}=${value}" ;;
+        esac
+    done < <(env | grep '^PLUGIN_')
 }
 
 check_prisma_schema() {
