@@ -7,14 +7,30 @@
  * 3. 安全快照创建成功（调用 createDbBackup）
  * 4. 组合操作：开启维护模式并创建快照
  *
- * 使用 vi.spyOn 而非 vi.mock，避免 Bun test runner 跨文件 mock 泄漏
+ * 使用 vi.hoisted + vi.mock 替代 vi.spyOn，避免 ESM 命名空间不可配置的问题
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import * as dbBackupEngine from './db-backup-engine'
-import * as nodeFs from 'node:fs'
-import { enableMaintenanceMode, disableMaintenanceMode, createSafetySnapshot, enableMaintenanceModeWithSnapshot } from './maintenance-guard'
 import type { PrismaClientLike } from './db-backup-engine'
+
+// ─── Mock：node:fs 模块 ────────────────────────────────
+// ESM 命名空间导出不可配置，无法使用 vi.spyOn，改用 vi.hoisted + vi.mock
+const { mockCreateDbBackup, mockMkdirSync } = vi.hoisted(() => ({
+  mockCreateDbBackup: vi.fn(),
+  mockMkdirSync: vi.fn(),
+}))
+
+vi.mock('./db-backup-engine', () => ({
+  createDbBackup: mockCreateDbBackup,
+}))
+
+vi.mock('node:fs', () => ({
+  default: { mkdirSync: mockMkdirSync },
+  mkdirSync: mockMkdirSync,
+}))
+
+// 在 mock 声明之后导入被测模块
+import { enableMaintenanceMode, disableMaintenanceMode, createSafetySnapshot, enableMaintenanceModeWithSnapshot } from './maintenance-guard'
 
 // ─── 测试数据 ─────────────────────────────────────────
 
@@ -35,10 +51,8 @@ const mockDbBackupResult = {
 
 describe('maintenance-guard', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
     vi.clearAllMocks()
-    vi.spyOn(dbBackupEngine, 'createDbBackup').mockResolvedValue(mockDbBackupResult)
-    vi.spyOn(nodeFs, 'mkdirSync').mockReturnValue(undefined as any)
+    mockCreateDbBackup.mockResolvedValue(mockDbBackupResult)
   })
 
   afterEach(() => {
@@ -108,8 +122,8 @@ describe('maintenance-guard', () => {
         zipPath: mockDbBackupResult.zipPath,
         snapshotTime: expect.any(Date),
       })
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledTimes(1)
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledWith({
+      expect(mockCreateDbBackup).toHaveBeenCalledTimes(1)
+      expect(mockCreateDbBackup).toHaveBeenCalledWith({
         outputPath: expect.stringContaining('safety_snapshot_'),
         prisma: mockPrisma,
         databaseName: 'test_db',
@@ -119,7 +133,7 @@ describe('maintenance-guard', () => {
     })
 
     it('应该使用自定义输出目录', async () => {
-      vi.spyOn(dbBackupEngine, 'createDbBackup').mockImplementation(async (params) => ({
+      mockCreateDbBackup.mockImplementation(async (params: any) => ({
         ...mockDbBackupResult,
         zipPath: params.outputPath,
       }))
@@ -133,7 +147,7 @@ describe('maintenance-guard', () => {
       const result = await createSafetySnapshot(params)
 
       expect(result.zipPath).toContain('/custom/path')
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledWith(
+      expect(mockCreateDbBackup).toHaveBeenCalledWith(
         expect.objectContaining({
           outputPath: expect.stringContaining('/custom/path'),
         })
@@ -141,7 +155,7 @@ describe('maintenance-guard', () => {
     })
 
     it('应该在 createDbBackup 返回空路径时抛出错误', async () => {
-      vi.spyOn(dbBackupEngine, 'createDbBackup').mockResolvedValue({
+      mockCreateDbBackup.mockResolvedValue({
         zipPath: '',
         totalTables: 5,
         totalRows: 100,
@@ -158,7 +172,7 @@ describe('maintenance-guard', () => {
     })
 
     it('应该在 createDbBackup 返回 undefined 路径时抛出错误', async () => {
-      vi.spyOn(dbBackupEngine, 'createDbBackup').mockResolvedValue({
+      mockCreateDbBackup.mockResolvedValue({
         zipPath: undefined as any,
         totalTables: 5,
         totalRows: 100,
@@ -176,7 +190,7 @@ describe('maintenance-guard', () => {
 
     it('应该传递 createDbBackup 失败的错误', async () => {
       const error = new Error('备份失败')
-      vi.spyOn(dbBackupEngine, 'createDbBackup').mockRejectedValue(error)
+      mockCreateDbBackup.mockRejectedValue(error)
 
       const params = {
         prisma: mockPrisma,
@@ -198,8 +212,8 @@ describe('maintenance-guard', () => {
 
       const result = await enableMaintenanceModeWithSnapshot(params)
 
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledTimes(1)
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledWith(
+      expect(mockCreateDbBackup).toHaveBeenCalledTimes(1)
+      expect(mockCreateDbBackup).toHaveBeenCalledWith(
         expect.objectContaining({
           databaseName: 'test_db',
         })
@@ -219,7 +233,7 @@ describe('maintenance-guard', () => {
 
     it('应该在快照创建失败时抛出错误', async () => {
       const error = new Error('快照创建失败')
-      vi.spyOn(dbBackupEngine, 'createDbBackup').mockRejectedValue(error)
+      mockCreateDbBackup.mockRejectedValue(error)
 
       const params = {
         prisma: mockPrisma,
@@ -242,7 +256,7 @@ describe('maintenance-guard', () => {
 
       await expect(enableMaintenanceModeWithSnapshot(params)).rejects.toThrow('维护模式开启失败')
 
-      expect(dbBackupEngine.createDbBackup).toHaveBeenCalledTimes(1)
+      expect(mockCreateDbBackup).toHaveBeenCalledTimes(1)
     })
   })
 })

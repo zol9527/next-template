@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { estimateBackup, type PrismaClientLike } from './estimator'
 
-// Mock schema-analyzer
-const mockGetSkipList = vi.fn(() => ['backup_jobs', 'prisma_migrations'])
-const mockGetTableNameMapping = vi.fn()
+// vi.hoisted 确保在 vi.mock 工厂函数执行时变量已初始化
+const { mockGetSkipList, mockGetTableNameMapping } = vi.hoisted(() => ({
+  mockGetSkipList: vi.fn(() => ['backup_jobs', 'prisma_migrations']),
+  mockGetTableNameMapping: vi.fn(),
+}))
 
 vi.mock('./schema-analyzer', () => ({
   getSkipList: mockGetSkipList,

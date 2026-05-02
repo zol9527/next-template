@@ -2,12 +2,14 @@ import { describe, it, expect, vi } from 'vitest'
 import { cleanupOldBackups, type PrismaClientLike } from './cleanup'
 import path from 'path'
 
-// Mock fs 模块
-const mockUnlink = vi.fn()
+// vi.hoisted 确保在 vi.mock 工厂函数执行时变量已初始化
+const { mockUnlink } = vi.hoisted(() => ({
+  mockUnlink: vi.fn(),
+}))
+
 vi.mock('fs', () => ({
-  promises: {
-    unlink: mockUnlink,
-  },
+  default: { promises: { unlink: mockUnlink } },
+  promises: { unlink: mockUnlink },
 }))
 
 describe('cleanupOldBackups', () => {
