@@ -18,10 +18,10 @@ import { getEnabledPlugins } from '@/plugins/registry'
 /**
  * Prisma 客户端最小接口约束
  *
- * 仅需要 $queryRaw 方法来执行原始 SQL 查询
+ * 需要 $queryRawUnsafe 来执行 information_schema 查询（通过 getTableNameMapping）
  */
 export interface PrismaClientLike {
-  $queryRaw: <T>(query: TemplateStringsArray | string, ...values: unknown[]) => Promise<T>
+  $queryRawUnsafe: <T>(query: string, ...values: unknown[]) => Promise<T>
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { estimateBackup, type PrismaClientLike } from './estimator'
+import type { TableStats } from './schema-analyzer'
 
 // vi.hoisted 确保在 vi.mock 工厂函数执行时变量已初始化
 const { mockGetSkipList, mockGetTableNameMapping } = vi.hoisted(() => ({
@@ -12,6 +13,20 @@ vi.mock('./schema-analyzer', () => ({
   getTableNameMapping: mockGetTableNameMapping,
 }))
 
+/**
+ * 辅助函数：快速构建 Map<string, TableStats>
+ */
+function buildTableStatsMap(
+  entries: Array<[string, { rows?: number; size?: number }]>
+): Map<string, TableStats> {
+  return new Map(
+    entries.map(([name, { rows = 0, size = 0 }]) => [
+      name,
+      { displayName: name, approxRows: rows, dataLength: size },
+    ])
+  )
+}
+
 describe('estimateBackup', () => {
   let mockPrisma: PrismaClientLike
   let mockQueryRawUnsafe: ReturnType<typeof vi.fn>
@@ -19,47 +34,26 @@ describe('estimateBackup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Mock prisma.$queryRawUnsafe
     mockQueryRawUnsafe = vi.fn().mockImplementation((query: string) => {
-      // 根据查询内容返回不同的结果
-      if (query.includes('FROM `users`')) {
-        return Promise.resolve([{ cnt: 100n }])
-      }
-      if (query.includes('FROM `posts`')) {
-        return Promise.resolve([{ cnt: 200n }])
-      }
-      if (query.includes('FROM `comments`')) {
-        return Promise.resolve([{ cnt: 300n }])
-      }
-      if (query.includes('FROM `media_assets`') && query.includes('COUNT')) {
-        return Promise.resolve([{ cnt: 10n }])
-      }
-      if (query.includes('FROM `invalid_table`')) {
-        return Promise.resolve([{ cnt: 300n }])
-      }
       if (query.includes('media_assets') && query.includes('SUM')) {
-        // 文件查询
         return Promise.resolve([{ cnt: 50n, totalSize: 1024000n }])
       }
-      // 默认返回空数组
       return Promise.resolve([])
     })
     mockPrisma = {
-      $queryRaw: vi.fn(),
       $queryRawUnsafe: mockQueryRawUnsafe,
     }
   })
 
   describe('数据库预估', () => {
     it('应正确预估包含多个表的数据库', async () => {
-      // Mock getTableNameMapping 返回 5 个表
       mockGetTableNameMapping.mockResolvedValue(
-        new Map([
-          ['users', 'users'],
-          ['posts', 'posts'],
-          ['comments', 'comments'],
-          ['media_assets', 'media_assets'],
-          ['backup_jobs', 'backup_jobs'], // 在 skipList 中
+        buildTableStatsMap([
+          ['users', { rows: 100, size: 50000 }],
+          ['posts', { rows: 200, size: 100000 }],
+          ['comments', { rows: 300, size: 150000 }],
+          ['media_assets', { rows: 10, size: 5000 }],
+          ['backup_jobs', { rows: 5, size: 1000 }], // 在 skipList 中
         ])
       )
 
@@ -68,17 +62,21 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果
-      expect(result.db.tablesTotal).toBe(4) // users, posts, comments, media_assets（backup_jobs 被过滤）
-      expect(result.db.totalRows).toBe(610) // 100 + 200 + 300 + 10
-      expect(result.db.estimatedSizeBytes).toBe(610 * 500) // 500 bytes/row
+      // backup_jobs 被过滤，剩下 4 个表
+      expect(result.db.tablesTotal).toBe(4)
+      // 近似行数总和：100 + 200 + 300 + 10 = 610
+      expect(result.db.totalRows).toBe(610)
+      // 优先使用 information_schema 的 DATA_LENGTH
+      expect(result.db.estimatedSizeBytes).toBe(50000 + 100000 + 150000 + 5000)
       expect(result.db.estimatedDurationMs).toBe(Math.ceil((610 / 5000) * 1000))
     })
 
     it('空数据库应返回合理默认值', async () => {
-      // Mock getTableNameMapping 返回只有 skipList 表的数据库
       mockGetTableNameMapping.mockResolvedValue(
-        new Map([['backup_jobs', 'backup_jobs'], ['prisma_migrations', 'prisma_migrations']])
+        buildTableStatsMap([
+          ['backup_jobs', { rows: 5, size: 1000 }],
+          ['prisma_migrations', { rows: 10, size: 2000 }],
+        ])
       )
 
       const result = await estimateBackup({
@@ -86,58 +84,36 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果
       expect(result.db.tablesTotal).toBe(0)
       expect(result.db.totalRows).toBe(0)
       expect(result.db.estimatedSizeBytes).toBe(0)
       expect(result.db.estimatedDurationMs).toBe(0)
 
-      // 应该只执行文件查询，不执行数据库表的 COUNT(*) 查询
-      expect(mockQueryRawUnsafe).toHaveBeenCalledTimes(1)
+      // DB 预估不再需要 $queryRawUnsafe（information_schema 一次查询搞定）
+      expect(mockQueryRawUnsafe).toHaveBeenCalledTimes(1) // 仅文件查询
     })
 
-    it('应正确处理表查询失败的情况', async () => {
-      // Mock getTableNameMapping 返回 3 个表
+    it('当 DATA_LENGTH 为 0 时应使用固定系数估算大小', async () => {
       mockGetTableNameMapping.mockResolvedValue(
-        new Map([
-          ['users', 'users'],
-          ['posts', 'posts'],
-          ['invalid_table', 'invalid_table'],
+        buildTableStatsMap([
+          ['users', { rows: 100, size: 0 }],
+          ['posts', { rows: 200, size: 0 }],
         ])
       )
-
-      // Override mock to make posts query fail
-      mockQueryRawUnsafe.mockImplementation((query: string) => {
-        if (query.includes('FROM `users`')) {
-          return Promise.resolve([{ cnt: 100n }])
-        }
-        if (query.includes('FROM `posts`')) {
-          return Promise.reject(new Error('Table does not exist'))
-        }
-        if (query.includes('FROM `invalid_table`')) {
-          return Promise.resolve([{ cnt: 300n }])
-        }
-        if (query.includes('media_assets') && query.includes('SUM')) {
-          return Promise.resolve([{ cnt: 50n, totalSize: 1024000n }])
-        }
-        return Promise.resolve([])
-      })
 
       const result = await estimateBackup({
         prisma: mockPrisma,
         databaseName: 'test_db',
       })
 
-      // 应该跳过失败的表，继续统计其他表
-      expect(result.db.tablesTotal).toBe(3)
-      expect(result.db.totalRows).toBe(400) // 100 + 300 (跳过失败的 posts)
-      expect(result.db.estimatedSizeBytes).toBe(400 * 500)
+      // DATA_LENGTH 为 0，fallback 到 totalRows * AVG_ROW_SIZE_BYTES
+      expect(result.db.totalRows).toBe(300)
+      expect(result.db.estimatedSizeBytes).toBe(300 * 500)
     })
   })
 
   describe('文件预估', () => {
     it('应正确统计 active 状态的文件', async () => {
-      // Mock getTableNameMapping 返回空映射（文件预估不依赖）
       mockGetTableNameMapping.mockResolvedValue(new Map())
 
       const result = await estimateBackup({
@@ -145,17 +121,14 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果
       expect(result.files.totalFiles).toBe(50)
       expect(result.files.totalBytes).toBe(1024000)
-      expect(result.files.estimatedDurationMs).toBe(Math.ceil((50 / 5) * 1000)) // 10000ms
+      expect(result.files.estimatedDurationMs).toBe(Math.ceil((50 / 5) * 1000))
     })
 
     it('没有文件时应返回零值', async () => {
-      // Mock getTableNameMapping 返回空映射
       mockGetTableNameMapping.mockResolvedValue(new Map())
 
-      // Override mock to return 0 files
       mockQueryRawUnsafe.mockImplementation((query: string) => {
         if (query.includes('media_assets') && query.includes('SUM')) {
           return Promise.resolve([{ cnt: 0n, totalSize: 0n }])
@@ -168,17 +141,14 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果
       expect(result.files.totalFiles).toBe(0)
       expect(result.files.totalBytes).toBe(0)
       expect(result.files.estimatedDurationMs).toBe(0)
     })
 
     it('文件查询失败时应返回零值', async () => {
-      // Mock getTableNameMapping 返回空映射
       mockGetTableNameMapping.mockResolvedValue(new Map())
 
-      // Override mock to make file query fail
       mockQueryRawUnsafe.mockImplementation((query: string) => {
         if (query.includes('media_assets') && query.includes('SUM')) {
           return Promise.reject(new Error('Table does not exist'))
@@ -191,17 +161,14 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果
       expect(result.files.totalFiles).toBe(0)
       expect(result.files.totalBytes).toBe(0)
       expect(result.files.estimatedDurationMs).toBe(0)
     })
 
     it('应正确处理文件大小总和为 NULL 的情况', async () => {
-      // Mock getTableNameMapping 返回空映射
       mockGetTableNameMapping.mockResolvedValue(new Map())
 
-      // Override mock to return NULL for totalSize
       mockQueryRawUnsafe.mockImplementation((query: string) => {
         if (query.includes('media_assets') && query.includes('SUM')) {
           return Promise.resolve([{ cnt: 10n, totalSize: null }])
@@ -214,34 +181,24 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果（COALESCE 应该将 NULL 转换为 0）
       expect(result.files.totalFiles).toBe(10)
       expect(result.files.totalBytes).toBe(0)
-      expect(result.files.estimatedDurationMs).toBe(Math.ceil((10 / 5) * 1000)) // 2000ms
+      expect(result.files.estimatedDurationMs).toBe(Math.ceil((10 / 5) * 1000))
     })
   })
 
   describe('整体预估', () => {
     it('应并行执行数据库和文件预估', async () => {
-      // Mock getTableNameMapping
       mockGetTableNameMapping.mockResolvedValue(
-        new Map([
-          ['users', 'users'],
-          ['media_assets', 'media_assets'],
+        buildTableStatsMap([
+          ['users', { rows: 100, size: 50000 }],
         ])
       )
 
-      let dbQueryStarted = false
-      let filesQueryStarted = false
-
-      // Override mock to track query execution
+      let filesQueryCalled = false
       mockQueryRawUnsafe.mockImplementation((query: string) => {
-        if (query.includes('users')) {
-          dbQueryStarted = true
-          return Promise.resolve([{ cnt: 100n }])
-        }
-        if (query.includes('media_assets') && query.includes('COUNT')) {
-          filesQueryStarted = true
+        if (query.includes('media_assets') && query.includes('SUM')) {
+          filesQueryCalled = true
           return Promise.resolve([{ cnt: 50n, totalSize: 1024000n }])
         }
         return Promise.resolve([])
@@ -252,17 +209,16 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证两个查询都被执行了
-      expect(dbQueryStarted).toBe(true)
-      expect(filesQueryStarted).toBe(true)
+      // 数据库预估通过 getTableNameMapping（已 mock），文件预估通过 $queryRawUnsafe
+      expect(filesQueryCalled).toBe(true)
+      expect(mockGetTableNameMapping).toHaveBeenCalledOnce()
     })
 
     it('应返回完整的预估结果', async () => {
-      // Mock getTableNameMapping
       mockGetTableNameMapping.mockResolvedValue(
-        new Map([
-          ['users', 'users'],
-          ['posts', 'posts'],
+        buildTableStatsMap([
+          ['users', { rows: 100, size: 50000 }],
+          ['posts', { rows: 200, size: 100000 }],
         ])
       )
 
@@ -271,7 +227,6 @@ describe('estimateBackup', () => {
         databaseName: 'test_db',
       })
 
-      // 验证结果结构
       expect(result).toHaveProperty('db')
       expect(result).toHaveProperty('files')
       expect(result.db).toHaveProperty('tablesTotal')

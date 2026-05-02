@@ -42,6 +42,21 @@ export interface TopologyResult {
 }
 
 /**
+ * 表统计信息（来自 information_schema 近似值）
+ *
+ * InnoDB 引擎下 TABLE_ROWS 为估算值，通常偏差 5-15%，
+ * 对于备份预估场景精度完全足够，且查询速度为毫秒级。
+ */
+export interface TableStats {
+  /** 表显示名（目前为 identity 映射，未来支持 @@map） */
+  displayName: string
+  /** 近似行数（来自 information_schema.TABLES.TABLE_ROWS） */
+  approxRows: number
+  /** 近似数据大小（字节，来自 information_schema.TABLES.DATA_LENGTH） */
+  dataLength: number
+}
+
+/**
  * 获取需要跳过的表列表
  *
  * 这些表在备份/恢复时应该被忽略：
@@ -75,7 +90,7 @@ export function getSkipList(): string[] {
  * @returns FK 图（邻接表表示）
  */
 export async function getForeignKeyGraph(
-  prisma: { $queryRaw: <T>(query: TemplateStringsArray | string, ...values: unknown[]) => Promise<T> },
+  prisma: { $queryRawUnsafe: <T>(query: string, ...values: unknown[]) => Promise<T> },
   databaseName: string
 ): Promise<ForeignKeyGraph> {
   const sql = `
@@ -90,7 +105,7 @@ export async function getForeignKeyGraph(
       AND REFERENCED_TABLE_SCHEMA = ?
   `
 
-  const rows = await prisma.$queryRaw<{
+  const rows = await prisma.$queryRawUnsafe<{
     fromTable: string
     fromColumn: string
     toTable: string
@@ -239,35 +254,41 @@ export function topologicalSort(graph: ForeignKeyGraph, allTables: string[]): To
 }
 
 /**
- * 获取表名映射
+ * 获取表名映射及近似统计
  *
- * 从 information_schema.TABLES 查询表名和注释，
- * 构建表名到显示名的映射（目前是 identity 映射，
- * 未来可扩展支持 Prisma @@map）
+ * 从 information_schema.TABLES 一次性获取表名、行数和数据大小。
+ * InnoDB 的 TABLE_ROWS 为近似值（偏差 5-15%），但对于备份预估场景
+ * 精度完全足够，且查询速度为毫秒级（对比逐表 COUNT(*) 的 O(n) 开销）。
  *
- * @param prisma - Prisma 客户端实例
+ * @param prisma - Prisma 客户端实例（需支持 $queryRawUnsafe）
  * @param databaseName - 数据库名称
- * @returns 表名 → 表名 映射
+ * @returns 表名 → TableStats 映射
  */
 export async function getTableNameMapping(
-  prisma: { $queryRaw: <T>(query: TemplateStringsArray | string, ...values: unknown[]) => Promise<T> },
+  prisma: { $queryRawUnsafe: <T>(query: string, ...values: unknown[]) => Promise<T> },
   databaseName: string
-): Promise<Map<string, string>> {
+): Promise<Map<string, TableStats>> {
   const sql = `
-    SELECT TABLE_NAME, TABLE_COMMENT
+    SELECT TABLE_NAME, TABLE_COMMENT, TABLE_ROWS, DATA_LENGTH
     FROM information_schema.TABLES
     WHERE TABLE_SCHEMA = ?
   `
 
-  const rows = await prisma.$queryRaw<{
+  const rows = await prisma.$queryRawUnsafe<{
     TABLE_NAME: string
     TABLE_COMMENT: string
+    TABLE_ROWS: number | null
+    DATA_LENGTH: number | null
   }[]>(sql, databaseName)
 
-  const mapping = new Map<string, string>()
+  const mapping = new Map<string, TableStats>()
 
   for (const row of rows) {
-    mapping.set(row.TABLE_NAME, row.TABLE_NAME)
+    mapping.set(row.TABLE_NAME, {
+      displayName: row.TABLE_NAME,
+      approxRows: Number(row.TABLE_ROWS ?? 0),
+      dataLength: Number(row.DATA_LENGTH ?? 0),
+    })
   }
 
   return mapping

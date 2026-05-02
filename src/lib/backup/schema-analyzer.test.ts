@@ -182,7 +182,7 @@ describe("getForeignKeyGraph", () => {
 		];
 
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue(mockRows),
+			$queryRawUnsafe: vi.fn().mockResolvedValue(mockRows),
 		};
 
 		const graph = await getForeignKeyGraph(prisma, "test_db");
@@ -194,12 +194,12 @@ describe("getForeignKeyGraph", () => {
 		expect(graph.get("Post")).toHaveLength(1);
 		expect(graph.get("Comment")).toHaveLength(2);
 
-		expect(prisma.$queryRaw).toHaveBeenCalledOnce();
+		expect(prisma.$queryRawUnsafe).toHaveBeenCalledOnce();
 	});
 
 	it("应正确处理空结果集", async () => {
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue([]),
+			$queryRawUnsafe: vi.fn().mockResolvedValue([]),
 		};
 
 		const graph = await getForeignKeyGraph(prisma, "empty_db");
@@ -215,7 +215,7 @@ describe("getForeignKeyGraph", () => {
 		];
 
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue(mockRows),
+			$queryRawUnsafe: vi.fn().mockResolvedValue(mockRows),
 		};
 
 		const graph = await getForeignKeyGraph(prisma, "test_db");
@@ -229,28 +229,30 @@ describe("getForeignKeyGraph", () => {
 });
 
 describe("getTableNameMapping", () => {
-	it("应从数据库查询结果构建表名映射", async () => {
+	it("应从数据库查询结果构建表名映射（含近似统计）", async () => {
 		const mockRows = [
-			{ TABLE_NAME: "User", TABLE_COMMENT: "用户表" },
-			{ TABLE_NAME: "Post", TABLE_COMMENT: "文章表" },
-			{ TABLE_NAME: "Comment", TABLE_COMMENT: "评论表" },
+			{ TABLE_NAME: "User", TABLE_COMMENT: "用户表", TABLE_ROWS: 1000, DATA_LENGTH: 524288 },
+			{ TABLE_NAME: "Post", TABLE_COMMENT: "文章表", TABLE_ROWS: 5000, DATA_LENGTH: 2097152 },
+			{ TABLE_NAME: "Comment", TABLE_COMMENT: "评论表", TABLE_ROWS: 20000, DATA_LENGTH: 8388608 },
 		];
 
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue(mockRows),
+			$queryRawUnsafe: vi.fn().mockResolvedValue(mockRows),
 		};
 
 		const mapping = await getTableNameMapping(prisma, "test_db");
 
 		expect(mapping.size).toBe(3);
-		expect(mapping.get("User")).toBe("User");
-		expect(mapping.get("Post")).toBe("Post");
-		expect(mapping.get("Comment")).toBe("Comment");
+		expect(mapping.get("User")?.displayName).toBe("User");
+		expect(mapping.get("User")?.approxRows).toBe(1000);
+		expect(mapping.get("User")?.dataLength).toBe(524288);
+		expect(mapping.get("Post")?.approxRows).toBe(5000);
+		expect(mapping.get("Comment")?.dataLength).toBe(8388608);
 	});
 
 	it("应正确处理空数据库", async () => {
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue([]),
+			$queryRawUnsafe: vi.fn().mockResolvedValue([]),
 		};
 
 		const mapping = await getTableNameMapping(prisma, "empty_db");
@@ -258,20 +260,18 @@ describe("getTableNameMapping", () => {
 		expect(mapping.size).toBe(0);
 	});
 
-	it("映射的 key 和 value 应相同（identity 映射）", async () => {
+	it("应将 NULL 的 TABLE_ROWS 和 DATA_LENGTH 视为 0", async () => {
 		const mockRows = [
-			{ TABLE_NAME: "roles", TABLE_COMMENT: "" },
-			{ TABLE_NAME: "permissions", TABLE_COMMENT: "" },
+			{ TABLE_NAME: "empty_table", TABLE_COMMENT: "", TABLE_ROWS: null, DATA_LENGTH: null },
 		];
 
 		const prisma = {
-			$queryRaw: vi.fn().mockResolvedValue(mockRows),
+			$queryRawUnsafe: vi.fn().mockResolvedValue(mockRows),
 		};
 
 		const mapping = await getTableNameMapping(prisma, "test_db");
 
-		for (const [key, value] of mapping.entries()) {
-			expect(key).toBe(value);
-		}
+		expect(mapping.get("empty_table")?.approxRows).toBe(0);
+		expect(mapping.get("empty_table")?.dataLength).toBe(0);
 	});
 });

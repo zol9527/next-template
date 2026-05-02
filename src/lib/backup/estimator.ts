@@ -12,15 +12,10 @@ import { getSkipList, getTableNameMapping } from './schema-analyzer'
 
 /**
  * Prisma 客户端接口（最小化接口）
+ *
+ * 仅需要 $queryRawUnsafe 来执行动态 SQL（文件预估查询 media_assets 表）
  */
 export interface PrismaClientLike {
-  /**
-   * 执行原始 SQL 查询（安全模式）
-   */
-  $queryRaw: <T>(query: TemplateStringsArray | string, ...values: unknown[]) => Promise<T>
-  /**
-   * 执行原始 SQL 查询（不安全模式，用于动态表名）
-   */
   $queryRawUnsafe: <T>(query: string, ...values: unknown[]) => Promise<T>
 }
 
@@ -130,35 +125,27 @@ export async function estimateBackup(params: EstimateParams): Promise<EstimateRe
 async function estimateDatabase(params: EstimateParams): Promise<DatabaseEstimate> {
   const { prisma, databaseName } = params
 
-  // 获取表名映射
+  // 从 information_schema 一次性获取所有表的近似统计（毫秒级，O(1)）
   const tableNameMapping = await getTableNameMapping(prisma, databaseName)
-  const allTables = Array.from(tableNameMapping.keys())
 
   // 过滤掉需要跳过的表
   const skipList = getSkipList()
-  const tablesToBackup = allTables.filter((table) => !skipList.includes(table))
+  const tablesToBackup = Array.from(tableNameMapping.entries())
+    .filter(([table]) => !skipList.includes(table))
 
-  // 逐表统计行数
+  // 直接从 information_schema 汇总近似值（无需逐表 COUNT）
   let totalRows = 0
+  let totalDataLength = 0
 
-  for (const table of tablesToBackup) {
-    try {
-      // 使用 $queryRawUnsafe 动态构造查询（表名不能作为参数化查询）
-      const result = await prisma.$queryRawUnsafe<{ cnt: bigint }[]>(
-        `SELECT COUNT(*) as cnt FROM \`${table}\``
-      )
-      if (result && result[0]) {
-        totalRows += Number(result[0].cnt)
-      }
-    } catch (error) {
-      // 如果表不存在或查询失败，跳过该表
-      console.warn(`Failed to count rows for table ${table}:`, error)
-      continue
-    }
+  for (const [, stats] of tablesToBackup) {
+    totalRows += stats.approxRows
+    totalDataLength += stats.dataLength
   }
 
-  // 计算预估大小
-  const estimatedSizeBytes = totalRows * AVG_ROW_SIZE_BYTES
+  // 优先使用 information_schema 的 DATA_LENGTH（比固定系数更准确）
+  const estimatedSizeBytes = totalDataLength > 0
+    ? totalDataLength
+    : totalRows * AVG_ROW_SIZE_BYTES
 
   // 计算预估耗时（毫秒）
   const estimatedDurationMs = Math.ceil((totalRows / DB_PROCESSING_RATE_ROWS_PER_SEC) * 1000)
