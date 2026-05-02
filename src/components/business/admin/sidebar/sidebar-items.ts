@@ -16,6 +16,7 @@ import {
   Smartphone,
   ScrollText,
   Sparkles,
+  Database,
 } from 'lucide-react'
 import type { Action, Scope } from '@/config/access'
 
@@ -89,6 +90,7 @@ const coreSidebarGroups: SidebarGroupConfig[] = [
       { name: '协议管理', href: '/admin/agreements', icon: FileText, requiredAccess: { action: 'write', scope: 'site-config' } },
       { name: '功能开关', href: '/admin/feature-flags', icon: Shield, requiredAccess: { action: 'read', scope: 'feature-flags' } },
       { name: 'AI 设置', href: '/admin/ai-settings', icon: Sparkles, requiredAccess: { action: 'read', scope: 'ai.settings' } },
+      { name: '数据管理', href: '/admin/data-management', icon: Database, description: '数据库备份与恢复' },
       { name: '插件管理', href: '/admin/plugins', icon: Shield, requiredAccess: { action: 'read', scope: 'feature-flags' } },
       { name: '日志管理', href: '/admin/logs', icon: ScrollText, requiredAccess: { action: 'read', scope: 'logs' } },
     ],
