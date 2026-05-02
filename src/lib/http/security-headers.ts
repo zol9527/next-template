@@ -156,9 +156,16 @@ function buildCspConnectSrc(): string {
  *   csp(string): CSP 策略字符串
  */
 export function buildContentSecurityPolicy(): string {
+  // 开发模式下 React 需要 eval() 来重建调用栈等调试功能
+  // 生产模式永远不会使用 eval()
+  const isDev = process.env.NODE_ENV === 'development'
+  const scriptSrc = isDev
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval'`
+    : `script-src 'self' 'unsafe-inline'`
+
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline'`,
+    scriptSrc,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https: blob:`,
     `font-src 'self' data:`,
