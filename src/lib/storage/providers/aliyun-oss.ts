@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { Readable } from 'node:stream'
 import OSS from 'ali-oss'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { AliyunOssConfig } from '@/lib/storage/types/config'
@@ -154,6 +155,18 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     async deleteFile(key: string): Promise<void> {
       const client = getClient()
       await client.delete(key)
+    },
+
+    async downloadFile(key: string): Promise<Buffer> {
+      const client = getClient()
+      const result = await client.get(key)
+      return result.content as Buffer
+    },
+
+    async downloadFileStream(key: string): Promise<Readable> {
+      const client = getClient()
+      const result = await client.getStream(key)
+      return result.stream as Readable
     },
 
     async getFileUrl(key: string): Promise<string> {
