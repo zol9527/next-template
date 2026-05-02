@@ -5,14 +5,59 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
-import { POST } from '@/app/api/v1/auth/mfa/verify/route'
 import * as MfaFactory from '@/repositories/factory'
 import * as AuthDeps from '@/app/api/v1/auth/auth-deps'
 import { TokenManager } from '@/lib/security/token-manager'
-import { MfaService } from '@/services/mfa.service'
+import { MfaService } from '@/services/core/mfa.service'
 import { MFA_PENDING_TOKEN_COOKIE } from '@/lib/constants/token'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
-import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
+import type { MfaRepository } from '@/repositories/interfaces/core/mfa.interface'
+
+// ==================== Mocks ====================
+
+// Mock logger 避免文件系统写入
+vi.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createRequestLogger: vi.fn(() => mockLogger),
+    logger: mockLogger,
+  }
+})
+
+// Mock createServiceContext 提供有效的上下文
+vi.mock('@/types/service/service-context', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createServiceContext: vi.fn(() => ({
+      traceId: 'test-trace-id',
+      logger: mockLogger,
+      userAgent: null,
+      clientIp: null,
+    })),
+  }
+})
+
+// Mock 插件注册表
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
 
 vi.mock('@/repositories/factory', () => ({
   createMfaRepository: vi.fn(),
@@ -36,7 +81,7 @@ vi.mock('@/lib/security/token-manager', () => ({
   }
 }))
 
-vi.mock('@/services/mfa.service', () => ({
+vi.mock('@/services/core/mfa.service', () => ({
   MfaService: {
     verifyMFA: vi.fn(),
   }
@@ -45,6 +90,11 @@ vi.mock('@/services/mfa.service', () => ({
 vi.mock('@/lib/http/ip-extractor', () => ({
   extractClientIpSafe: vi.fn(),
 }))
+
+// 动态导入路由
+const { POST } = await import('@/app/api/v1/auth/mfa/verify/route')
+
+// ==================== 测试套件 ====================
 
 describe('API: POST /api/v1/auth/mfa/verify', () => {
   const mockMfaRepository = {

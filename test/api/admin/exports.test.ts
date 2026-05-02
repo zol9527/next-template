@@ -8,11 +8,54 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST, GET } from '@/app/api/v1/admin/exports/route'
 import * as RepoFactory from '@/repositories/factory'
-import * as DataExportServiceModule from '@/services/data-export.service'
+import * as DataExportServiceModule from '@/services/core/data-export.service'
 import type { ExportJobRepository } from '@/repositories/interfaces/export-job.interface'
-import type { DataExportService } from '@/services/data-export.service'
+import type { DataExportService } from '@/services/core/data-export.service'
 import type { ExportJobResponse } from '@/contracts/dtos/export.dto'
-import { useApiAuth } from '@/app/api/v1/_shared/use-api-auth'
+
+// Mock logger 避免文件系统写入
+vi.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createRequestLogger: vi.fn(() => mockLogger),
+    logger: mockLogger,
+  }
+})
+
+// Mock createServiceContext 提供有效的上下文
+vi.mock('@/types/service/service-context', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createServiceContext: vi.fn(() => ({
+      traceId: 'test-trace-id',
+      logger: mockLogger,
+      userAgent: null,
+      clientIp: null,
+    })),
+  }
+})
+
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
 
 // Mock 依赖
 vi.mock('@/repositories/factory', () => ({
@@ -26,7 +69,7 @@ vi.mock('@/repositories/factory', () => ({
   }),
 }))
 
-vi.mock('@/services/data-export.service', () => ({
+vi.mock('@/services/core/data-export.service', () => ({
   createDataExportService: vi.fn().mockReturnValue({
     createExportJob: vi.fn(),
     getExportJob: vi.fn(),
@@ -35,8 +78,10 @@ vi.mock('@/services/data-export.service', () => ({
   }),
 }))
 
+// Mock 认证模块 - 使用 hoisted 确保在 vi.mock 中可用
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+  useApiAuth: mockUseApiAuth,
 }))
 
 // 固定测试时间
@@ -58,6 +103,41 @@ function buildTestExportJobResponse(overrides?: Partial<ExportJobResponse>): Exp
     completedAt: null,
     createdAt: TEST_NOW.toISOString(),
     updatedAt: TEST_NOW.toISOString(),
+    ...overrides,
+  }
+}
+
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文（拥有所有权限）
+ *
+ * Parameters:
+ *     overrides(object): 可选的覆盖属性
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: 'admin-id',
+    sessionId: 'session-id',
+    roles: ['admin'],
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
     ...overrides,
   }
 }
@@ -84,41 +164,11 @@ describe('API: /api/v1/admin/exports', () => {
     processExportJob: ReturnType<typeof vi.fn>
   }
 
-  // Mock 认证上下文
-  const mockAuthContext = {
-    userId: 'admin-id',
-    sessionId: 'session-id',
-    roles: ['admin'],
-    hasRole: vi.fn().mockReturnValue(true),
-    assertPermission: vi.fn().mockResolvedValue(undefined),
-    assertRole: vi.fn().mockReturnValue(undefined),
-    access: {
-      has: vi.fn().mockReturnValue(true),
-      assert: vi.fn(),
-      canRead: vi.fn().mockReturnValue(true),
-      canWrite: vi.fn().mockReturnValue(true),
-      canExecute: vi.fn().mockReturnValue(true),
-      grants: [],
-      scopesFor: vi.fn().mockReturnValue([]),
-      hasAny: vi.fn().mockReturnValue(true),
-      hasAll: vi.fn().mockReturnValue(true),
-    },
-    getMe: vi.fn().mockResolvedValue({
-      id: 'admin-id',
-      nickname: 'Admin',
-      roles: ['admin'],
-      permissions: ['export.create', 'export.read'],
-    }),
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(RepoFactory.getExportJobRepository).mockResolvedValue(mockExportJobRepo)
     vi.mocked(DataExportServiceModule.createDataExportService).mockReturnValue(mockDataExportService)
-    vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
-    vi.mocked(mockAuthContext.hasRole).mockReturnValue(true)
-    vi.mocked(useApiAuth).mockResolvedValue(mockAuthContext as any)
-// TODO: 适配 grant-based 权限系统     vi.mocked(useApiAdminAuth).mockResolvedValue(mockAuthContext as any)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   // ============================================================
@@ -138,7 +188,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -167,7 +216,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -183,7 +231,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(400)
@@ -198,7 +245,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(400)
@@ -217,7 +263,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(500)
@@ -238,7 +283,6 @@ describe('API: /api/v1/admin/exports', () => {
         body: JSON.stringify(body),
       })
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -266,7 +310,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -294,7 +337,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports?jobType=buyers_payment')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -314,7 +356,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports?status=completed')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -334,7 +375,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports?limit=50')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -354,7 +394,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports?cursor=abc123')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -374,7 +413,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
@@ -389,7 +427,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(500)
@@ -408,7 +445,6 @@ describe('API: /api/v1/admin/exports', () => {
 
       const req = new NextRequest('http://localhost/api/v1/admin/exports?limit=200')
 
-      vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
       const response = await GET(req, { params: Promise.resolve({}) })
 
       // Zod 验证会拒绝超出 max(100) 的值

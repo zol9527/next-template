@@ -119,11 +119,12 @@ describe('AdminBlogCategoryService', () => {
       const parent4 = mockCategory({ id: 'p-4', parentId: 'p-3' })
 
       ;(repo.findById as MockFn)
-        .mockResolvedValueOnce(parent4)
-        .mockResolvedValueOnce(parent3)
-        .mockResolvedValueOnce(parent2)
-        .mockResolvedValueOnce(parent1)
-        .mockResolvedValueOnce(grandparent)
+        .mockResolvedValueOnce(parent4)  // createCategory: parent 检查
+        .mockResolvedValueOnce(parent4)  // calculateBlogCategoryDepth: p-4
+        .mockResolvedValueOnce(parent3)  // calculateBlogCategoryDepth: p-3
+        .mockResolvedValueOnce(parent2)  // calculateBlogCategoryDepth: p-2
+        .mockResolvedValueOnce(parent1)  // calculateBlogCategoryDepth: p-1
+        .mockResolvedValueOnce(grandparent) // calculateBlogCategoryDepth: gp-1
 
       const service = createAdminBlogCategoryService({ categories: repo as unknown as BlogCategoryRepository }, ctx)
 

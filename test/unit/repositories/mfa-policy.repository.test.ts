@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { PrismaMfaPolicyRepository } from '@/repositories/prisma/mfa-policy.repository'
+import { PrismaMfaPolicyRepository } from '@/repositories/prisma/core/mfa-policy.repository'
 import type { MfaPolicyRepository } from '@/repositories/interfaces/mfa-policy.interface'
 import type { RepoContext } from '@/types/repo/repo-context'
 

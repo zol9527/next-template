@@ -5,11 +5,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { UnauthorizedError } from '@/lib/errors/app-error'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors/app-error'
 
-// TODO: 适配 grant-based 权限系统 const useApiAdminAuthMock = vi.hoisted(() => vi.fn())
 const createLogViewerServiceMock = vi.hoisted(() => vi.fn())
 const mockSetLogLevel = vi.hoisted(() => vi.fn())
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 
 // ==================== Mocks ====================
 
@@ -51,14 +51,37 @@ vi.mock('@/types/service/service-context', () => {
   }
 })
 
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
+// Mock 环境变量 - 启用 trustProxy 以支持 x-forwarded-for 头
+vi.mock('@/config', () => ({
+  env: {
+    RATE_LIMIT_TRUST_PROXY: true,
+    RATE_LIMIT_ALLOW_PRIVATE_IP: true,
+    RATE_LIMIT_REQUIRE_IP: true,
+  },
+}))
+
+// Mock 限流器 - 避免测试中触发速率限制
+vi.mock('@/lib/utils/rate-limit', () => ({
+  enforceRateLimit: vi.fn().mockResolvedValue({ allowed: true, retryAfterSeconds: 0 }),
+  resolveRouteRateLimitWhitelist: vi.fn(() => false),
+  resolveRouteRateLimitRule: vi.fn(() => 'test-rule'),
+  normalizeRateLimitPolicy: vi.fn(),
+}))
+
 // Mock 服务
-vi.mock('@/services/log-viewer.service', () => ({
+vi.mock('@/services/core/log-viewer.service', () => ({
   createLogViewerService: createLogViewerServiceMock,
 }))
 
 // Mock 认证
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+  useApiAuth: mockUseApiAuth,
 }))
 
 // 动态导入路由
@@ -66,25 +89,35 @@ const { PATCH } = await import('@/app/api/v1/admin/logs/level/route')
 
 // ==================== Test Data ====================
 
-const mockAdminAuth = {
-  userId: 'admin-id',
-  sessionId: 'session-id',
-  roles: ['admin'],
-  hasRole: vi.fn().mockReturnValue(true),
-  assertPermission: vi.fn().mockResolvedValue(undefined),
-  assertRole: vi.fn().mockReturnValue(undefined),
-  getMe: vi.fn().mockResolvedValue({
-    id: 'admin-id',
-    nickname: 'Super Admin',
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth() {
+  return {
+    userId: 'admin-id',
+    sessionId: 'session-id',
     roles: ['admin'],
-    permissions: ['logs.read'],
-  }),
-}
-
-const mockNonAdminAuth = {
-  ...mockAdminAuth,
-  roles: ['user'],
-  hasRole: vi.fn().mockReturnValue(false),
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+  }
 }
 
 const mockService = {
@@ -103,12 +136,12 @@ describe('API: /api/v1/admin/logs/level', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createLogViewerServiceMock.mockReturnValue(mockService as unknown)
-// TODO: 适配 grant-based 权限系统     useApiAdminAuthMock.mockResolvedValue(mockAdminAuth as unknown)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   describe('PATCH', () => {
     it('LVL-001: 未认证用户应该返回 401', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const body = { level: 'debug' }
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
@@ -122,7 +155,7 @@ describe('API: /api/v1/admin/logs/level', () => {
     })
 
     it('LVL-002: 非 admin 角色应该返回 403', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockResolvedValue(mockNonAdminAuth as unknown)
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const body = { level: 'debug' }
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
@@ -146,7 +179,10 @@ describe('API: /api/v1/admin/logs/level', () => {
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
         method: 'PATCH',
         body: JSON.stringify(body),
-        headers: { 'content-length': JSON.stringify(body).length.toString() },
+        headers: {
+          'content-length': JSON.stringify(body).length.toString(),
+          'x-forwarded-for': '127.0.0.1',
+        },
       })
       const res = await PATCH(req, { params: Promise.resolve({}) })
 
@@ -169,7 +205,10 @@ describe('API: /api/v1/admin/logs/level', () => {
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
         method: 'PATCH',
         body: JSON.stringify(body),
-        headers: { 'content-length': JSON.stringify(body).length.toString() },
+        headers: {
+          'content-length': JSON.stringify(body).length.toString(),
+          'x-forwarded-for': '127.0.0.1',
+        },
       })
       const res = await PATCH(req, { params: Promise.resolve({}) })
 
@@ -225,12 +264,15 @@ describe('API: /api/v1/admin/logs/level', () => {
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
         method: 'PATCH',
         body: JSON.stringify(body),
-        headers: { 'content-length': JSON.stringify(body).length.toString() },
+        headers: {
+          'content-length': JSON.stringify(body).length.toString(),
+          'x-forwarded-for': '127.0.0.1',
+        },
       })
       const res = await PATCH(req, { params: Promise.resolve({}) })
 
       expect(res.status).toBe(200)
-      expect(mockSetLogLevel).toHaveBeenCalledWith('debug')
+      expect(mockSetLogLevel).toHaveBeenCalledWith('debug', expect.objectContaining({ actorId: 'admin-id' }))
     })
 
     it('应该支持设置所有有效级别', async () => {
@@ -239,7 +281,10 @@ describe('API: /api/v1/admin/logs/level', () => {
       for (const level of levels) {
         vi.clearAllMocks()
         createLogViewerServiceMock.mockReturnValue(mockService as unknown)
-// TODO: 适配 grant-based 权限系统         useApiAdminAuthMock.mockResolvedValue(mockAdminAuth as unknown)
+        mockUseApiAuth.mockResolvedValue(createAdminAuth())
+        // 重新设置限流器 mock（clearAllMocks 会清除 mockResolvedValue）
+        const { enforceRateLimit } = await import('@/lib/utils/rate-limit')
+        vi.mocked(enforceRateLimit).mockResolvedValue({ allowed: true, retryAfterSeconds: 0 })
         mockSetLogLevel.mockReturnValue({
           previousLevel: 'info',
           currentLevel: level,
@@ -250,7 +295,10 @@ describe('API: /api/v1/admin/logs/level', () => {
         const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
           method: 'PATCH',
           body: JSON.stringify(body),
-          headers: { 'content-length': JSON.stringify(body).length.toString() },
+          headers: {
+            'content-length': JSON.stringify(body).length.toString(),
+            'x-forwarded-for': '127.0.0.1',
+          },
         })
         const res = await PATCH(req, { params: Promise.resolve({}) })
 
@@ -271,7 +319,10 @@ describe('API: /api/v1/admin/logs/level', () => {
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
         method: 'PATCH',
         body: JSON.stringify(body),
-        headers: { 'content-length': JSON.stringify(body).length.toString() },
+        headers: {
+          'content-length': JSON.stringify(body).length.toString(),
+          'x-forwarded-for': '127.0.0.1',
+        },
       })
       const res = await PATCH(req, { params: Promise.resolve({}) })
 
@@ -290,12 +341,15 @@ describe('API: /api/v1/admin/logs/level', () => {
       const req = new NextRequest('http://localhost/api/v1/admin/logs/level', {
         method: 'PATCH',
         body: JSON.stringify(body),
-        headers: { 'content-length': JSON.stringify(body).length.toString() },
+        headers: {
+          'content-length': JSON.stringify(body).length.toString(),
+          'x-forwarded-for': '127.0.0.1',
+        },
       })
       await PATCH(req, { params: Promise.resolve({}) })
 
       expect(createLogViewerServiceMock).toHaveBeenCalled()
-      expect(mockSetLogLevel).toHaveBeenCalledWith('warn')
+      expect(mockSetLogLevel).toHaveBeenCalledWith('warn', expect.objectContaining({ actorId: 'admin-id' }))
     })
   })
 })

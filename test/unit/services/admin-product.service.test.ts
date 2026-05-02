@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createAdminProductService } from '@/services/admin-product.service'
+import { createAdminProductService } from '@/plugins/ecommerce/services/admin-product.service'
 import type { ProductRepository } from '@/repositories/interfaces/product.interface'
 import type { MediaAssetRepository } from '@/repositories/interfaces/media-asset.interface'
 import type { ObjectStorageProvider } from '@/lib/storage/types'

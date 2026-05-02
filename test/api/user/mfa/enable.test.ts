@@ -5,29 +5,73 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
-import { POST } from '@/app/api/v1/user/mfa/enable/route'
 import * as MfaFactory from '@/repositories/factory'
-import * as AuthDeps from '@/app/api/v1/_shared/use-api-auth'
-import { MfaService } from '@/services/mfa.service'
+import { MfaService } from '@/services/core/mfa.service'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
-import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
-import type { ApiAuthContext } from '@/app/api/v1/_shared/use-api-auth'
+import type { MfaRepository } from '@/repositories/interfaces/core/mfa.interface'
 import { UnauthorizedError } from '@/lib/errors/app-error'
 
-// Mock dependencies
-vi.mock('@/repositories/factory', () => ({
-  createMfaRepository: vi.fn(),
+// ==================== Mocks ====================
+
+// Mock logger 避免文件系统写入
+vi.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createRequestLogger: vi.fn(() => mockLogger),
+    logger: mockLogger,
+  }
+})
+
+// Mock createServiceContext 提供有效的上下文
+vi.mock('@/types/service/service-context', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createServiceContext: vi.fn(() => ({
+      traceId: 'test-trace-id',
+      logger: mockLogger,
+      userAgent: null,
+      clientIp: null,
+    })),
+  }
+})
+
+// Mock 认证模块（使用 vi.hoisted 配合 withV1Route 的动态 import）
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
+vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
+  useApiAuth: mockUseApiAuth,
 }))
 
-vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+// Mock 插件注册表
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
+vi.mock('@/repositories/factory', () => ({
+  createMfaRepository: vi.fn(),
 }))
 
 vi.mock('@/lib/http/ip-extractor', () => ({
   extractClientIpSafe: vi.fn(),
 }))
 
-vi.mock('@/services/mfa.service', () => ({
+vi.mock('@/services/core/mfa.service', () => ({
   MfaService: {
     disableMFA: vi.fn(),
     enableMFA: vi.fn(),
@@ -36,12 +80,43 @@ vi.mock('@/services/mfa.service', () => ({
   },
 }))
 
-describe('API: POST /api/v1/user/mfa/enable', () => {
-  function createValidBackupCodes(): string[] {
-    return Array.from({ length: 10 }, (_, i) => `ABCD-EFGH-${String(i).padStart(2, '0')}`)
+// 动态导入路由
+const { POST } = await import('@/app/api/v1/user/mfa/enable/route')
+
+// ==================== 测试辅助 ====================
+
+function createMockAuth(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+    roles: ['user'],
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+    ...overrides,
   }
-  let mockUpdateUserMfa: any
-  let mockCreateAuditLog: any
+}
+
+function createValidBackupCodes(): string[] {
+  return Array.from({ length: 10 }, (_, i) => `ABCD-EFGH-${String(i).padStart(2, '0')}`)
+}
+
+// ==================== 测试套件 ====================
+
+describe('API: POST /api/v1/user/mfa/enable', () => {
+  let mockUpdateUserMfa: ReturnType<typeof vi.fn>
+  let mockCreateAuditLog: ReturnType<typeof vi.fn>
 
   const mockMfaRepository: MfaRepository = {
     getUserMfaData: vi.fn(),
@@ -58,31 +133,9 @@ describe('API: POST /api/v1/user/mfa/enable', () => {
     getUserAuditLogs: vi.fn(),
   }
 
-  const mockAuthContext: ApiAuthContext = {
-    userId: 'test-user-id',
-    sessionId: 'test-session-id',
-    roles: ['user'],
-    hasRole: vi.fn(),
-    assertPermission: vi.fn(),
-    assertRole: vi.fn(),
-    access: {
-      has: vi.fn().mockReturnValue(true),
-      assert: vi.fn(),
-      canRead: vi.fn().mockReturnValue(true),
-      canWrite: vi.fn().mockReturnValue(true),
-      canExecute: vi.fn().mockReturnValue(true),
-      grants: [],
-      scopesFor: vi.fn().mockReturnValue([]),
-      hasAny: vi.fn().mockReturnValue(true),
-      hasAll: vi.fn().mockReturnValue(true),
-    },
-    getMe: vi.fn(),
-  }
-
   beforeEach(() => {
     vi.resetAllMocks()
 
-    // Setup mock repository
     mockUpdateUserMfa = vi.fn()
     mockCreateAuditLog = vi.fn()
 
@@ -90,10 +143,10 @@ describe('API: POST /api/v1/user/mfa/enable', () => {
     mockMfaRepository.createAuditLog = mockCreateAuditLog
 
     vi.mocked(MfaFactory.createMfaRepository).mockResolvedValue(mockMfaRepository)
-    vi.mocked(AuthDeps.useApiAuth).mockResolvedValue(mockAuthContext)
     vi.mocked(extractClientIpSafe).mockReturnValue({ ip: '127.0.0.1' })
 
-    // Mock MfaService.enableMFA to return success
+    mockUseApiAuth.mockResolvedValue(createMockAuth())
+
     vi.mocked(MfaService.enableMFA).mockResolvedValue(true)
   })
 
@@ -119,8 +172,7 @@ describe('API: POST /api/v1/user/mfa/enable', () => {
   })
 
   it('should return 401 for unauthenticated user', async () => {
-    // Mock auth to fail
-    vi.mocked(AuthDeps.useApiAuth).mockRejectedValue(new UnauthorizedError())
+    mockUseApiAuth.mockRejectedValue(new UnauthorizedError())
 
     const body = { secret: 'test-secret-must-be-at-least-32-chars-long', token: '123456', backupCodes: createValidBackupCodes() }
     const req = new NextRequest('http://localhost/api/v1/user/mfa/enable', {
@@ -198,7 +250,6 @@ describe('API: POST /api/v1/user/mfa/enable', () => {
   })
 
   it('should return 500 when MfaService throws error', async () => {
-    // Mock MfaService.enableMFA to throw error
     vi.mocked(MfaService.enableMFA).mockRejectedValue(new Error('Invalid TOTP token'))
 
     const body = { secret: 'test-secret-must-be-at-least-32-chars-long', token: '123456', backupCodes: createValidBackupCodes() }

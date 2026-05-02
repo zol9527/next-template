@@ -21,7 +21,7 @@ vi.mock('node:crypto', async (importOriginal) => {
   }
 })
 
-import { MfaActionTokenService } from '@/services/mfa-action-token.service'
+import { MfaActionTokenService } from '@/services/core/mfa-action-token.service'
 
 describe('Unit: MfaActionTokenService', () => {
   describe('generateToken', () => {

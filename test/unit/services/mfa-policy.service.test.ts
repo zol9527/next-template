@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMfaPolicyService } from '@/services/mfa-policy.service'
+import { createMfaPolicyService } from '@/services/core/mfa-policy.service'
 import type { MfaPolicyRepository } from '@/repositories/interfaces/mfa-policy.interface'
-import type { MfaAuditAction } from '@/services/mfa-audit-log.service'
+import type { MfaAuditAction } from '@/services/core/mfa-audit-log.service'
 import type {
   MfaGlobalSettingsDto,
   MfaRolePolicyDto,
@@ -17,7 +17,7 @@ import type {
 // ==================== Mocks ====================
 
 // Mock MfaAuditLogService
-vi.mock('@/services/mfa-audit-log.service', () => ({
+vi.mock('@/services/core/mfa-audit-log.service', () => ({
   MfaAuditLogService: {
     logAction: vi.fn(() => ({
       id: 'log-123',

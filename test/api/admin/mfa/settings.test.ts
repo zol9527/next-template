@@ -10,9 +10,10 @@ import type { RbacRepository } from '@/repositories/interfaces/rbac.interface'
 import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors/app-error'
 
-// TODO: 适配 grant-based 权限系统 const useApiAdminAuthMock = vi.hoisted(() => vi.fn())
 const createMfaPolicyRepositoryMock = vi.hoisted(() => vi.fn())
 const createRbacRepositoryMock = vi.hoisted(() => vi.fn())
+const createMfaPolicyServiceMock = vi.hoisted(() => vi.fn())
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 
 // ==================== Mocks ====================
 
@@ -32,7 +33,7 @@ vi.mock('@/lib/logger', () => {
 })
 
 // Mock createServiceContext to provide a valid context
-vi.mock('@/types/service-context', () => {
+vi.mock('@/types/service/service-context', () => {
   const mockLogger = {
     info: vi.fn(),
     error: vi.fn(),
@@ -50,6 +51,12 @@ vi.mock('@/types/service-context', () => {
   }
 })
 
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
 // Mock 仓储工厂
 vi.mock('@/repositories/factory/mfa-policy.factory', () => ({
   createMfaPolicyRepository: createMfaPolicyRepositoryMock,
@@ -62,9 +69,14 @@ vi.mock('@/repositories/factory', async () => {
   }
 })
 
+// Mock MFA 策略服务
+vi.mock('@/services/core/mfa-policy.service', () => ({
+  createMfaPolicyService: createMfaPolicyServiceMock,
+}))
+
 // Mock 认证
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+  useApiAuth: mockUseApiAuth,
 }))
 
 const { GET: GET_SETTINGS } = await import('@/app/api/v1/admin/mfa/settings/route')
@@ -78,30 +90,39 @@ const { DELETE: DELETE_EXEMPTION } = await import('@/app/api/v1/admin/mfa/exempt
 const MOCK_ADMIN_ID = '550e8400-e29b-41d4-a716-446655440000'
 const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000'
 
-const mockAuthContext = {
-  userId: MOCK_ADMIN_ID,
-  sessionId: 'test-session-id',
-  roles: ['admin'],
-  hasRole: vi.fn().mockReturnValue(true),
-  assertPermission: vi.fn().mockResolvedValue(undefined),
-  assertRole: vi.fn().mockReturnValue(undefined),
-    access: {
-      has: vi.fn().mockReturnValue(true),
-      assert: vi.fn(),
-      canRead: vi.fn().mockReturnValue(true),
-      canWrite: vi.fn().mockReturnValue(true),
-      canExecute: vi.fn().mockReturnValue(true),
-      grants: [],
-      scopesFor: vi.fn().mockReturnValue([]),
-      hasAny: vi.fn().mockReturnValue(true),
-      hasAll: vi.fn().mockReturnValue(true),
-    },
-  getMe: vi.fn().mockResolvedValue({
-    id: MOCK_ADMIN_ID,
-    nickname: 'Admin',
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文
+ *
+ * Parameters:
+ *     overrides(object): 可选的覆盖属性
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: MOCK_ADMIN_ID,
+    sessionId: 'test-session-id',
     roles: ['admin'],
-    permissions: ['mfa.read', 'mfa.write'],
-  }),
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+    ...overrides,
+  }
 }
 
 const mockRoles: RoleDto[] = [
@@ -115,6 +136,7 @@ const mockRoles: RoleDto[] = [
 describe('API: MFA Admin Settings', () => {
   let mfaRepo: Partial<MfaPolicyRepository>
   let rbacRepo: Partial<RbacRepository>
+  let mfaService: Record<string, ReturnType<typeof vi.fn>>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -143,26 +165,27 @@ describe('API: MFA Admin Settings', () => {
       listRoles: vi.fn(),
     }
 
+    // 创建 MFA Policy Service Mock
+    mfaService = {
+      getSettings: vi.fn(),
+      updateGlobalSettings: vi.fn(),
+      updateRolePolicies: vi.fn(),
+      addExemption: vi.fn(),
+      removeExemption: vi.fn(),
+    }
+
     // 设置默认返回值
     createMfaPolicyRepositoryMock.mockReturnValue(mfaRepo as MfaPolicyRepository)
     createRbacRepositoryMock.mockResolvedValue(rbacRepo as RbacRepository)
-// TODO: 适配 grant-based 权限系统     useApiAdminAuthMock.mockResolvedValue(mockAuthContext as any)
-    vi.mocked(mockAuthContext.hasPermission).mockResolvedValue(true)
+    createMfaPolicyServiceMock.mockReturnValue(mfaService)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   // ==================== GET /api/v1/admin/mfa/settings ====================
 
   describe('GET /api/v1/admin/mfa/settings', () => {
-    /**
-     * API Route: GET
-     *
-     * Description: 测试未认证用户访问 MFA 设置
-     *
-     * Returns:
-     *   response(object): 401 Unauthorized
-     */
     it('应该返回 401 当用户未认证', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/settings', {
         method: 'GET',
@@ -173,16 +196,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(401)
     })
 
-    /**
-     * API Route: GET
-     *
-     * Description: 测试没有 mfa.read 权限的用户访问
-     *
-     * Returns:
-     *   response(object): 403 Forbidden
-     */
     it('应该返回 403 当用户没有 mfa.read 权限', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new ForbiddenError('Forbidden'))
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/settings', {
         method: 'GET',
@@ -196,36 +211,20 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(403)
     })
 
-    /**
-     * API Route: GET
-     *
-     * Description: 测试有权限的用户获取 MFA 设置
-     *
-     * Returns:
-     *   response(object): 200 OK 和完整的 MFA 设置
-     */
     it('应该返回 MFA 设置 当用户有 mfa.read 权限', async () => {
-      // Mock 数据
-      mfaRepo.getGlobalSettings = vi.fn().mockResolvedValue({
-        mode: 'optional',
-        allowExemptions: true,
-        updatedAt: '2026-02-01T00:00:00.000Z',
-      })
-
-      mfaRepo.getRolePolicies = vi.fn().mockResolvedValue([
-        {
-          roleName: 'admin',
-          policy: 'force',
-          allowExemptions: false,
+      mfaService.getSettings.mockResolvedValue({
+        global: {
+          mode: 'optional',
+          allowExemptions: true,
           updatedAt: '2026-02-01T00:00:00.000Z',
         },
-      ])
-
-      mfaRepo.getExemptions = vi.fn().mockResolvedValue({
-        exemptions: [],
-        total: 0,
-        page: 1,
-        limit: 10,
+        roles: [
+          { roleName: 'admin', policy: 'force', allowExemptions: false, updatedAt: '2026-02-01T00:00:00.000Z' },
+          { roleName: 'user', policy: 'inherit', allowExemptions: true, updatedAt: null },
+          { roleName: 'promoter', policy: 'inherit', allowExemptions: true, updatedAt: null },
+        ],
+        exemptions: { exemptions: [], total: 0, page: 1, limit: 10 },
+        availableRoles: mockRoles.map((r) => ({ name: r.name, description: r.description })),
       })
 
       rbacRepo.listRoles = vi.fn().mockResolvedValue(mockRoles)
@@ -247,28 +246,22 @@ describe('API: MFA Admin Settings', () => {
       expect(json.data).toHaveProperty('exemptions')
       expect(json.data).toHaveProperty('availableRoles')
       expect(json.data.global.mode).toBe('optional')
-      // getSettings 会把未配置的角色策略用默认值补齐
       expect(json.data.roles).toHaveLength(3)
       expect(json.data.availableRoles).toHaveLength(3)
     })
 
-    /**
-     * API Route: GET
-     *
-     * Description: 测试返回默认设置当数据库中没有配置
-     *
-     * Returns:
-     *   response(object): 200 OK 和默认的 MFA 设置
-     */
     it('应该返回默认设置 当数据库中没有配置', async () => {
-      mfaRepo.getGlobalSettings = vi.fn().mockResolvedValue(null)
-      mfaRepo.getRolePolicies = vi.fn().mockResolvedValue([])
-      mfaRepo.getExemptions = vi.fn().mockResolvedValue({
-        exemptions: [],
-        total: 0,
-        page: 1,
-        limit: 10,
+      mfaService.getSettings.mockResolvedValue({
+        global: {
+          mode: 'optional',
+          allowExemptions: true,
+          updatedAt: null,
+        },
+        roles: mockRoles.map((r) => ({ roleName: r.name, policy: 'inherit', allowExemptions: true, updatedAt: null })),
+        exemptions: { exemptions: [], total: 0, page: 1, limit: 10 },
+        availableRoles: mockRoles.map((r) => ({ name: r.name, description: r.description })),
       })
+
       rbacRepo.listRoles = vi.fn().mockResolvedValue(mockRoles)
 
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/settings', {
@@ -292,16 +285,8 @@ describe('API: MFA Admin Settings', () => {
   // ==================== PUT /api/v1/admin/mfa/global ====================
 
   describe('PUT /api/v1/admin/mfa/global', () => {
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试未认证用户更新全局设置
-     *
-     * Returns:
-     *   response(object): 401 Unauthorized
-     */
     it('应该返回 401 当用户未认证', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const body = { mode: 'required', allowExemptions: true }
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/global', {
@@ -314,16 +299,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(401)
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试没有 admin:mfa:manage 权限的用户更新
-     *
-     * Returns:
-     *   response(object): 403 Forbidden
-     */
     it('应该返回 403 当用户没有 admin:mfa:manage 权限', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new ForbiddenError('Forbidden'))
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const body = { mode: 'required', allowExemptions: true }
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/global', {
@@ -339,14 +316,6 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(403)
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试有权限的用户更新全局模式为 required
-     *
-     * Returns:
-     *   response(object): 200 OK 和更新后的全局设置
-     */
     it('应该更新全局模式为 required', async () => {
       const updatedSettings = {
         mode: 'required' as const,
@@ -354,7 +323,7 @@ describe('API: MFA Admin Settings', () => {
         updatedAt: '2026-02-03T00:00:00.000Z',
       }
 
-      mfaRepo.upsertGlobalSettings = vi.fn().mockResolvedValue(updatedSettings)
+      mfaService.updateGlobalSettings.mockResolvedValue(updatedSettings)
 
       const body = { mode: 'required', allowExemptions: true }
       const bodyText = JSON.stringify(body)
@@ -375,17 +344,9 @@ describe('API: MFA Admin Settings', () => {
       expect(json.success).toBe(true)
       expect(json.data.mode).toBe('required')
       expect(json.data.allowExemptions).toBe(true)
-      expect(mfaRepo.upsertGlobalSettings).toHaveBeenCalled()
+      expect(mfaService.updateGlobalSettings).toHaveBeenCalled()
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试更新 allowExemptions 标志
-     *
-     * Returns:
-     *   response(object): 200 OK 和更新后的设置
-     */
     it('应该更新 allowExemptions 标志', async () => {
       const updatedSettings = {
         mode: 'optional' as const,
@@ -393,7 +354,7 @@ describe('API: MFA Admin Settings', () => {
         updatedAt: '2026-02-03T00:00:00.000Z',
       }
 
-      mfaRepo.upsertGlobalSettings = vi.fn().mockResolvedValue(updatedSettings)
+      mfaService.updateGlobalSettings.mockResolvedValue(updatedSettings)
 
       const body = { mode: 'optional', allowExemptions: false }
       const bodyText = JSON.stringify(body)
@@ -415,14 +376,6 @@ describe('API: MFA Admin Settings', () => {
       expect(json.data.allowExemptions).toBe(false)
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试无效的 mode 值
-     *
-     * Returns:
-     *   response(object): 400 Bad Request
-     */
     it('应该返回 400 对于无效的 mode 值', async () => {
       const body = { mode: 'invalid_mode', allowExemptions: true }
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/global', {
@@ -444,16 +397,8 @@ describe('API: MFA Admin Settings', () => {
   // ==================== PUT /api/v1/admin/mfa/roles ====================
 
   describe('PUT /api/v1/admin/mfa/roles', () => {
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试未认证用户更新角色策略
-     *
-     * Returns:
-     *   response(object): 401 Unauthorized
-     */
     it('应该返回 401 当用户未认证', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const body = { policies: [] }
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/roles', {
@@ -466,16 +411,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(401)
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试没有 admin:mfa:manage 权限的用户更新
-     *
-     * Returns:
-     *   response(object): 403 Forbidden
-     */
     it('应该返回 403 当用户没有 admin:mfa:manage 权限', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new ForbiddenError('Forbidden'))
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const body = { policies: [] }
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/roles', {
@@ -491,14 +428,6 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(403)
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试更新多个角色策略
-     *
-     * Returns:
-     *   response(object): 200 OK 和更新后的策略列表
-     */
     it('应该更新多个角色策略', async () => {
       const updatedPolicies = [
         {
@@ -515,7 +444,7 @@ describe('API: MFA Admin Settings', () => {
         },
       ]
 
-      mfaRepo.batchUpsertRolePolicies = vi.fn().mockResolvedValue(updatedPolicies)
+      mfaService.updateRolePolicies.mockResolvedValue(updatedPolicies)
 
       const body = {
         policies: [
@@ -542,19 +471,11 @@ describe('API: MFA Admin Settings', () => {
       expect(json.data).toHaveLength(2)
       expect(json.data[0].roleName).toBe('admin')
       expect(json.data[0].policy).toBe('force')
-      expect(mfaRepo.batchUpsertRolePolicies).toHaveBeenCalled()
+      expect(mfaService.updateRolePolicies).toHaveBeenCalled()
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试处理空的策略数组
-     *
-     * Returns:
-     *   response(object): 200 OK 和空数组
-     */
     it('应该处理空的策略数组', async () => {
-      mfaRepo.batchUpsertRolePolicies = vi.fn().mockResolvedValue([])
+      mfaService.updateRolePolicies.mockResolvedValue([])
 
       const body = { policies: [] }
       const bodyText = JSON.stringify(body)
@@ -576,14 +497,6 @@ describe('API: MFA Admin Settings', () => {
       expect(json.data).toEqual([])
     })
 
-    /**
-     * API Route: PUT
-     *
-     * Description: 测试无效的策略值
-     *
-     * Returns:
-     *   response(object): 400 Bad Request
-     */
     it('应该返回 400 对于无效的策略值', async () => {
       const body = {
         policies: [
@@ -609,16 +522,8 @@ describe('API: MFA Admin Settings', () => {
   // ==================== POST /api/v1/admin/mfa/exemptions ====================
 
   describe('POST /api/v1/admin/mfa/exemptions', () => {
-    /**
-     * API Route: POST
-     *
-     * Description: 测试未认证用户添加豁免
-     *
-     * Returns:
-     *   response(object): 401 Unauthorized
-     */
     it('应该返回 401 当用户未认证', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const body = {
         userId: MOCK_USER_ID,
@@ -634,16 +539,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(401)
     })
 
-    /**
-     * API Route: POST
-     *
-     * Description: 测试没有 admin:mfa:manage 权限的用户添加
-     *
-     * Returns:
-     *   response(object): 403 Forbidden
-     */
     it('应该返回 403 当用户没有 admin:mfa:manage 权限', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new ForbiddenError('Forbidden'))
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const body = {
         userId: MOCK_USER_ID,
@@ -662,14 +559,6 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(403)
     })
 
-    /**
-     * API Route: POST
-     *
-     * Description: 测试添加新的豁免
-     *
-     * Returns:
-     *   response(object): 200 OK 和创建的豁免记录
-     */
     it('应该添加新的豁免', async () => {
       const newExemption = {
         userId: MOCK_USER_ID,
@@ -678,7 +567,7 @@ describe('API: MFA Admin Settings', () => {
         createdAt: '2026-02-03T00:00:00.000Z',
       }
 
-      mfaRepo.upsertExemption = vi.fn().mockResolvedValue(newExemption as any)
+      mfaService.addExemption.mockResolvedValue(newExemption as any)
 
       const body = {
         userId: MOCK_USER_ID,
@@ -702,17 +591,9 @@ describe('API: MFA Admin Settings', () => {
       expect(json.success).toBe(true)
       expect(json.data.userId).toBe(MOCK_USER_ID)
       expect(json.data.reason).toBe('测试豁免')
-      expect(mfaRepo.upsertExemption).toHaveBeenCalled()
+      expect(mfaService.addExemption).toHaveBeenCalled()
     })
 
-    /**
-     * API Route: POST
-     *
-     * Description: 测试验证必填字段
-     *
-     * Returns:
-     *   response(object): 400 Bad Request
-     */
     it('应该验证必填字段', async () => {
       const body = {
         userId: MOCK_USER_ID,
@@ -733,14 +614,6 @@ describe('API: MFA Admin Settings', () => {
       expect(json.success).toBe(false)
     })
 
-    /**
-     * API Route: POST
-     *
-     * Description: 测试无效的 UUID 格式
-     *
-     * Returns:
-     *   response(object): 400 Bad Request
-     */
     it('应该返回 400 对于无效的 UUID 格式', async () => {
       const body = {
         userId: 'invalid-uuid',
@@ -761,14 +634,6 @@ describe('API: MFA Admin Settings', () => {
       expect(json.success).toBe(false)
     })
 
-    /**
-     * API Route: POST
-     *
-     * Description: 测试添加带有过期时间的豁免
-     *
-     * Returns:
-     *   response(object): 200 OK 和创建的豁免记录
-     */
     it('应该添加带有过期时间的豁免', async () => {
       const newExemption = {
         userId: MOCK_USER_ID,
@@ -778,7 +643,7 @@ describe('API: MFA Admin Settings', () => {
         expiresAt: '2026-12-31T23:59:59.000Z',
       }
 
-      mfaRepo.upsertExemption = vi.fn().mockResolvedValue(newExemption as any)
+      mfaService.addExemption.mockResolvedValue(newExemption as any)
 
       const body = {
         userId: MOCK_USER_ID,
@@ -808,16 +673,8 @@ describe('API: MFA Admin Settings', () => {
   // ==================== DELETE /api/v1/admin/mfa/exemptions/:userId ====================
 
   describe('DELETE /api/v1/admin/mfa/exemptions/:userId', () => {
-    /**
-     * API Route: DELETE
-     *
-     * Description: 测试未认证用户删除豁免
-     *
-     * Returns:
-     *   response(object): 401 Unauthorized
-     */
     it('应该返回 401 当用户未认证', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const req = new NextRequest(`http://localhost/api/v1/admin/mfa/exemptions/${MOCK_USER_ID}`, {
         method: 'DELETE',
@@ -830,16 +687,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(401)
     })
 
-    /**
-     * API Route: DELETE
-     *
-     * Description: 测试没有 admin:mfa:manage 权限的用户删除
-     *
-     * Returns:
-     *   response(object): 403 Forbidden
-     */
     it('应该返回 403 当用户没有 admin:mfa:manage 权限', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new ForbiddenError('Forbidden'))
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const req = new NextRequest(`http://localhost/api/v1/admin/mfa/exemptions/${MOCK_USER_ID}`, {
         method: 'DELETE',
@@ -855,16 +704,8 @@ describe('API: MFA Admin Settings', () => {
       expect(response.status).toBe(403)
     })
 
-    /**
-     * API Route: DELETE
-     *
-     * Description: 测试移除豁免
-     *
-     * Returns:
-     *   response(object): 200 OK 和删除成功标志
-     */
     it('应该移除豁免', async () => {
-      mfaRepo.deleteExemption = vi.fn().mockResolvedValue(true)
+      mfaService.removeExemption.mockResolvedValue(true)
 
       const req = new NextRequest(`http://localhost/api/v1/admin/mfa/exemptions/${MOCK_USER_ID}`, {
         method: 'DELETE',
@@ -881,22 +722,14 @@ describe('API: MFA Admin Settings', () => {
       const json = await response.json()
       expect(json.success).toBe(true)
       expect(json.data.success).toBe(true)
-      expect(mfaRepo.deleteExemption).toHaveBeenCalledWith(
-        expect.anything(),
-        { userId: MOCK_USER_ID },
+      expect(mfaService.removeExemption).toHaveBeenCalledWith(
+        MOCK_USER_ID,
+        MOCK_ADMIN_ID,
       )
     })
 
-    /**
-     * API Route: DELETE
-     *
-     * Description: 测试删除不存在的豁免
-     *
-     * Returns:
-     *   response(object): 200 OK 和 false 标志
-     */
     it('应该返回 false 当删除不存在的豁免', async () => {
-      mfaRepo.deleteExemption = vi.fn().mockResolvedValue(false)
+      mfaService.removeExemption.mockResolvedValue(false)
 
       const req = new NextRequest(`http://localhost/api/v1/admin/mfa/exemptions/${MOCK_USER_ID}`, {
         method: 'DELETE',
@@ -915,14 +748,6 @@ describe('API: MFA Admin Settings', () => {
       expect(json.data.success).toBe(false)
     })
 
-    /**
-     * API Route: DELETE
-     *
-     * Description: 测试无效的 UUID 格式
-     *
-     * Returns:
-     *   response(object): 400 Bad Request
-     */
     it('应该验证 UUID 格式', async () => {
       const req = new NextRequest('http://localhost/api/v1/admin/mfa/exemptions/invalid-uuid', {
         method: 'DELETE',

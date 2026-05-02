@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createUserDocumentService } from '@/services/user-document.service'
+import { createUserDocumentService } from '@/services/core/user-document.service'
 import type { UserDocumentRepository } from '@/repositories/interfaces/user-document.interface'
 import type { DocumentVersionRepository } from '@/repositories/interfaces/document-version.interface'
 import type { UserRepository } from '@/repositories/interfaces/user.interface'

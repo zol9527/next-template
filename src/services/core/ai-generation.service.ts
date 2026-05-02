@@ -114,7 +114,7 @@ export function createAiGenerationService(
    *
    * Description: 解析并验证文本 Provider 可用性
    */
-  async function resolveTextProvider(): Promise<{ provider: IAITextProvider; config: Awaited<ReturnType<typeof getProviderConfig>>; providerName: string }> {
+  async function resolveTextProvider(): Promise<{ provider: IAITextProvider; config: NonNullable<Awaited<ReturnType<typeof getProviderConfig>>>; providerName: string }> {
     const providerName = await getDefaultProviderName(getSetting)
     const config = await getProviderConfig(getSetting, (encrypted) => AiKeyEncryption.decrypt(encrypted), providerName)
     if (!config) throw providerNotConfiguredError('text_generation')
@@ -131,7 +131,7 @@ export function createAiGenerationService(
     throw providerUnavailableError(providerName)
   }
 
-  async function resolveImageProvider(): Promise<{ provider: IAIImageProvider; config: Awaited<ReturnType<typeof getProviderConfig>>; providerName: string }> {
+  async function resolveImageProvider(): Promise<{ provider: IAIImageProvider; config: NonNullable<Awaited<ReturnType<typeof getProviderConfig>>>; providerName: string }> {
     const providerName = await getDefaultProviderName(getSetting)
     const config = await getProviderConfig(getSetting, (encrypted) => AiKeyEncryption.decrypt(encrypted), providerName)
     if (!config) throw providerNotConfiguredError('image_generation')

@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { MfaService } from '@/services/mfa.service'
+import { MfaService } from '@/services/core/mfa.service'
 
 // Mock all dependencies
-vi.mock('@/services/mfa-totp.service', () => {
+vi.mock('@/services/core/mfa-totp.service', () => {
   return {
     MfaTotpService: {
       generateSecretWithQRCode: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('@/lib/security/mfa-encryption', () => {
   }
 })
 
-vi.mock('@/services/mfa-audit-log.service', () => {
+vi.mock('@/services/core/mfa-audit-log.service', () => {
   return {
     MfaAuditLogService: {
       logSuccess: vi.fn(),
@@ -38,9 +38,9 @@ vi.mock('@/services/mfa-audit-log.service', () => {
 })
 vi.mock('bcryptjs')
 
-import { MfaTotpService } from '@/services/mfa-totp.service'
+import { MfaTotpService } from '@/services/core/mfa-totp.service'
 import { MfaEncryption } from '@/lib/security/mfa-encryption'
-import { MfaAuditLogService } from '@/services/mfa-audit-log.service'
+import { MfaAuditLogService } from '@/services/core/mfa-audit-log.service'
 import * as bcrypt from 'bcryptjs'
 import type { Logger } from 'pino'
 

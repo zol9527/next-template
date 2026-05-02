@@ -2,9 +2,51 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/v1/admin/products/route'
 import * as Factory from '@/repositories/factory'
-import * as AdminProductService from '@/services/admin-product.service'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
-import { useApiAuth } from '@/app/api/v1/_shared/use-api-auth'
+import * as AdminProductService from '@/plugins/ecommerce/services/admin-product.service'
+
+// Mock logger 避免文件系统写入
+vi.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createRequestLogger: vi.fn(() => mockLogger),
+    logger: mockLogger,
+  }
+})
+
+// Mock createServiceContext 提供有效的上下文
+vi.mock('@/types/service/service-context', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createServiceContext: vi.fn(() => ({
+      traceId: 'test-trace-id',
+      logger: mockLogger,
+      userAgent: null,
+      clientIp: null,
+    })),
+  }
+})
+
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
 
 vi.mock('@/repositories/factory', () => ({
   createProductRepository: vi.fn().mockResolvedValue({}),
@@ -15,35 +57,46 @@ vi.mock('@/lib/oss/factory', () => ({
   createOssProvider: vi.fn().mockReturnValue({}),
 }))
 
-vi.mock('@/services/admin-product.service', () => ({
+vi.mock('@/plugins/ecommerce/services/admin-product.service', () => ({
   createAdminProductService: vi.fn(),
 }))
 
+// Mock 认证模块 - 使用 hoisted 确保在 vi.mock 中可用
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn().mockResolvedValue({
+  useApiAuth: mockUseApiAuth,
+}))
+
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth() {
+  return {
     userId: 'admin-id',
     sessionId: 'session-id',
     roles: ['admin'],
-    hasRole: vi.fn().mockReturnValue(true),
-    assertRole: vi.fn().mockReturnValue(undefined),
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
     access: {
-      has: vi.fn().mockReturnValue(true),
       assert: vi.fn(),
-      canRead: vi.fn().mockReturnValue(true),
-      canWrite: vi.fn().mockReturnValue(true),
-      canExecute: vi.fn().mockReturnValue(true),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
       grants: [],
-      scopesFor: vi.fn().mockReturnValue([]),
-      hasAny: vi.fn().mockReturnValue(true),
-      hasAll: vi.fn().mockReturnValue(true),
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
     },
-    getMe: vi.fn().mockResolvedValue({
-      id: 'admin-id',
-      nickname: 'Admin',
-      roles: ['admin'],
-    }),
-  }),
-}))
+  }
+}
 
 describe('API: /api/v1/admin/products', () => {
   const mockListProducts = vi.fn()
@@ -56,23 +109,7 @@ describe('API: /api/v1/admin/products', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(AdminProductService.createAdminProductService).mockReturnValue(mockService)
-
-    const mockAuthContext = {
-      userId: 'admin-id',
-      sessionId: 'session-id',
-      roles: ['admin'],
-      hasRole: vi.fn().mockReturnValue(true),
-      assertPermission: vi.fn().mockResolvedValue(undefined),
-      assertRole: vi.fn().mockReturnValue(undefined),
-      getMe: vi.fn().mockResolvedValue({
-        id: 'admin-id',
-        nickname: 'Admin',
-        roles: ['admin'],
-        permissions: ['products.read', 'products.write'],
-      }),
-    }
-    vi.mocked(useApiAuth).mockResolvedValue(mockAuthContext as any)
-// TODO: 适配 grant-based 权限系统     vi.mocked(useApiAdminAuth).mockResolvedValue(mockAuthContext as any)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   describe('GET', () => {
@@ -119,12 +156,6 @@ describe('API: /api/v1/admin/products', () => {
       })
 
       const response = await POST(req, { params: Promise.resolve({}) })
-
-      // DEBUG: 打印响应以诊断问题
-      if (response.status !== 200) {
-        const json = await response.json()
-        console.error('DEBUG Response:', JSON.stringify(json, null, 2))
-      }
 
       expect(response.status).toBe(200)
     })

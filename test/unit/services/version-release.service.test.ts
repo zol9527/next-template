@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { createVersionReleaseService } from '@/services/version-release.service'
+import { createVersionReleaseService } from '@/services/core/version-release.service'
 import { NotFoundError } from '@/lib/errors/app-error'
 import type { VersionReleaseRepository } from '@/repositories/interfaces/version-release.repository.interface'
 import type { VersionRelease } from '@/lib/prisma/generated/prisma'

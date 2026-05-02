@@ -10,7 +10,6 @@ import { POST } from '@/app/api/v1/admin/users/[id]/upload-permission/route'
 import { GET } from '@/app/api/v1/user/upload-permission/route'
 import { ForbiddenError } from '@/lib/errors/app-error'
 import type { UserRepository } from '@/repositories/interfaces/user.interface'
-import { useApiAuth } from '@/app/api/v1/_shared/use-api-auth'
 
 // Mock logger - 使用内联定义以避免 hoisting 问题
 vi.mock('@/lib/logger', () => {
@@ -27,7 +26,7 @@ vi.mock('@/lib/logger', () => {
   }
 })
 
-vi.mock('@/types/service-context', () => {
+vi.mock('@/types/service/service-context', () => {
   const mockLogger = {
     info: vi.fn(),
     error: vi.fn(),
@@ -45,17 +44,110 @@ vi.mock('@/types/service-context', () => {
   }
 })
 
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
 // Mock 仓储工厂
 vi.mock('@/repositories/factory', () => ({
   createUserRepository: vi.fn(),
 }))
 
-// Mock 认证模块
+// Mock 认证模块 - 使用 hoisted 确保在 vi.mock 中可用
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+  useApiAuth: mockUseApiAuth,
 }))
 
 const { createUserRepository } = await import('@/repositories/factory')
+
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth() {
+  return {
+    userId: 'admin-123',
+    sessionId: 'session-id',
+    roles: ['admin'],
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn().mockResolvedValue({
+      user: {
+        id: 'admin-123',
+        username: 'admin',
+        email: 'admin@example.com',
+        phone: null,
+        avatarUrl: null,
+        userType: 'admin',
+        canUpload: true,
+      },
+      roles: [{ id: 'role-1', name: 'admin', description: '管理员' }],
+      permissions: ['users.write'],
+    }),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+  }
+}
+
+/**
+ * Function: createUserAuth
+ *
+ * Description: 创建普通用户认证上下文
+ *
+ * Returns:
+ *     auth(object): 普通用户认证上下文
+ */
+function createUserAuth() {
+  return {
+    userId: '550e8400-e29b-41d4-a716-446655440000',
+    sessionId: 'user-session-id',
+    roles: ['user'],
+    hasRole: vi.fn(() => false),
+    assertRole: vi.fn(),
+    getMe: vi.fn().mockResolvedValue({
+      user: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        username: 'testuser',
+        email: 'test@example.com',
+        phone: null,
+        avatarUrl: null,
+        userType: 'regular',
+        canUpload: true,
+      },
+      roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
+      permissions: [],
+    }),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+  }
+}
 
 describe('Integration: 上传权限 API 测试', () => {
   const MOCK_ADMIN_USER_ID = 'admin-123'
@@ -72,68 +164,14 @@ describe('Integration: 上传权限 API 测试', () => {
     }
   })
 
-  // Mock 认证上下文 - 管理员
-  const mockAdminAuthContext = {
-    userId: MOCK_ADMIN_USER_ID,
-    sessionId: 'session-id',
-    roles: ['admin'],
-    hasRole: vi.fn().mockReturnValue(true),
-    assertPermission: vi.fn().mockResolvedValue(undefined),
-    assertRole: vi.fn().mockReturnValue(undefined),
-    getMe: vi.fn().mockResolvedValue({
-      user: {
-        id: MOCK_ADMIN_USER_ID,
-        username: 'admin',
-        email: 'admin@example.com',
-        phone: null,
-        avatarUrl: null,
-        userType: 'admin',
-        canUpload: true,
-      },
-      roles: [{ id: 'role-1', name: 'admin', description: '管理员' }],
-      permissions: ['users.write'],
-    }),
-  }
-
-  // Mock 认证上下文 - 普通用户
-  const mockUserAuthContext = {
-    userId: MOCK_USER_ID,
-    sessionId: 'user-session-id',
-    roles: ['user'],
-    hasRole: vi.fn().mockReturnValue(false),
-    assertPermission: vi.fn().mockResolvedValue(undefined),
-    assertRole: vi.fn().mockReturnValue(undefined),
-    getMe: vi.fn().mockResolvedValue({
-      user: {
-        id: MOCK_USER_ID,
-        username: 'testuser',
-        email: 'test@example.com',
-        phone: null,
-        avatarUrl: null,
-        userType: 'regular',
-        canUpload: true,
-      },
-      roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
-      permissions: [],
-    }),
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
 
     vi.mocked(createUserRepository).mockResolvedValue(usersRepo as any)
-    vi.mocked(mockAdminAuthContext.hasPermission).mockResolvedValue(true)
-    vi.mocked(mockAdminAuthContext.hasRole).mockReturnValue(true)
-    vi.mocked(useApiAuth).mockResolvedValue(mockUserAuthContext as any)
-// TODO: 适配 grant-based 权限系统     vi.mocked(useApiAdminAuth).mockResolvedValue(mockAdminAuthContext as any)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   describe('POST /api/v1/admin/users/:id/upload-permission', () => {
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试管理员成功授予用户上传权限
-     */
     it('应该成功授予用户上传权限', async () => {
       const mockUser = {
         id: MOCK_USER_ID,
@@ -177,7 +215,6 @@ describe('Integration: 上传权限 API 测试', () => {
       const json = await response.json()
       expect(json.success).toBe(true)
       expect(json.data).toEqual({ userId: MOCK_USER_ID, canUpload: true })
-// TODO: 适配 grant-based 权限系统       expect(useApiAdminAuth).toHaveBeenCalled()
       expect(usersRepo.updateUploadPermission).toHaveBeenCalledWith(
         { traceId: expect.any(String), logger: expect.anything() },
         { userId: MOCK_USER_ID, canUpload: true }
@@ -185,7 +222,7 @@ describe('Integration: 上传权限 API 测试', () => {
     })
 
     it('应该在权限链路拒绝时返回 403，锁定 requirePermission 走 withV1Route 保护链路', async () => {
-// TODO: 适配 grant-based 权限系统       vi.mocked(useApiAdminAuth).mockRejectedValueOnce(new ForbiddenError())
+      mockUseApiAuth.mockRejectedValueOnce(new ForbiddenError())
 
       const body = { canUpload: true }
       const bodyStr = JSON.stringify(body)
@@ -209,11 +246,6 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(usersRepo.updateUploadPermission).not.toHaveBeenCalled()
     })
   
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试管理员成功撤销用户上传权限
-     */
     it('应该成功撤销用户上传权限', async () => {
       const mockUser = {
         id: MOCK_USER_ID,
@@ -263,11 +295,6 @@ describe('Integration: 上传权限 API 测试', () => {
       )
     })
 
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试当用户不存在时返回错误
-     */
     it('应该在用户不存在时返回错误', async () => {
       ;(usersRepo.getUserAdminById as any).mockResolvedValue(null)
 
@@ -294,11 +321,6 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(json.success).toBe(false)
     })
 
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试 Schema 验证 - 无效的 UUID
-     */
     it('应该拒绝无效的用户 ID', async () => {
       const body = { canUpload: true }
       const bodyStr = JSON.stringify(body)
@@ -323,11 +345,6 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(json.success).toBe(false)
     })
 
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试 Schema 验证 - 缺少 canUpload 字段
-     */
     it('应该拒绝缺少 canUpload 字段的请求', async () => {
       const body = {}
       const bodyStr = JSON.stringify(body)
@@ -352,11 +369,6 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(json.success).toBe(false)
     })
 
-    /**
-     * API Route: POST /api/v1/admin/users/:id/upload-permission
-     *
-     * Description: 测试 Schema 验证 - canUpload 类型错误
-     */
     it('应该拒绝 canUpload 类型错误的请求', async () => {
       const body = { canUpload: 'not-a-boolean' }
       const bodyStr = JSON.stringify(body)
@@ -383,13 +395,9 @@ describe('Integration: 上传权限 API 测试', () => {
   })
 
   describe('GET /api/v1/user/upload-permission', () => {
-    /**
-     * API Route: GET /api/v1/user/upload-permission
-     *
-     * Description: 测试用户成功获取自己的上传权限
-     */
     it('应该成功返回用户的上传权限状态（有权限）', async () => {
-      mockUserAuthContext.getMe.mockResolvedValue({
+      const userAuth = createUserAuth()
+      userAuth.getMe.mockResolvedValue({
         user: {
           id: MOCK_USER_ID,
           username: 'testuser',
@@ -402,6 +410,7 @@ describe('Integration: 上传权限 API 测试', () => {
         roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
         permissions: [],
       })
+      mockUseApiAuth.mockResolvedValue(userAuth)
 
       const req = new NextRequest('http://localhost/api/v1/user/upload-permission', {
         method: 'GET',
@@ -413,16 +422,12 @@ describe('Integration: 上传权限 API 测试', () => {
       const json = await response.json()
       expect(json.success).toBe(true)
       expect(json.data).toEqual({ canUpload: true })
-      expect(mockUserAuthContext.getMe).toHaveBeenCalled()
+      expect(userAuth.getMe).toHaveBeenCalled()
     })
 
-    /**
-     * API Route: GET /api/v1/user/upload-permission
-     *
-     * Description: 测试用户成功获取自己的上传权限（无权限）
-     */
     it('应该成功返回用户的上传权限状态（无权限）', async () => {
-      mockUserAuthContext.getMe.mockResolvedValue({
+      const userAuth = createUserAuth()
+      userAuth.getMe.mockResolvedValue({
         user: {
           id: MOCK_USER_ID,
           username: 'testuser',
@@ -435,6 +440,7 @@ describe('Integration: 上传权限 API 测试', () => {
         roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
         permissions: [],
       })
+      mockUseApiAuth.mockResolvedValue(userAuth)
 
       const req = new NextRequest('http://localhost/api/v1/user/upload-permission', {
         method: 'GET',
@@ -448,13 +454,9 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(json.data).toEqual({ canUpload: false })
     })
 
-    /**
-     * API Route: GET /api/v1/user/upload-permission
-     *
-     * Description: 测试当用户信息中 canUpload 为 null 时默认返回 false
-     */
     it('应该在 canUpload 为 null 时返回 false', async () => {
-      mockUserAuthContext.getMe.mockResolvedValue({
+      const userAuth = createUserAuth()
+      userAuth.getMe.mockResolvedValue({
         user: {
           id: MOCK_USER_ID,
           username: 'testuser',
@@ -467,6 +469,7 @@ describe('Integration: 上传权限 API 测试', () => {
         roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
         permissions: [],
       })
+      mockUseApiAuth.mockResolvedValue(userAuth)
 
       const req = new NextRequest('http://localhost/api/v1/user/upload-permission', {
         method: 'GET',
@@ -480,13 +483,9 @@ describe('Integration: 上传权限 API 测试', () => {
       expect(json.data).toEqual({ canUpload: false })
     })
 
-    /**
-     * API Route: GET /api/v1/user/upload-permission
-     *
-     * Description: 测试当用户信息中缺少 canUpload 字段时默认返回 false
-     */
     it('应该在缺少 canUpload 字段时返回 false', async () => {
-      mockUserAuthContext.getMe.mockResolvedValue({
+      const userAuth = createUserAuth()
+      userAuth.getMe.mockResolvedValue({
         user: {
           id: MOCK_USER_ID,
           username: 'testuser',
@@ -499,6 +498,7 @@ describe('Integration: 上传权限 API 测试', () => {
         roles: [{ id: 'role-2', name: 'user', description: '普通用户' }],
         permissions: [],
       })
+      mockUseApiAuth.mockResolvedValue(userAuth)
 
       const req = new NextRequest('http://localhost/api/v1/user/upload-permission', {
         method: 'GET',

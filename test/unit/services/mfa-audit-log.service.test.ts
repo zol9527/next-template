@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { MfaAuditLogService } from '@/services/mfa-audit-log.service'
-import type { MfaAuditLogEntry, MfaAuditStatus } from '@/services/mfa-audit-log.service'
+import { MfaAuditLogService } from '@/services/core/mfa-audit-log.service'
+import type { MfaAuditLogEntry, MfaAuditStatus } from '@/services/core/mfa-audit-log.service'
 
 describe('Unit: MfaAuditLogService', () => {
   beforeEach(() => {

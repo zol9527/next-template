@@ -1,7 +1,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import bcrypt from 'bcryptjs'
-import { createAuthService } from '@/services/auth.service'
+import { createAuthService } from '@/services/core/auth.service'
 import type { UserRepository } from '@/repositories/interfaces/user.interface'
 import type { SessionRepository } from '@/repositories/interfaces/session.interface'
 import type { WechatAccountRepository } from '@/repositories/interfaces/wechat-account.interface'

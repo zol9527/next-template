@@ -5,30 +5,74 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
-import { POST } from '@/app/api/v1/user/mfa/setup/route'
 import * as MfaFactory from '@/repositories/factory'
-import * as AuthDeps from '@/app/api/v1/_shared/use-api-auth'
-import { MfaService } from '@/services/mfa.service'
+import { MfaService } from '@/services/core/mfa.service'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
-import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
-import type { ApiAuthContext } from '@/app/api/v1/_shared/use-api-auth'
+import type { MfaRepository } from '@/repositories/interfaces/core/mfa.interface'
 import { UnauthorizedError } from '@/lib/errors/app-error'
 
-// Mock dependencies
-vi.mock('@/repositories/factory', () => ({
-  createMfaRepository: vi.fn(),
+// ==================== Mocks ====================
+
+// Mock logger 避免文件系统写入
+vi.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createRequestLogger: vi.fn(() => mockLogger),
+    logger: mockLogger,
+  }
+})
+
+// Mock createServiceContext 提供有效的上下文
+vi.mock('@/types/service/service-context', () => {
+  const mockLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: unknown) {
+      return this
+    }),
+  }
+  return {
+    createServiceContext: vi.fn(() => ({
+      traceId: 'test-trace-id',
+      logger: mockLogger,
+      userAgent: null,
+      clientIp: null,
+    })),
+  }
+})
+
+// Mock 认证模块（使用 vi.hoisted 配合 withV1Route 的动态 import）
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
+vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
+  useApiAuth: mockUseApiAuth,
 }))
 
-vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+// Mock 插件注册表
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
+vi.mock('@/repositories/factory', () => ({
+  createMfaRepository: vi.fn(),
 }))
 
 vi.mock('@/lib/http/ip-extractor', () => ({
   extractClientIpSafe: vi.fn(),
 }))
 
-// Mock MfaService static methods
-vi.mock('@/services/mfa.service', () => ({
+// Mock MfaService 静态方法
+vi.mock('@/services/core/mfa.service', () => ({
   MfaService: {
     disableMFA: vi.fn(),
     enableMFA: vi.fn(),
@@ -37,10 +81,48 @@ vi.mock('@/services/mfa.service', () => ({
   },
 }))
 
+// 动态导入路由
+const { POST } = await import('@/app/api/v1/user/mfa/setup/route')
+
+// ==================== 测试辅助 ====================
+
+function createMockAuth(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+    roles: ['user'],
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn().mockResolvedValue({
+      user: {
+        id: 'test-user-id',
+        email: 'test@example.com',
+        canUpload: true,
+      },
+      roles: [],
+      permissions: [],
+    }),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+    ...overrides,
+  }
+}
+
+// ==================== 测试套件 ====================
+
 describe('API: POST /api/v1/user/mfa/setup', () => {
-  let mockGetUserMfaData: any
-  let mockUpdateUserMfa: any
-  let mockCreateAuditLog: any
+  let mockGetUserMfaData: ReturnType<typeof vi.fn>
+  let mockUpdateUserMfa: ReturnType<typeof vi.fn>
+  let mockCreateAuditLog: ReturnType<typeof vi.fn>
 
   const mockMfaRepository: MfaRepository = {
     getUserMfaData: vi.fn(),
@@ -57,42 +139,10 @@ describe('API: POST /api/v1/user/mfa/setup', () => {
     getUserAuditLogs: vi.fn(),
   }
 
-  const mockAuthContext: ApiAuthContext = {
-    userId: 'test-user-id',
-    sessionId: 'test-session-id',
-    roles: ['user'],
-    hasRole: vi.fn(),
-    assertPermission: vi.fn(),
-    assertRole: vi.fn(),
-    access: {
-      has: vi.fn().mockReturnValue(true),
-      assert: vi.fn(),
-      canRead: vi.fn().mockReturnValue(true),
-      canWrite: vi.fn().mockReturnValue(true),
-      canExecute: vi.fn().mockReturnValue(true),
-      grants: [],
-      scopesFor: vi.fn().mockReturnValue([]),
-      hasAny: vi.fn().mockReturnValue(true),
-      hasAll: vi.fn().mockReturnValue(true),
-    },
-    getMe: vi.fn(),
-  }
-
   beforeEach(() => {
     vi.resetAllMocks()
 
-    // resetAllMocks 会重置 mock 的实现，需要在这里重新设置 getMe 的返回值
-    mockAuthContext.getMe = vi.fn().mockResolvedValue({
-      user: {
-        id: 'test-user-id',
-        email: 'test@example.com',
-        canUpload: true,
-      },
-      roles: [],
-      permissions: [],
-    })
-
-    // Setup mock repository
+    // 重置 mock 仓库
     mockGetUserMfaData = vi.fn()
     mockUpdateUserMfa = vi.fn()
     mockCreateAuditLog = vi.fn()
@@ -102,14 +152,16 @@ describe('API: POST /api/v1/user/mfa/setup', () => {
     mockMfaRepository.createAuditLog = mockCreateAuditLog
 
     vi.mocked(MfaFactory.createMfaRepository).mockResolvedValue(mockMfaRepository)
-    vi.mocked(AuthDeps.useApiAuth).mockResolvedValue(mockAuthContext)
     vi.mocked(extractClientIpSafe).mockReturnValue({ ip: '127.0.0.1' })
 
-    // Mock MfaService.setupMFA
+    // Mock 认证上下文
+    mockUseApiAuth.mockResolvedValue(createMockAuth())
+
+    // Mock MfaService.setupMFA（BACKUP_CODES_COUNT = 10）
     vi.mocked(MfaService.setupMFA).mockResolvedValue({
       secret: 'test-secret',
       qrCode: 'data:image/png;base64,...',
-      backupCodes: ['code1', 'code2', 'code3'],
+      backupCodes: Array.from({ length: 10 }, (_, i) => `CODE-${String(i).padStart(2, '0')}`),
     })
   })
 
@@ -130,12 +182,12 @@ describe('API: POST /api/v1/user/mfa/setup', () => {
     expect(json.data).toHaveProperty('secret')
     expect(json.data).toHaveProperty('qrCode')
     expect(json.data).toHaveProperty('backupCodes')
-    expect(json.data.backupCodes).toHaveLength(3)
+    expect(json.data.backupCodes).toHaveLength(10)
   })
 
   it('should return 401 for unauthenticated user', async () => {
-    // Mock auth to fail
-    vi.mocked(AuthDeps.useApiAuth).mockRejectedValue(new UnauthorizedError())
+    // Mock 认证失败
+    mockUseApiAuth.mockRejectedValue(new UnauthorizedError())
 
     const req = new NextRequest('http://localhost/api/v1/user/mfa/setup', {
       method: 'POST',

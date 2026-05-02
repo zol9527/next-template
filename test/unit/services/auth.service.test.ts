@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import bcrypt from 'bcryptjs'
-import { createAuthService } from '@/services/auth.service'
+import { createAuthService } from '@/services/core/auth.service'
 import type { UserRepository } from '@/repositories/interfaces/user.interface'
 import type { SessionRepository } from '@/repositories/interfaces/session.interface'
 import type { WechatAccountRepository } from '@/repositories/interfaces/wechat-account.interface'
@@ -84,6 +84,7 @@ function createMockSessionRepository(overrides?: Partial<SessionRepository>): Se
       createdAt: new Date().toISOString(),
     }),
     rotateSession: vi.fn().mockResolvedValue(undefined),
+    refreshSessionToken: vi.fn().mockResolvedValue(undefined),
     revokeSession: vi.fn().mockResolvedValue(undefined),
     revokeAllSessionsForUser: vi.fn().mockResolvedValue(undefined),
     revokeAllSessionsExceptCurrent: vi.fn().mockResolvedValue(undefined),
@@ -725,14 +726,7 @@ describe('认证服务测试', () => {
       const users = createMockUserRepository()
       const sessions = createMockSessionRepository({
         getSessionByRefreshTokenHash: vi.fn().mockResolvedValue(mockSession),
-        createSession: vi.fn().mockResolvedValue({
-          id: 'new-session-id',
-          userId: 'user-123',
-          refreshTokenHash: 'new-token-hash',
-          isRevoked: false,
-          expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-          createdAt: new Date().toISOString(),
-        }),
+        refreshSessionToken: vi.fn().mockResolvedValue(undefined),
       })
       const wechatAccounts = createMockWechatAccountRepository()
       const rbac = createMockRbacRepository({
@@ -752,13 +746,15 @@ describe('认证服务测试', () => {
 
       expect(result).toBeDefined()
       expect(result.userId).toBe('user-123')
-      expect(result.sessionId).toBe('new-session-id')
-      expect(sessions.rotateSession).toHaveBeenCalledWith(
+      expect(result.sessionId).toBe('old-session-id')
+      expect(result.accessToken).toBeTypeOf('string')
+      expect(result.refreshToken).toBeTypeOf('string')
+      expect(sessions.refreshSessionToken).toHaveBeenCalledWith(
         { traceId: 'test-trace-id', logger: expect.anything() },
         {
-          oldSessionId: 'old-session-id',
-          newSessionId: 'new-session-id',
-          rotatedAt: expect.any(String),
+          sessionId: 'old-session-id',
+          newRefreshTokenHash: expect.any(String),
+          newExpiresAt: expect.any(String),
         },
       )
     })

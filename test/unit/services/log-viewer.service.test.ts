@@ -71,7 +71,7 @@ describe('LogViewerService', () => {
     mockSetLogLevel.mockReturnValue('info')
 
     // 动态导入服务以应用 mocks
-    const { createLogViewerService } = await import('@/services/log-viewer.service')
+    const { createLogViewerService } = await import('@/services/core/log-viewer.service')
     service = createLogViewerService(mockServiceContext)
   })
 

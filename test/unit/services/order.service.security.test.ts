@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createOrderService } from '@/services/order.service'
+import { createOrderService } from '@/plugins/ecommerce/services/order.service'
 import type { OrderRepository } from '@/repositories/interfaces/order.interface'
 import type { ProductRepository } from '@/repositories/interfaces/product.interface'
 import type { IdempotencyRepository } from '@/repositories/interfaces/idempotency.interface'

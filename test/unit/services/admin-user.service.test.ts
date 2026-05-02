@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createAdminUserService, AdminUserServiceError } from '@/services/admin-user.service'
+import { createAdminUserService, AdminUserServiceError } from '@/services/core/admin-user.service'
 import type { UserRepository } from '@/repositories/interfaces/user.interface'
 import type { SessionRepository } from '@/repositories/interfaces/session.interface'
 import type { AdminUserDetail } from '@/contracts/dtos/admin/user-detail.dto'

@@ -5,11 +5,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { UnauthorizedError } from '@/lib/errors/app-error'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors/app-error'
 
-// TODO: 适配 grant-based 权限系统 const useApiAdminAuthMock = vi.hoisted(() => vi.fn())
 const createLogViewerServiceMock = vi.hoisted(() => vi.fn())
 const mockGetConfig = vi.hoisted(() => vi.fn())
+const mockUseApiAuth = vi.hoisted(() => vi.fn())
 
 // ==================== Mocks ====================
 
@@ -51,14 +51,20 @@ vi.mock('@/types/service/service-context', () => {
   }
 })
 
+// Mock 插件注册表（确保不受插件状态影响）
+vi.mock('@/plugins/registry', () => ({
+  isPluginEnabled: vi.fn(() => true),
+  getEnabledPlugins: vi.fn(() => []),
+}))
+
 // Mock 服务
-vi.mock('@/services/log-viewer.service', () => ({
+vi.mock('@/services/core/log-viewer.service', () => ({
   createLogViewerService: createLogViewerServiceMock,
 }))
 
 // Mock 认证
 vi.mock('@/app/api/v1/_shared/use-api-auth', () => ({
-  useApiAuth: vi.fn(),
+  useApiAuth: mockUseApiAuth,
 }))
 
 // 动态导入路由
@@ -66,25 +72,35 @@ const { GET } = await import('@/app/api/v1/admin/logs/config/route')
 
 // ==================== Test Data ====================
 
-const mockAdminAuth = {
-  userId: 'admin-id',
-  sessionId: 'session-id',
-  roles: ['admin'],
-  hasRole: vi.fn().mockReturnValue(true),
-  assertPermission: vi.fn().mockResolvedValue(undefined),
-  assertRole: vi.fn().mockReturnValue(undefined),
-  getMe: vi.fn().mockResolvedValue({
-    id: 'admin-id',
-    nickname: 'Super Admin',
+/**
+ * Function: createAdminAuth
+ *
+ * Description: 创建管理员认证上下文
+ *
+ * Returns:
+ *     auth(object): 管理员认证上下文
+ */
+function createAdminAuth() {
+  return {
+    userId: 'admin-id',
+    sessionId: 'session-id',
     roles: ['admin'],
-    permissions: ['logs.read'],
-  }),
-}
-
-const mockNonAdminAuth = {
-  ...mockAdminAuth,
-  roles: ['user'],
-  hasRole: vi.fn().mockReturnValue(false),
+    hasRole: vi.fn(() => true),
+    assertRole: vi.fn(),
+    getMe: vi.fn(),
+    access: {
+      assert: vi.fn(),
+      has: vi.fn(() => true),
+      check: vi.fn(() => true),
+      canRead: vi.fn(() => true),
+      canWrite: vi.fn(() => true),
+      canExecute: vi.fn(() => true),
+      grants: [],
+      scopesFor: vi.fn(() => []),
+      hasAny: vi.fn(() => true),
+      hasAll: vi.fn(() => true),
+    },
+  }
 }
 
 const mockService = {
@@ -103,12 +119,12 @@ describe('API: /api/v1/admin/logs/config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createLogViewerServiceMock.mockReturnValue(mockService as unknown)
-// TODO: 适配 grant-based 权限系统     useApiAdminAuthMock.mockResolvedValue(mockAdminAuth as unknown)
+    mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
   describe('GET', () => {
     it('CFG-001: 未认证用户应该返回 401', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockRejectedValue(new UnauthorizedError('Unauthorized'))
+      mockUseApiAuth.mockRejectedValue(new UnauthorizedError('Unauthorized'))
 
       const req = new NextRequest('http://localhost/api/v1/admin/logs/config')
       const res = await GET(req, { params: Promise.resolve({}) })
@@ -117,7 +133,7 @@ describe('API: /api/v1/admin/logs/config', () => {
     })
 
     it('CFG-002: 非 admin 角色应该返回 403', async () => {
-// TODO: 适配 grant-based 权限系统       useApiAdminAuthMock.mockResolvedValue(mockNonAdminAuth as unknown)
+      mockUseApiAuth.mockRejectedValue(new ForbiddenError('Forbidden'))
 
       const req = new NextRequest('http://localhost/api/v1/admin/logs/config')
       const res = await GET(req, { params: Promise.resolve({}) })

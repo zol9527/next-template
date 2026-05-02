@@ -43,6 +43,15 @@ process.env.WECHAT_PAY_CERT_SERIAL = process.env.WECHAT_PAY_CERT_SERIAL ?? 'ABC1
 process.env.WECHAT_PAY_PRIVATE_KEY_PEM = process.env.WECHAT_PAY_PRIVATE_KEY_PEM ?? 'test_private_key'
 process.env.WECHAT_PAY_PLATFORM_CERT_PEM = process.env.WECHAT_PAY_PLATFORM_CERT_PEM ?? 'test_platform_cert'
 
+// Polyfill ResizeObserver for jsdom (required by Radix UI components)
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof globalThis.ResizeObserver
+}
+
 // Setup testing library for React component tests
 import { expect } from 'vitest'
 import * as matchers from '@testing-library/jest-dom/matchers'

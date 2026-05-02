@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { MfaTotpService } from '@/services/mfa-totp.service'
+import { MfaTotpService } from '@/services/core/mfa-totp.service'
 import { env } from '@/config'
 
 // Mock config to provide required environment variables

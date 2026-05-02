@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createOrderService } from '@/services/order.service'
+import { createOrderService } from '@/plugins/ecommerce/services/order.service'
 import type { OrderRepository } from '@/repositories/interfaces/order.interface'
 import type { ProductRepository } from '@/repositories/interfaces/product.interface'
 import type { IdempotencyRepository } from '@/repositories/interfaces/idempotency.interface'
@@ -17,17 +17,17 @@ import type { Order } from '@/contracts/dtos/orders.dto'
 import type { IdempotencyRequest } from '@/contracts/dtos/idempotency.dto'
 import type pino from 'pino'
 
-// Mock dynamic imports
-vi.mock('@/services/coupon.service', () => ({
+// Mock dynamic imports — 路径必须与 service 中 import() 的路径一致
+vi.mock('@/plugins/ecommerce/services/coupon.service', () => ({
   createCouponService: vi.fn(),
 }))
 
-vi.mock('@/services/promoter-code.service', () => ({
+vi.mock('@/plugins/promotion/services/promoter-code.service', () => ({
   createPromoterCodeService: vi.fn(),
 }))
 
-import { createCouponService } from '@/services/coupon.service'
-import { createPromoterCodeService } from '@/services/promoter-code.service'
+import { createCouponService } from '@/plugins/ecommerce/services/coupon.service'
+import { createPromoterCodeService } from '@/plugins/promotion/services/promoter-code.service'
 
 // ==================== Mock Objects ====================
 

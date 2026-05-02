@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createPublicProductService } from '@/services/public-product.service'
+import { createPublicProductService } from '@/plugins/ecommerce/services/public-product.service'
 import type { ProductRepository } from '@/repositories/interfaces/product.interface'
 import type { MediaAssetRepository } from '@/repositories/interfaces/media-asset.interface'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
