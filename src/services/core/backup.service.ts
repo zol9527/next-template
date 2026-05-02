@@ -587,35 +587,40 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
           })
         }
 
-      } finally {
-        // 9. 关闭维护模式（无论成功失败）
+        // 恢复成功 → 关闭维护模式
         await disableMaintenanceMode(prismaClient)
+
+        // ── 清理临时文件 ───────────────────────────────────
+        try { await fs.unlink(tmpZipPath) } catch {}
+
+        // ── 更新完成 ───────────────────────────────────────
+        await statsTracker.forceFlush()
+        await backupJobs.updateBackupJobStatus({
+          id: jobId,
+          status: 'completed',
+          completedAt: new Date(),
+        }, repoCtx)
+
+      } catch (error) {
+        // 恢复失败 → 保持维护模式开启，由管理员手动关闭
+        await backupJobs.updateBackupJobStatus({
+          id: jobId,
+          status: 'failed',
+          errorMessage: error instanceof Error ? error.message : String(error),
+          completedAt: new Date(),
+        }, repoCtx)
+      } finally {
+        releaseJobLock()
+        await statsTracker.forceFlush()
       }
 
-      // ── 清理临时文件 ───────────────────────────────────
-      try { await fs.unlink(tmpZipPath) } catch {}
-
-      // ── 更新完成 ───────────────────────────────────────
-      await statsTracker.forceFlush()
-      await backupJobs.updateBackupJobStatus({
-        id: jobId,
-        status: 'completed',
-        completedAt: new Date(),
-      }, repoCtx)
-
     } catch (error) {
-      // 确保维护模式被关闭
-      try { await disableMaintenanceMode(prismaClient) } catch {}
-
       await backupJobs.updateBackupJobStatus({
         id: jobId,
         status: 'failed',
         errorMessage: error instanceof Error ? error.message : String(error),
         completedAt: new Date(),
       }, repoCtx)
-    } finally {
-      releaseJobLock()
-      await statsTracker.forceFlush()
     }
   }
 }
