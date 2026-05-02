@@ -102,7 +102,7 @@ function readZipEntries(filePath: string): Map<string, Buffer> {
  */
 function createMockPrisma(assets: MediaAssetRow[]): PrismaClientLike {
   return {
-    $queryRawUnsafe: vi.fn<Promise<MediaAssetRow[]>, [string]>().mockResolvedValue(assets),
+    $queryRawUnsafe: vi.fn().mockResolvedValue(assets) as any,
   }
 }
 

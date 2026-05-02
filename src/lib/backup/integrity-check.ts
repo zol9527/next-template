@@ -123,7 +123,7 @@ export async function computeFileSha256(filePath: string): Promise<string> {
  * @returns 文件内容的 Buffer
  * @throws 找不到目标文件或压缩方式不支持时抛错
  */
-async function extractFileFromZip(zipPath: string, targetFileName: string): Promise<Buffer> {
+export async function extractFileFromZip(zipPath: string, targetFileName: string): Promise<Buffer> {
   const data = readFileSync(zipPath);
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
