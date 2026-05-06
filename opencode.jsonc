@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [],
+  "permission": {
+    // 允许读取小程序部分的代码
+    "external_directory": {
+      "/Users/loyd/dev/project/mini-program/shuoboda-miniprograme/*": "allow"
+    }
+  },
+  "mcp": {
+    // Google 推出关于数据库连接的工具
+    // 相关数据库连接设置 doc: https://mcp-toolbox.dev/integrations/mysql/prebuilt-configs/mysql/
+    // 详细的 YAML 配置 doc: https://mcp-toolbox.dev/documentation/configuration/
+    "toolbox": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "/opt/homebrew/bin/toolbox",
+        "--prebuilt",
+        "mysql",
+        "--stdio"
+      ],
+      "environment": {
+        "MYSQL_HOST": "100.77.248.61",
+        "MYSQL_PORT": "3306",
+        "MYSQL_DATABASE": "test_db",
+        "MYSQL_USER": "test",
+        "MYSQL_PASSWORD": "test"
+      }
+    }
+  }
+}

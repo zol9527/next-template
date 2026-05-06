@@ -46,6 +46,10 @@ model User {
   userDocuments         UserDocument[]
   userRoles             UserRole[]
   blogArticles          BlogArticle[]
+  checkins              Checkin[]
+  userCheckinStats      UserCheckinStats?
+  favorites             Favorite[]
+  feedbacks             Feedback[]
 
   // ── 插件 relation 字段占位（由合并脚本注入） ──
   // {{PLUGIN_MODEL_INJECTIONS:User}}
@@ -503,6 +507,91 @@ model BlogArticleView {
 }
 
 // ============================================================================
+// 签到系统
+// ============================================================================
+
+model Checkin {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  date      DateTime  @db.Date
+  reward    Json?
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("checkins")
+}
+
+model UserCheckinStats {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  streakDays     Int       @default(0) @map("streak_days")
+  totalCheckins  Int       @default(0) @map("total_checkins")
+  lastCheckinAt  DateTime? @map("last_checkin_at")
+  lastStreakDate DateTime? @map("last_streak_date")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_checkin_stats")
+}
+
+// ============================================================================
+// 收藏系统
+// ============================================================================
+
+model Favorite {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  targetType String    @map("target_type")
+  targetId   String    @map("target_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@map("favorites")
+}
+
+// ============================================================================
+// 反馈系统
+// ============================================================================
+
+model Feedback {
+  id        String          @id @default(uuid())
+  userId    String          @map("user_id")
+  type      FeedbackType
+  title     String
+  content   String          @db.Text
+  images    Json?
+  status    FeedbackStatus  @default(PENDING)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies   FeedbackReply[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("feedback")
+}
+
+model FeedbackReply {
+  id         String    @id @default(uuid())
+  feedbackId String    @map("feedback_id")
+  adminId    String    @map("admin_id")
+  content    String    @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at")
+  feedback   Feedback  @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@map("feedback_replies")
+}
+
+// ============================================================================
 // 枚举（核心）
 // ============================================================================
 
@@ -533,4 +622,17 @@ enum ContentSourceType {
   EDITOR
   MARKDOWN
   API
+}
+
+enum FeedbackType {
+  SUGGESTION
+  BUG
+  OTHER
+}
+
+enum FeedbackStatus {
+  PENDING
+  PROCESSING
+  RESOLVED
+  CLOSED
 }

@@ -77,4 +77,6 @@ export const SCOPE_TREE = {
       logs: { description: 'AI 使用日志查看' },
     },
   },
+  feedback: { description: '反馈管理' },
+  checkin: { description: '签到管理' },
 } as const

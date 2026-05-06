@@ -27,6 +27,12 @@ export const ApiErrorCodeSchema = z
     'MFA_REQUIRED', // 需要 MFA 验证
     'MFA_NOT_ENABLED', // MFA 未启用
     'INVALID_MFA_TOKEN', // 无效的 MFA 验证码
+    // ==================== 用户功能相关错误码 ====================
+    'ALREADY_CHECKED_IN', // 今日已签到
+    'ALREADY_FAVORITED', // 已收藏
+    'RATE_LIMITED', // 触发限流
+    'INVALID_MONTH', // 无效的月份格式
+    'INVALID_CURSOR', // 无效的分页游标
   ])
   .openapi({ description: '统一错误码' })
 
@@ -91,6 +97,12 @@ export const ERROR_META: Record<ApiErrorCode, { status: number; message: string 
   MFA_REQUIRED: { status: 403, message: 'MFA verification required' },
   MFA_NOT_ENABLED: { status: 403, message: 'MFA is not enabled' },
   INVALID_MFA_TOKEN: { status: 401, message: 'Invalid MFA token' },
+  // ==================== 用户功能相关错误元数据 ====================
+  ALREADY_CHECKED_IN: { status: 409, message: 'Already checked in today' },
+  ALREADY_FAVORITED: { status: 409, message: 'Already favorited' },
+  RATE_LIMITED: { status: 429, message: 'Rate limit exceeded' },
+  INVALID_MONTH: { status: 400, message: 'Invalid month format, expected YYYY-MM' },
+  INVALID_CURSOR: { status: 400, message: 'Invalid pagination cursor' },
 }
 
 /**

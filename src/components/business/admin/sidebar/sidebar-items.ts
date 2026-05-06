@@ -16,6 +16,8 @@ import {
   Smartphone,
   ScrollText,
   Sparkles,
+  MessageSquare,
+  CalendarCheck,
 } from 'lucide-react'
 import type { Action, Scope } from '@/config/access'
 
@@ -79,6 +81,13 @@ const coreSidebarGroups: SidebarGroupConfig[] = [
       { name: '用户管理', href: '/admin/users', icon: Users, requiredAccess: { action: 'read', scope: 'users' } },
       { name: '权限管理', href: '/admin/rbac', icon: ShieldCheck, requiredAccess: { action: 'read', scope: 'rbac' } },
       { name: 'MFA 设置', href: '/admin/mfa-settings', icon: Shield, requiredAccess: { action: 'read', scope: 'mfa' } },
+    ],
+  },
+  {
+    group: '运营管理',
+    items: [
+      { name: '反馈管理', href: '/admin/feedback', icon: MessageSquare, requiredAccess: { action: 'read', scope: 'feedback' } },
+      { name: '签到统计', href: '/admin/checkin', icon: CalendarCheck, requiredAccess: { action: 'read', scope: 'checkin' } },
     ],
   },
   {
