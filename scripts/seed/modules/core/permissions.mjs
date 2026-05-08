@@ -56,6 +56,8 @@ function flattenScopeTree() {
     dashboard: { description: '仪表盘' },
     health: { description: '健康检查' },
     ai: { description: 'AI 功能管理', children: { settings: { description: 'AI 提供商与模型配置' }, templates: { description: 'AI 提示词模板管理' }, generate: { description: 'AI 内容生成' }, logs: { description: 'AI 使用日志查看' } } },
+    feedback: { description: '反馈管理' },
+    checkin: { description: '签到管理' },
   }
 
   const result = []
