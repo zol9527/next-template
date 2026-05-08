@@ -14,6 +14,16 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createTestZip } from './integrity-check'
 import { restoreFiles } from './file-restore-engine'
+
+// Mock @/config 模块，避免测试环境中访问服务器端环境变量
+// 设置 OSS_PROVIDER 为 'cloud' 使测试走 provider.uploadFile 路径
+vi.mock('@/config', () => ({
+  env: {
+    OSS_PROVIDER: 'cloud',
+    LOCAL_UPLOAD_DIR: '/tmp/test-uploads',
+  },
+}))
+
 import { RateController } from './rate-controller'
 import { StatsTracker } from './stats-tracker'
 import type { ObjectStorageProvider } from '@/lib/storage/types/provider'

@@ -60,7 +60,10 @@ export const GET = withV1Route({
     const service = createBackupService({ backupJobs }, serviceContext)
     const stats = await service.getStats(params!.id)
 
-    if (!stats) {
+    // 同时查询 job 状态，以便前端能检测 failed/completed 等终态
+    const job = await service.getJob(params!.id)
+
+    if (!job) {
       return createJsonApiResponse(
         req,
         { success: false, error: { code: 'NOT_FOUND', message: '任务不存在' } },
@@ -68,7 +71,26 @@ export const GET = withV1Route({
       )
     }
 
-    return createJsonApiResponse(req, ok(stats))
+    // 为 progress 字段提供零值默认，避免前端因 undefined 崩溃
+    const progressDefaults = {
+      phase: null as string | null,
+      tablesTotal: 0,
+      tablesCompleted: 0,
+      totalRows: 0,
+      filesCompleted: 0,
+      filesTotal: 0,
+      bytesTransferred: 0,
+      errors: [] as string[],
+    }
+
+    return createJsonApiResponse(req, ok({
+      ...progressDefaults,
+      ...(stats ?? {}),
+      status: job.status,
+      errorMessage: job.errorMessage,
+      backupFileKey: job.backupFileKey,
+      completedAt: job.completedAt,
+    }))
   },
 })
 

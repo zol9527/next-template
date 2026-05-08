@@ -31,6 +31,7 @@
 import type { BackupJobRepository } from '@/repositories/interfaces/core/backup-job.interface'
 import type { RepoContext } from '@/types/repo/repo-context'
 import type { ServiceContext } from '@/types/service/service-context'
+import { dirname, join } from 'node:path'
 import { getStorageProvider } from '@/lib/storage/helper'
 import { createDbBackup, type PrismaClientLike } from '@/lib/backup/db-backup-engine'
 import { createFileBackup } from '@/lib/backup/file-backup-engine'
@@ -58,6 +59,14 @@ interface BackupServiceDeps {
 }
 
 // ─── 常量 ──────────────────────────────────────────────
+
+/**
+ * 当前进程正在处理的任务 ID 集合
+ *
+ * 用于区分"后台正在执行的任务"和"因进程重启而真正卡住的任务"。
+ * recoverStuckJobs() 会跳过此集合中的任务，避免误杀正在运行的后台任务。
+ */
+const activeJobIds = new Set<string>()
 
 /** 备份文件本地暂存目录 */
 const BACKUP_TMP_DIR = '/tmp'
@@ -98,6 +107,9 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
     return process.env.DATABASE_URL?.split('/').pop()?.split('?')[0] ?? 'unknown'
   }
 
+  // 首次调用 listJobs 时恢复中断的任务（懒加载式触发，非阻塞）
+  let hasRecovered = false
+
   return {
     /**
      * Function: createBackup
@@ -125,6 +137,12 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       const { jobType, requestedBy } = params
 
       logger.info({ action: 'backup:create', jobType, requestedBy })
+
+      // 创建前检查：是否有正在执行的任务
+      const lockResult = await acquireJobLock({ prisma: getPrisma() })
+      if (!lockResult.allowed) {
+        throw new Error(`已有备份/恢复任务正在执行中，请等待完成后再试 (任务 ID: ${lockResult.activeJobId ?? 'unknown'})`)
+      }
 
       const job = await backupJobs.createBackupJob({ jobType, requestedBy }, repoCtx)
 
@@ -164,6 +182,12 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       const { jobType, backupFileKey, requestedBy } = params
 
       logger.info({ action: 'restore:create', jobType, backupFileKey, requestedBy })
+
+      // 创建前检查：是否有正在执行的任务
+      const lockResult = await acquireJobLock({ prisma: getPrisma() })
+      if (!lockResult.allowed) {
+        throw new Error(`已有备份/恢复任务正在执行中，请等待完成后再试 (任务 ID: ${lockResult.activeJobId ?? 'unknown'})`)
+      }
 
       const job = await backupJobs.createBackupJob({ jobType, requestedBy }, repoCtx)
 
@@ -235,6 +259,14 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       cursor?: string
       limit?: number
     }) {
+      // 首次调用时恢复中断的任务（非阻塞，不影响查询响应时间）
+      if (!hasRecovered) {
+        hasRecovered = true
+        recoverStuckJobs().catch((error) => {
+          logger.error({ action: 'backup:recoverStuckError', error: String(error) })
+        })
+      }
+
       return backupJobs.listBackupJobs(params, repoCtx)
     },
 
@@ -323,6 +355,73 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
         fileName: storageKey.split('/').pop() ?? 'backup.zip',
       }
     },
+
+    /**
+     * Function: recoverStuckJobs
+     *
+     * Description: 扫描并恢复服务重启前处于 processing 状态的任务。
+     *   DB 恢复任务从断点继续，其他任务标记为失败。
+     *
+     * Returns:
+     *   Promise<void>: 无返回值
+     */
+    async recoverStuckJobs() {
+      await recoverStuckJobs()
+    },
+  }
+
+  // ─── 内部函数：恢复中断任务 ──────────────────────────────
+
+  /**
+   * Function: recoverStuckJobs
+   *
+   * Description: 服务启动时扫描 processing 状态的任务，
+   *   对 DB 恢复任务从断点继续，对其他任务标记为 failed。
+   *   防止服务重启后 processing 任务永远卡住。
+   *
+   * Returns:
+   *   Promise<void>: 无返回值
+   */
+  async function recoverStuckJobs() {
+    try {
+      // 查询所有 processing 状态的任务
+      const { items } = await backupJobs.listBackupJobs({ status: 'processing', limit: 50 }, repoCtx)
+
+      if (items.length === 0) return
+
+      // 过滤掉当前进程正在执行的任务（避免误杀后台任务）
+      const stuckJobs = items.filter((job) => !activeJobIds.has(job.id))
+
+      if (stuckJobs.length === 0) {
+        logger.info({ action: 'backup:recover_stuck', total: items.length, active: items.length }, '所有 processing 任务均在运行中，无需恢复')
+        return
+      }
+
+      logger.info({ action: 'backup:recover_stuck', total: items.length, stuck: stuckJobs.length, active: items.length - stuckJobs.length }, '发现未完成的任务，开始恢复')
+
+      for (const job of stuckJobs) {
+        const isRestore = job.jobType === 'db_restore' || job.jobType === 'full_restore'
+
+        if (isRestore && job.backupFileKey) {
+          // 恢复任务：从断点继续
+          logger.info({ action: 'backup:recover_restore', jobId: job.id }, '恢复中断的恢复任务')
+          processRestoreJob(job.id, job.jobType, job.backupFileKey).catch((error) => {
+            logger.error({ action: 'backup:recoverRestoreError', jobId: job.id, error: String(error) })
+          })
+        } else {
+          // 其他任务（备份/文件恢复等）：标记为 failed
+          logger.info({ action: 'backup:recover_fail', jobId: job.id, jobType: job.jobType }, '将中断任务标记为失败')
+          await backupJobs.updateBackupJobStatus({
+            id: job.id,
+            status: 'failed',
+            errorMessage: '服务重启，任务被中断。请手动重试。',
+            completedAt: new Date(),
+          }, repoCtx)
+        }
+      }
+    } catch (error) {
+      logger.error({ action: 'backup:recoverError', error: String(error) }, '恢复中断任务失败')
+    }
   }
 
   // ─── 内部函数：备份任务处理 ────────────────────────────
@@ -343,6 +442,7 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
    *   Promise<void>: 无返回值
    */
   async function processBackupJob(jobId: string, jobType: string) {
+    activeJobIds.add(jobId)
     const prismaClient = getPrisma()
     const databaseName = getDatabaseName()
     const provider = getStorageProvider()
@@ -354,8 +454,8 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       startedAt: new Date(),
     }, repoCtx)
 
-    // 2. 获取 Job Lock（防止并发执行）
-    const lockResult = await acquireJobLock({ prisma: prismaClient })
+    // 2. 获取 Job Lock（防止并发执行，排除自身）
+    const lockResult = await acquireJobLock({ prisma: prismaClient, excludeJobId: jobId })
     if (!lockResult.allowed) {
       await backupJobs.updateBackupJobStatus({
         id: jobId,
@@ -417,12 +517,26 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       // ── 上传到存储 ─────────────────────────────────────
       const storageKey = `${BACKUP_STORAGE_PREFIX}/${jobId}/${jobType}_${timestamp}.zip`
       const fs = await import('node:fs/promises')
-      const fileBuffer = await fs.readFile(zipPath)
-      await provider.uploadFile({
-        file: fileBuffer,
-        key: storageKey,
-        contentType: 'application/zip',
-      })
+
+      // 获取存储类型（从环境变量读取，避免读取 provider 内部状态）
+      const storageType = process.env.OSS_PROVIDER ?? 'local'
+
+      if (storageType === 'local') {
+        // 本地存储：使用流式管道拷贝，避免将整个 ZIP 加载到内存
+        const localUploadDir = process.env.LOCAL_UPLOAD_DIR ?? 'uploads'
+        const destPath = join(process.cwd(), localUploadDir, storageKey)
+        await fs.mkdir(dirname(destPath), { recursive: true })
+        await fs.copyFile(zipPath, destPath)
+      } else {
+        // 云存储：需要 Buffer 上传（云 SDK 限制）
+        // TODO: 未来可改为分片上传进一步降低内存峰值
+        const fileBuffer = await fs.readFile(zipPath)
+        await provider.uploadFile({
+          file: fileBuffer,
+          key: storageKey,
+          contentType: 'application/zip',
+        })
+      }
 
       // ── 清理临时文件 ───────────────────────────────────
       try { await fs.unlink(zipPath) } catch {}
@@ -451,6 +565,7 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
         completedAt: new Date(),
       }, repoCtx)
     } finally {
+      activeJobIds.delete(jobId)
       releaseJobLock()
       await statsTracker.forceFlush()
     }
@@ -475,6 +590,7 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
    *   Promise<void>: 无返回值
    */
   async function processRestoreJob(jobId: string, jobType: string, backupFileKey: string) {
+    activeJobIds.add(jobId)
     const prismaClient = getPrisma()
     const databaseName = getDatabaseName()
     const provider = getStorageProvider()
@@ -486,8 +602,8 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       startedAt: new Date(),
     }, repoCtx)
 
-    // 2. 获取 Job Lock（防止并发执行）
-    const lockResult = await acquireJobLock({ prisma: prismaClient })
+    // 2. 获取 Job Lock（防止并发执行，排除自身）
+    const lockResult = await acquireJobLock({ prisma: prismaClient, excludeJobId: jobId })
     if (!lockResult.allowed) {
       await backupJobs.updateBackupJobStatus({
         id: jobId,
@@ -540,11 +656,17 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
       try {
         // ── DB 恢复 ──────────────────────────────────────
         if (jobType === 'db_restore' || jobType === 'full_restore') {
+          // 从已保存的 stats 中提取断点续传信息（服务重启恢复时有效）
+          const currentJob = await backupJobs.getBackupJobById(jobId, repoCtx)
+          const savedStats = currentJob?.stats as Record<string, unknown> | null
+          const restoreCheckpoint = savedStats?.restoreCheckpoint as { completedTables: string[] } | undefined
+
           await restoreDbFromZip({
             zipPath: tmpZipPath,
             prisma: prismaClient,
             statsTracker,
             rateController,
+            checkpoint: restoreCheckpoint,
           })
 
           // ── URL 重映射（跨环境恢复时替换存储 endpoint）───
@@ -621,6 +743,8 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
         errorMessage: error instanceof Error ? error.message : String(error),
         completedAt: new Date(),
       }, repoCtx)
+    } finally {
+      activeJobIds.delete(jobId)
     }
   }
 }

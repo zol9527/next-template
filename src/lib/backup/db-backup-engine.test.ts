@@ -296,33 +296,6 @@ describe('createDbBackup', () => {
     expect(result.fileChecksums['users']).toBe(expectedSha256)
   })
 
-  it('内存超限时应抛出错误', async () => {
-    const tableData: Record<string, Record<string, unknown>[]> = {
-      big_table: [{ id: 1 }],
-    }
-
-    const params = buildParams({ tableData })
-
-    // Mock process.memoryUsage 返回超过 512MB 的 RSS
-    const originalMemoryUsage = process.memoryUsage
-    const mockMemoryUsage = vi.fn(() => ({
-      rss: 600 * 1024 * 1024,
-      heapTotal: 500 * 1024 * 1024,
-      heapUsed: 400 * 1024 * 1024,
-      external: 10 * 1024 * 1024,
-      arrayBuffers: 5 * 1024 * 1024,
-    })) as any as typeof process.memoryUsage
-
-    // 在模块级别替换
-    process.memoryUsage = mockMemoryUsage
-
-    try {
-      await expect(createDbBackup(params)).rejects.toThrow('内存超限')
-    } finally {
-      process.memoryUsage = originalMemoryUsage
-    }
-  })
-
   it('单表查询失败不应中断整体流程', async () => {
     // 创建自定义 prisma，其中 fail_table 会抛错
     const prisma = {

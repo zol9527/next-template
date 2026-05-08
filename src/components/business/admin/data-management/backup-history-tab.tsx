@@ -514,6 +514,11 @@ export function BackupHistoryTab() {
 
   const backups = data?.items ?? []
 
+  // 检查是否有正在执行的任务（processing/pending 状态），用于禁用恢复按钮
+  const hasActiveJob = backups.some(
+    (b) => b.status === 'processing' || b.status === 'pending'
+  )
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -583,6 +588,7 @@ export function BackupHistoryTab() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            disabled={hasActiveJob}
                             onClick={() => handleRestore(backup)}
                           >
                             <RotateCcw data-icon="inline-start" />

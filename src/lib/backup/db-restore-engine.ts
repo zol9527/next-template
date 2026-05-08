@@ -16,8 +16,9 @@
  * - 不恢复 backup_jobs 表自身（由 manifest 决定表列表）
  */
 
-import { deserializeRow } from './serializer'
+import { deserializeRow, JsonlReader } from './serializer'
 import { parseManifestFromZip, extractFileFromZip } from './integrity-check'
+import { StreamingZipReader } from './streaming-zip-reader'
 import type { BackupManifest } from './integrity-check'
 import { RateController } from './rate-controller'
 import { StatsTracker } from './stats-tracker'
@@ -121,6 +122,87 @@ async function extractAndParseJsonl(
 }
 
 /**
+ * Function: restoreTableFromZipStream
+ *
+ * Description: 使用流式方式从 ZIP 中读取指定表的 JSONL 数据并逐批 INSERT。
+ * 通过 StreamingZipReader + JsonlReader 实现零缓冲逐行处理，
+ * 内存峰值仅取决于单批大小（约 500 行，~50KB）。
+ *
+ * Parameters:
+ *   reader(StreamingZipReader): 已打开的 ZIP 读取器
+ *   zipPath(string): ZIP 文件路径（仅用于日志）
+ *   tableName(string): 表名
+ *   prisma(PrismaClientLike): Prisma 客户端
+ *   statsTracker(StatsTracker): 进度追踪器
+ *   rateController(RateController): 速率控制器
+ *
+ * Returns:
+ *   Promise<{ insertedRows: number }>: 插入的行数
+ */
+async function restoreTableFromZipStream(
+  reader: StreamingZipReader,
+  _zipPath: string,
+  tableName: string,
+  prisma: PrismaClientLike,
+  statsTracker: StatsTracker,
+  rateController: RateController,
+): Promise<{ insertedRows: number }> {
+  const entryName = `tables/${tableName}.jsonl`
+
+  // 如果 entry 不存在，跳过（空表）
+  if (!reader.hasEntry(entryName)) {
+    return { insertedRows: 0 }
+  }
+
+  const stream = await reader.streamEntry(entryName)
+  const jsonlReader = new JsonlReader(stream)
+
+  let totalInserted = 0
+  let columns: string[] | null = null
+  let batch: Record<string, unknown>[] = []
+
+  for await (const row of jsonlReader.readRows()) {
+    // 第一行时确定列名
+    if (columns === null) {
+      columns = Object.keys(row)
+    }
+
+    batch.push(row)
+
+    // 每批 BATCH_SIZE 行执行 INSERT
+    if (batch.length >= BATCH_SIZE) {
+      const { sql, values } = buildBatchInsertSql(tableName, columns, batch)
+      await prisma.$queryRawUnsafe(sql, ...values)
+      totalInserted += batch.length
+
+      statsTracker.update({
+        currentRows: totalInserted,
+        totalRows: totalInserted,
+      })
+
+      await rateController.waitForBatch(batch.length)
+      batch = []
+    }
+  }
+
+  // 处理剩余的行
+  if (batch.length > 0 && columns !== null) {
+    const { sql, values } = buildBatchInsertSql(tableName, columns, batch)
+    await prisma.$queryRawUnsafe(sql, ...values)
+    totalInserted += batch.length
+
+    statsTracker.update({
+      currentRows: totalInserted,
+      totalRows: totalInserted,
+    })
+
+    await rateController.waitForBatch(batch.length)
+  }
+
+  return { insertedRows: totalInserted }
+}
+
+/**
  * Function: getColumnsFromRows
  *
  * Description: 从行数据中提取有序的列名列表。
@@ -193,6 +275,9 @@ export async function restoreDbFromZip(
 
   const startTime = Date.now()
 
+  // 打开流式 ZIP 读取器（贯穿整个恢复流程，在 finally 中关闭）
+  const reader = await StreamingZipReader.open(zipPath)
+
   // 1. 解析 manifest 获取表列表
   const manifest: BackupManifest = await parseManifestFromZip(zipPath)
   const tables: string[] = manifest.tables ?? []
@@ -236,30 +321,11 @@ export async function restoreDbFromZip(
         // 3a. TRUNCATE TABLE
         await prisma.$queryRawUnsafe(`TRUNCATE TABLE \`${tableName}\``)
 
-        // 3b. 从 ZIP 提取 JSONL 数据并解析
-        const rows = await extractAndParseJsonl(zipPath, tableName)
-
-        if (rows.length > 0) {
-          const columns = getColumnsFromRows(rows)
-
-          // 3c. 分批插入（每批 BATCH_SIZE 行）
-          for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-            const batch = rows.slice(i, i + BATCH_SIZE)
-            const { sql, values } = buildBatchInsertSql(tableName, columns, batch)
-            await prisma.$queryRawUnsafe(sql, ...values)
-
-            totalRows += batch.length
-
-            // 3e. 更新 statsTracker
-            statsTracker.update({
-              currentRows: Math.min(i + BATCH_SIZE, rows.length),
-              totalRows,
-            })
-
-            // 3f. 速率控制
-            await rateController.waitForBatch(batch.length)
-          }
-        }
+        // 3b. 流式读取 JSONL 数据并逐批 INSERT（内存峰值 ~50KB）
+        const { insertedRows } = await restoreTableFromZipStream(
+          reader, zipPath, tableName, prisma, statsTracker, rateController,
+        )
+        totalRows += insertedRows
 
         restoredTables++
 
@@ -289,6 +355,9 @@ export async function restoreDbFromZip(
     // 5. 无论成功与否，恢复 FK 检查
     await prisma.$queryRawUnsafe('SET FOREIGN_KEY_CHECKS=1')
   }
+
+  // 关闭 ZIP 读取器
+  reader.close()
 
   // 6. 重置 AUTO_INCREMENT（仅对成功恢复的表）
   for (const tableName of tables) {

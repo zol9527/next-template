@@ -190,7 +190,7 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
    * 使用用户配置的 endpoint（可能是自定义域名），用于构建公共文件 URL
    */
   const getBaseUrl = (): string => {
-    const base = endpoint.startsWith('http') ? endpoint : `${secure ? 'https' : 'http'}://${endpoint}`
+    const base = endpoint.startsWith('http') ? endpoint : `https://${endpoint}`
     return base.endsWith('/') ? base : `${base}/`
   }
 

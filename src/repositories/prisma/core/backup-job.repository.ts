@@ -27,13 +27,27 @@ function mapBackupJob(job: BackupJob): {
   createdAt: Date
   updatedAt: Date
 } {
+  // 数据库中 stats 字段为 String? 类型，需要 JSON.parse 反序列化
+  let parsedStats: Record<string, unknown> | null = null
+  if (job.stats) {
+    if (typeof job.stats === 'string') {
+      try {
+        parsedStats = JSON.parse(job.stats) as Record<string, unknown>
+      } catch {
+        parsedStats = null
+      }
+    } else if (typeof job.stats === 'object') {
+      parsedStats = job.stats as Record<string, unknown>
+    }
+  }
+
   return {
     id: job.id,
     jobType: job.jobType,
     status: job.status,
     requestedBy: job.requestedBy,
     backupFileKey: job.backupFileKey,
-    stats: job.stats as Record<string, unknown> | null,
+    stats: parsedStats,
     errorMessage: job.errorMessage,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
@@ -197,7 +211,8 @@ export function createPrismaBackupJobRepository(): BackupJobRepository {
       }
 
       if (stats !== undefined) {
-        data.stats = stats
+        // 数据库中 stats 字段为 String? 类型，需要 JSON.stringify 序列化
+        data.stats = stats ? JSON.stringify(stats) : null
       }
 
       if (errorMessage !== undefined) {

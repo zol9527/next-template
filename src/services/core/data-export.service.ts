@@ -24,6 +24,9 @@
  * =============================================================================
  */
 
+import { createWriteStream, mkdirSync } from 'node:fs'
+import { dirname, resolve as pathResolve } from 'node:path'
+import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 import { Buffer } from 'node:buffer'
 
@@ -67,7 +70,11 @@ const FILENAME_CONFIG = {
 const EXPORT_BATCH_SIZE = 1000
 
 /** 内存安全阈值（RSS），超过此值中断导出 */
-const MEMORY_RSS_LIMIT_BYTES = 512 * 1024 * 1024
+/**
+ * 内存限制：默认 1536MB（可通过 EXPORT_MEMORY_LIMIT_MB 环境变量配置）
+ * 与备份引擎使用相同的策略，避免在 Next.js 服务器进程中误判内存超限
+ */
+const MEMORY_RSS_LIMIT_BYTES = (parseInt(process.env.EXPORT_MEMORY_LIMIT_MB ?? '1536', 10)) * 1024 * 1024
 
 /**
  * Function: checkMemoryUsage
@@ -109,6 +116,41 @@ export function createDataExportService(
 
   // 使用统一的 Storage Provider 辅助函数获取 OSS 实例
   const ossProvider: ObjectStorageProvider = getStorageProvider()
+
+  /** 首次访问导出列表时是否已执行过恢复 */
+  let hasRecovered = false
+
+  /**
+   * Function: recoverStuckExportJobs
+   *
+   * Description: 扫描 processing 状态的导出任务并标记为 failed。
+   *   由于导出任务不支持断点续传（无 stats/checkpoint），
+   *   服务重启后将 processing 状态的任务标记为 failed，
+   *   用户可在前端手动重新创建导出任务。
+   */
+  async function recoverStuckExportJobs() {
+    try {
+      // 查询所有 processing 状态的导出任务
+      const { items } = await deps.exportJobs.listExportJobs(repoCtx, {
+        status: 'processing',
+        limit: 50,
+      })
+
+      if (items.length === 0) return
+
+      ctx.logger.info({ action: 'export:recover_stuck', count: items.length }, '发现中断的导出任务，标记为失败')
+
+      for (const job of items) {
+        await deps.exportJobs.updateExportJobStatus(repoCtx, {
+          id: job.id,
+          status: 'failed',
+          errorMessage: '服务重启，导出任务被中断。请重新创建导出任务。',
+        })
+      }
+    } catch (error) {
+      ctx.logger.error({ action: 'export:recoverError', error: String(error) }, '恢复中断导出任务失败')
+    }
+  }
 
   return {
     /**
@@ -217,6 +259,14 @@ export function createDataExportService(
       limit?: number
       cursor?: string | null
     }): Promise<{ items: ExportJobResponse[]; nextCursor: string | null }> {
+      // 首次调用时恢复中断的导出任务
+      if (!hasRecovered) {
+        hasRecovered = true
+        recoverStuckExportJobs().catch((error) => {
+          ctx.logger.error({ action: 'export:recoverStuckError', error: String(error) })
+        })
+      }
+
       ctx.logger.info({ action: 'export:list_jobs', params }, 'Listing export jobs')
 
       const result = await deps.exportJobs.listExportJobs(repoCtx, params)
@@ -254,92 +304,91 @@ export function createDataExportService(
         })
 
         const filters = JSON.parse(job.filters) as Record<string, unknown>
+        const isLocalStorage = env.OSS_PROVIDER === 'local'
 
         let fileName = ''
         let recordCount = 0
+        let fileSize = 0
+        let key = ''
 
-        // 使用流式分页生成 CSV
-        const csvBuffer = await (async (): Promise<Buffer> => {
-          switch (job.jobType) {
-            case EXPORT_JOB_TYPES.BUYERS_PAYMENT: {
-              fileName = this.generateFileName(FILENAME_CONFIG.BUYERS_PAYMENT)
-              const writer = new CsvWriter(BUYERS_PAYMENT_CSV_COLUMNS)
+        // 根据任务类型构建 writer + fetchPage，并执行流式导出
+        // 每个分支内直接调用 streamPaginatedCsvToFile / streamPaginatedCsvToBuffer，
+        // 避免 CsvWriter 泛型联合类型不兼容的问题
+        switch (job.jobType) {
+          case EXPORT_JOB_TYPES.BUYERS_PAYMENT: {
+            fileName = this.generateFileName(FILENAME_CONFIG.BUYERS_PAYMENT)
+            key = `exports/${job.jobType}/${Date.now()}-${fileName}`
+            const writer = new CsvWriter(BUYERS_PAYMENT_CSV_COLUMNS)
+            const fetchPage = (cursor?: string) =>
+              deps.exportJobs.getBuyersPaymentDataPaginated(repoCtx, {
+                startTime: filters.startTime as string | undefined,
+                endTime: filters.endTime as string | undefined,
+                status: filters.status as string | undefined,
+                productId: filters.productId as string | undefined,
+                cursor,
+                limit: EXPORT_BATCH_SIZE,
+              })
 
-              const { buffer, totalRows } = await this.streamPaginatedCsvToBuffer<BuyersPaymentExportRow>(
-                writer,
-                (cursor) => deps.exportJobs.getBuyersPaymentDataPaginated(repoCtx, {
-                  startTime: filters.startTime as string | undefined,
-                  endTime: filters.endTime as string | undefined,
-                  status: filters.status as string | undefined,
-                  productId: filters.productId as string | undefined,
-                  cursor,
-                  limit: EXPORT_BATCH_SIZE,
-                })
-              )
-              recordCount = totalRows
-              return buffer
+            if (isLocalStorage) {
+              const result = await this.streamPaginatedCsvToFile(writer, fetchPage, key)
+              recordCount = result.totalRows
+              fileSize = result.bytesWritten
+            } else {
+              const result = await this.streamPaginatedCsvToBuffer(writer, fetchPage)
+              recordCount = result.totalRows
+              fileSize = result.buffer.length
+              await ossProvider.uploadFile({ file: result.buffer, key, contentType: 'text/csv; charset=utf-8' })
             }
-
-            case EXPORT_JOB_TYPES.PROMOTERS_COMMISSION: {
-              fileName = this.generateFileName(FILENAME_CONFIG.PROMOTERS_COMMISSION)
-              const writer = new CsvWriter(PROMOTERS_COMMISSION_CSV_COLUMNS)
-
-              const { buffer, totalRows } = await this.streamPaginatedCsvToBuffer<PromotersCommissionExportRow>(
-                writer,
-                (cursor) => deps.exportJobs.getPromotersCommissionDataPaginated(repoCtx, {
-                  startTime: filters.startTime as string | undefined,
-                  endTime: filters.endTime as string | undefined,
-                  settlementStatus: filters.settlementStatus as string | undefined,
-                  promoterLevel: filters.promoterLevel as string | undefined,
-                  cursor,
-                  limit: EXPORT_BATCH_SIZE,
-                })
-              )
-              recordCount = totalRows
-              return buffer
-            }
-
-            default:
-              throw new Error(`Unsupported job type: ${job.jobType}`)
+            break
           }
-        })()
 
-        const timestamp = Date.now()
-        const key = `exports/${job.jobType}/${timestamp}-${fileName}`
+          case EXPORT_JOB_TYPES.PROMOTERS_COMMISSION: {
+            fileName = this.generateFileName(FILENAME_CONFIG.PROMOTERS_COMMISSION)
+            key = `exports/${job.jobType}/${Date.now()}-${fileName}`
+            const writer = new CsvWriter(PROMOTERS_COMMISSION_CSV_COLUMNS)
+            const fetchPage = (cursor?: string) =>
+              deps.exportJobs.getPromotersCommissionDataPaginated(repoCtx, {
+                startTime: filters.startTime as string | undefined,
+                endTime: filters.endTime as string | undefined,
+                settlementStatus: filters.settlementStatus as string | undefined,
+                promoterLevel: filters.promoterLevel as string | undefined,
+                cursor,
+                limit: EXPORT_BATCH_SIZE,
+              })
 
-        ctx.logger.info(
-          {
-            action: 'export:upload_file',
-            jobId,
-            key,
-            size: csvBuffer.length,
-            recordCount,
-          },
-          'Uploading CSV to OSS'
-        )
+            if (isLocalStorage) {
+              const result = await this.streamPaginatedCsvToFile(writer, fetchPage, key)
+              recordCount = result.totalRows
+              fileSize = result.bytesWritten
+            } else {
+              const result = await this.streamPaginatedCsvToBuffer(writer, fetchPage)
+              recordCount = result.totalRows
+              fileSize = result.buffer.length
+              await ossProvider.uploadFile({ file: result.buffer, key, contentType: 'text/csv; charset=utf-8' })
+            }
+            break
+          }
 
-        const uploadResult = await ossProvider.uploadFile({
-          file: csvBuffer,
-          key,
-          contentType: 'text/csv; charset=utf-8',
-        })
+          default:
+            throw new Error(`Unsupported job type: ${job.jobType}`)
+        }
+
+        // 本地存储的 URL 格式：/api/v1/public/files/<key>
+        const fileUrl = isLocalStorage
+          ? `/api/v1/public/files/${key}`
+          : key
 
         job = await deps.exportJobs.updateExportJobStatus(repoCtx, {
           id: jobId,
           status: 'completed',
-          fileUrl: uploadResult.key,
-          fileName: uploadResult.url.split('/').pop() ?? fileName,
-          fileSize: csvBuffer.length,
+          fileUrl,
+          fileName,
+          fileSize,
           recordCount,
         })
 
         ctx.logger.info(
-          {
-            action: 'export:job_completed',
-            jobId,
-            storageKey: uploadResult.key,
-            recordCount,
-          },
+          { action: 'export:job_completed', jobId, storageKey: key, recordCount, fileSize },
           'Export job completed successfully'
         )
 
@@ -365,11 +414,80 @@ export function createDataExportService(
     },
 
     /**
+     * Function: streamPaginatedCsvToFile
+     *
+     * Description: 流式分页获取数据并直接写入本地文件（零缓冲）。
+     *   CSV chunk 通过 pipeline 直接 pipe 到 fs.createWriteStream，
+     *   内存峰值仅取决于单页数据量（约 1000 行，~1MB），不随总数据量增长。
+     *
+     *   仅用于本地存储场景。云存储请使用 streamPaginatedCsvToBuffer。
+     *
+     * Parameters:
+     *   writer(CsvWriter): CSV 写入器
+     *   fetchPage((cursor?: string) => Promise<{ rows: T[]; nextCursor: string | null }>): 分页获取函数
+     *   storageKey(string): 存储键（如 "exports/buyers_payment/1234-file.csv"），
+     *     文件将写入 LOCAL_UPLOAD_DIR/<storageKey>
+     *
+     * Returns:
+     *   result(object): { totalRows(number): 总行数, bytesWritten(number): 写入字节数 }
+     */
+    async streamPaginatedCsvToFile<T>(
+      writer: CsvWriter<T>,
+      fetchPage: (cursor?: string) => Promise<{ rows: T[]; nextCursor: string | null }>,
+      storageKey: string,
+    ): Promise<{ totalRows: number; bytesWritten: number }> {
+      const uploadDir = env.LOCAL_UPLOAD_DIR ?? 'uploads'
+      const filePath = pathResolve(process.cwd(), uploadDir, storageKey)
+
+      // 确保目标目录存在
+      mkdirSync(dirname(filePath), { recursive: true })
+
+      let totalRows = 0
+      let bytesWritten = 0
+      let cursor: string | undefined
+
+      async function* csvChunks(): AsyncGenerator<string> {
+        yield '\uFEFF'
+        yield writer.getHeaderString()
+
+        let hasNextPage = true
+        while (hasNextPage) {
+          checkMemoryUsage(ctx.logger)
+
+          const { rows, nextCursor } = await fetchPage(cursor)
+          totalRows += rows.length
+
+          if (rows.length > 0) {
+            yield writer.formatRows(rows)
+          }
+
+          hasNextPage = nextCursor !== null
+          cursor = nextCursor ?? undefined
+        }
+      }
+
+      const source = Readable.from(csvChunks())
+      const sink = createWriteStream(filePath)
+
+      // 使用 pipeline 确保流正确关闭和错误传播
+      sink.on('data', (chunk: Buffer) => {
+        bytesWritten += chunk.length
+      })
+
+      await pipeline(source, sink)
+
+      return { totalRows, bytesWritten }
+    },
+
+    /**
      * Function: streamPaginatedCsvToBuffer
      *
      * Description: 流式分页获取数据并生成 CSV Buffer。
      *   每批从仓库获取 limit 行数据，通过 Readable 流逐步写入 CSV 行，
      *   避免一次性将全部原始数据加载到内存。
+     *
+     *   注意：此方法仍会将全部 CSV 内容收集到 Buffer，
+     *   适用于云存储上传。本地存储请使用 streamPaginatedCsvToFile。
      *
      * Parameters:
      *   writer(CsvWriter): CSV 写入器
@@ -499,6 +617,16 @@ export function createDataExportService(
       const date = now.toISOString().split('T')[0] // YYYY-MM-DD
       const time = now.toTimeString().split(' ')[0].replace(/:/g, '') // HHMMSS
       return `${prefix}_${date}_${time}.csv`
+    },
+
+    /**
+     * Function: recoverStuckExportJobs
+     *
+     * Description: 扫描并标记 processing 状态的导出任务为 failed。
+     *   在服务重启后首次访问导出列表时自动触发。
+     */
+    async recoverStuckExportJobs() {
+      await recoverStuckExportJobs()
     },
   }
 }

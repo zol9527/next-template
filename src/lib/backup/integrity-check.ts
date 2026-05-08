@@ -143,8 +143,9 @@ export async function extractFileFromZip(zipPath: string, targetFileName: string
     }
 
     // Local File Header 结构（30 字节固定头 + 变长部分）
+    const generalFlags = view.getUint16(offset + 6, true);
     const compressionMethod = view.getUint16(offset + 8, true);
-    const compressedSize = view.getUint32(offset + 18, true);
+    let compressedSize = view.getUint32(offset + 18, true);
     const fileNameLen = view.getUint16(offset + 26, true);
     const extraFieldLen = view.getUint16(offset + 28, true);
 
@@ -152,6 +153,23 @@ export async function extractFileFromZip(zipPath: string, targetFileName: string
     const fileName = data.subarray(fileNameStart, fileNameStart + fileNameLen).toString("utf8");
 
     const dataStart = fileNameStart + fileNameLen + extraFieldLen;
+
+    // 当使用 Data Descriptor（标志位 bit 3）时，Local File Header 中的 size 为 0
+    // 需要从 Data Descriptor 中读取真实大小
+    const hasDataDescriptor = (generalFlags & 0x08) !== 0
+    if (hasDataDescriptor && compressedSize === 0) {
+      // 搜索 Data Descriptor 签名 (0x08074b50)
+      let ddOffset = dataStart
+      while (ddOffset < data.length - 16) {
+        const ddSig = view.getUint32(ddOffset, true)
+        if (ddSig === 0x08074b50) {
+          compressedSize = view.getUint32(ddOffset + 8, true)
+          break
+        }
+        ddOffset++
+      }
+    }
+
     const compressedData = data.subarray(dataStart, dataStart + compressedSize);
 
     if (fileName === targetFileName) {
@@ -165,7 +183,9 @@ export async function extractFileFromZip(zipPath: string, targetFileName: string
       throw new Error(`不支持的压缩方式: ${compressionMethod}`);
     }
 
-    offset = dataStart + compressedSize;
+    // 有 Data Descriptor 时需要跳过 16 字节（签名4 + CRC4 + 压缩大小4 + 原始大小4）
+    const skipBytes = hasDataDescriptor ? 16 : 0
+    offset = dataStart + compressedSize + skipBytes;
   }
 
   throw new Error(`ZIP 中未找到文件: ${targetFileName}`);

@@ -12,20 +12,24 @@
  * 6. 空表正常处理
  *
  * 使用 vi.spyOn 而非 vi.mock，避免 Bun test runner 跨文件 mock 泄漏
+ *
+ * 注意：StreamingZipReader（基于 yauzl）的 ReadStream 与 for await 在
+ * vitest 中不兼容，因此 mock StreamingZipReader.open 返回兼容的 fake reader，
+ * 使用 Node.js Readable.from() 创建与 for await 兼容的流。
  */
 
 // @vitest-environment node
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { existsSync, rmSync } from 'node:fs'
+import { Readable } from 'node:stream'
+import type { BackupManifest } from './integrity-check'
 
 import { restoreDbFromZip } from './db-restore-engine'
 import { serializeRow } from './serializer'
 import * as integrityCheck from './integrity-check'
+import { StreamingZipReader } from './streaming-zip-reader'
 
 // ─── 辅助工具 ─────────────────────────────────────────
-
-const tempDirs: string[] = []
 
 function rowsToJsonl(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return ''
@@ -66,48 +70,56 @@ function createMockRateController() {
   }
 }
 
-/** 配置 extractFileFromZip spy 来返回表的 JSONL 数据 */
-function setupExtractMock(
+/**
+ * 配置 mock 来模拟 StreamingZipReader.open 和 parseManifestFromZip。
+ * 使用 Node.js Readable.from() 创建与 for await 兼容的流，
+ * 解决 yauzl 的 ReadStream 在 vitest 中不支持 for await 的问题。
+ */
+function setupStreamingMock(
   tableData: Record<string, Record<string, unknown>[]>,
-  manifestTables: string[],
+  manifest: BackupManifest,
 ) {
-  vi.spyOn(integrityCheck, 'parseManifestFromZip').mockResolvedValue({
-    version: '1.0',
-    createdAt: new Date().toISOString(),
-    tables: manifestTables,
-    models: [],
-    plugins: [],
-    files: {},
-  })
+  // mock parseManifestFromZip，直接返回 manifest（不依赖真实 ZIP 文件）
+  vi.spyOn(integrityCheck, 'parseManifestFromZip').mockResolvedValue(manifest)
 
-  vi.spyOn(integrityCheck, 'extractFileFromZip').mockImplementation(
-    (_zipPath: string, targetFileName: string) => {
-      if (targetFileName === 'manifest.json') {
-        return Promise.resolve(Buffer.from('{}'))
-      }
-
-      const match = targetFileName.match(/^tables\/(.+)\.jsonl$/)
+  // 创建 fake reader，使用 Readable.from() 创建兼容 for await 的流
+  const fakeReader = {
+    hasEntry: vi.fn((name: string) => {
+      // 空表也创建 entry（hasEntry 返回 true），但 streamEntry 返回空流
+      const match = name.match(/^tables\/(.+)\.jsonl$/)
       if (match) {
-        const tableName = match[1]
-        const rows = tableData[tableName] ?? []
-        const jsonl = rowsToJsonl(rows)
-        return Promise.resolve(Buffer.from(jsonl, 'utf8'))
+        return match[1] in tableData
       }
+      return false
+    }),
+    streamEntry: vi.fn(async (name: string): Promise<Readable> => {
+      const match = name.match(/^tables\/(.+)\.jsonl$/)
+      if (!match) throw new Error(`未找到文件: ${name}`)
 
-      return Promise.reject(new Error(`未找到文件: ${targetFileName}`))
-    },
-  )
+      const tableName = match[1]
+      const rows = tableData[tableName] ?? []
+      const jsonl = rowsToJsonl(rows)
+
+      // 使用 Readable.from 创建与 for await 兼容的流
+      return Readable.from([jsonl], { encoding: 'utf8' })
+    }),
+    close: vi.fn(),
+    listEntries: vi.fn(() => {
+      const entries: string[] = []
+      for (const tableName of Object.keys(tableData)) {
+        entries.push(`tables/${tableName}.jsonl`)
+      }
+      return entries
+    }),
+  }
+
+  // mock StreamingZipReader.open 返回 fake reader
+  vi.spyOn(StreamingZipReader, 'open').mockResolvedValue(fakeReader as any)
 }
 
 // ─── 清理 ─────────────────────────────────────────────
 
 afterEach(() => {
-  for (const dir of tempDirs) {
-    if (existsSync(dir)) {
-      rmSync(dir, { recursive: true, force: true })
-    }
-  }
-  tempDirs.length = 0
   vi.restoreAllMocks()
 })
 
@@ -128,8 +140,16 @@ describe('restoreDbFromZip', () => {
       ],
     }
     const tables = ['users', 'posts', 'comments']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -180,8 +200,16 @@ describe('restoreDbFromZip', () => {
       good_table: [{ id: 1, data: 'OK' }],
     }
     const tables = ['users', 'fail_table', 'good_table']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -228,8 +256,16 @@ describe('restoreDbFromZip', () => {
       comments: [{ id: 1, content: 'Nice' }],
     }
     const tables = ['users', 'posts', 'comments']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -275,8 +311,16 @@ describe('restoreDbFromZip', () => {
       bad_table: [{ id: 1 }],
     }
     const tables = ['bad_table']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -316,8 +360,16 @@ describe('restoreDbFromZip', () => {
       posts: [{ id: 10, title: 'Test' }],
     }
     const tables = ['users', 'posts']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -346,8 +398,16 @@ describe('restoreDbFromZip', () => {
       has_data: [{ id: 1, name: 'test' }],
     }
     const tables = ['empty_table', 'has_data']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -386,8 +446,16 @@ describe('restoreDbFromZip', () => {
       big_table: rows,
     }
     const tables = ['big_table']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -420,8 +488,16 @@ describe('restoreDbFromZip', () => {
       posts: [{ id: 1, title: 'Test' }],
     }
     const tables = ['users', 'posts']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma } = createMockPrisma()
     const statsTracker = createMockStatsTracker()
@@ -460,8 +536,16 @@ describe('restoreDbFromZip', () => {
       ],
     }
     const tables = ['users']
+    const manifest: BackupManifest = {
+      version: '1.0',
+      createdAt: new Date().toISOString(),
+      tables,
+      models: [],
+      plugins: [],
+      files: {},
+    }
 
-    setupExtractMock(tableData, tables)
+    setupStreamingMock(tableData, manifest)
 
     const { prisma, sqlLog } = createMockPrisma()
     const statsTracker = createMockStatsTracker()

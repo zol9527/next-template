@@ -26,6 +26,8 @@ export interface PrismaClientLike {
  */
 export interface JobGuardParams {
   prisma: PrismaClientLike
+  /** 需要排除的 Job ID（通常是当前任务自身，避免自引用检测） */
+  excludeJobId?: string
 }
 
 /**
@@ -52,12 +54,17 @@ export interface JobGuardResult {
 export async function acquireJobLock(
   params: JobGuardParams
 ): Promise<JobGuardResult> {
-  const { prisma } = params
+  const { prisma, excludeJobId } = params
 
-  // 查询是否有 pending 或 processing 状态的备份任务
-  const activeJobs = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') LIMIT 1`
-  )
+  // 查询是否有 pending 或 processing 状态的备份任务（排除当前任务自身）
+  const activeJobs = excludeJobId
+    ? await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') AND id != ? LIMIT 1`,
+        excludeJobId
+      )
+    : await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') LIMIT 1`
+      )
 
   // 如果存在活跃任务，拒绝创建新任务
   if (activeJobs.length > 0) {

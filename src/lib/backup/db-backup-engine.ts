@@ -12,7 +12,7 @@
  * 设计要点：
  * - 使用 $queryRawUnsafe 支持通用表名查询
  * - 通过拓扑排序确定备份顺序（先备份被依赖的表）
- * - 内存保护：检查 RSS，超过 512MB 时抛错
+ * - 内存保护：检查 RSS，超过限制时抛错
  * - 单表失败不中断整体流程
  */
 
@@ -36,8 +36,16 @@ import { StatsTracker } from './stats-tracker'
 /** 每批查询行数 */
 const BATCH_SIZE = 500
 
-/** 内存限制：512MB */
-const MEMORY_LIMIT_BYTES = 512 * 1024 * 1024
+/**
+ * 内存限制：默认 1536MB（可通过 BACKUP_MEMORY_LIMIT_MB 环境变量配置）
+ *
+ * 为什么 512MB 不够：
+ * - Next.js 服务器基础开销约 300-500MB（dev 模式更高）
+ * - Prisma Client 连接池和查询缓存约 50-100MB
+ * - 备份引擎自身 JSONL 序列化约 50-200MB
+ * - 512MB 在开发环境下几乎必定触发内存超限
+ */
+const MEMORY_LIMIT_BYTES = (parseInt(process.env.BACKUP_MEMORY_LIMIT_MB ?? '1536', 10)) * 1024 * 1024
 
 // ZIP 格式签名
 const LOCAL_FILE_HEADER_SIG = 0x04034b50
@@ -154,7 +162,7 @@ function computeCrc32(data: Uint8Array): number {
 /**
  * Function: checkMemoryLimit
  *
- * Description: 检查当前进程 RSS 是否超过 512MB 限制
+ * Description: 检查当前进程 RSS 是否超过内存限制
  *
  * Returns:
  *   void
@@ -171,98 +179,182 @@ function checkMemoryLimit(): void {
   }
 }
 
-// ─── BufferCollectStream ──────────────────────────────
+// ─── 流式写入桥接 ─────────────────────────────────────
 
 /**
- * Function: BufferCollectStream
+ * Function: ChunkBridgeStream
  *
- * Description: 自定义 Writable 流，将写入的数据收集到内存 Buffer 数组中。
- * 用于在写入 JSONL 数据时收集内容，以便后续写入 ZIP 文件。
- * 每次 _write 调用将 chunk 推入数组，最终通过 toBuffer() 合并。
+ * Description: 将 Writable 流的写入操作桥接到 ZipFileWriter 的 writeChunk 方法。
+ * JsonlWriter 写入的每段数据被直接传递给 ZipFileWriter，避免在内存中缓存整表数据。
  */
-class BufferCollectStream extends Writable {
-  private chunks: Buffer[] = []
+class ChunkBridgeStream extends Writable {
+  private zipWriter: StreamingZipWriter
+  private hash: ReturnType<typeof createHash>
+  private _byteCount = 0
+
+  constructor(zipWriter: StreamingZipWriter) {
+    super()
+    this.zipWriter = zipWriter
+    this.hash = createHash('sha256')
+  }
 
   _write(
     chunk: Buffer,
     _encoding: string,
     callback: (error?: Error | null) => void
   ): void {
-    this.chunks.push(chunk)
+    this.zipWriter.writeChunk(chunk)
+    this.hash.update(chunk)
+    this._byteCount += chunk.length
     callback()
   }
 
-  /**
-   * Function: toBuffer
-   *
-   * Description: 将收集的所有数据块合并为一个 Buffer
-   *
-   * Returns:
-   *   Buffer: 合并后的完整数据
-   */
-  toBuffer(): Buffer {
-    return Buffer.concat(this.chunks)
+  /** 获取当前已写入字节的 SHA256 哈希 */
+  getSha256(): string {
+    return this.hash.digest('hex')
+  }
+
+  /** 获取已写入字节数 */
+  get byteCount(): number {
+    return this._byteCount
   }
 }
 
-// ─── ZipFileWriter ────────────────────────────────────
+// ─── StreamingZipWriter ────────────────────────────────
 
 /**
- * Function: ZipFileWriter
+ * Function: StreamingZipWriter
  *
  * Description: 流式 ZIP 文件写入器。
- * 将数据逐文件写入 ZIP 格式，使用 store（无压缩）方式。
- * 每次调用 addFile 写入一个完整的文件条目（Local File Header + Data），
- * 最后调用 finalize 写入 Central Directory 和 EOCD。
+ * 支持 addFile（兼容旧接口，小文件用）和流式写入（beginFile/writeChunk/endFile，大文件用）。
+ * 流式写入使用 Data Descriptor 延迟写入 CRC-32 和文件大小，避免缓存整表数据。
  */
-class ZipFileWriter {
+class StreamingZipWriter {
   private stream: ReturnType<typeof createWriteStream>
   private entries: ZipEntry[] = []
   private offset = 0
 
+  /** 当前正在流式写入的文件状态 */
+  private currentFile: {
+    name: string
+    crc: number
+    size: number
+    headerOffset: number
+  } | null = null
+
   constructor(filePath: string) {
-    // 确保输出目录存在
     mkdirSync(dirname(filePath), { recursive: true })
     this.stream = createWriteStream(filePath)
   }
 
   /**
-   * Function: addFile
-   *
-   * Description: 添加一个文件到 ZIP 中
-   *
-   * Parameters:
-   *   name(string): 文件名（在 ZIP 内的路径）
-   *   content(Buffer): 文件内容
+   * 添加一个小文件到 ZIP（一次性写入，适用于小数据）
    */
   addFile(name: string, content: Buffer): void {
     const fileNameBuf = Buffer.from(name, 'utf8')
     const crc = computeCrc32(content)
 
-    // Local File Header（30 字节固定头 + 文件名）
     const header = Buffer.alloc(30)
-    header.writeUInt32LE(LOCAL_FILE_HEADER_SIG, 0)  // 签名
-    header.writeUInt16LE(20, 4)                       // 所需版本
-    header.writeUInt16LE(0, 6)                        // 标志位
-    header.writeUInt16LE(0, 8)                        // 压缩方式：store
-    header.writeUInt16LE(0, 10)                       // 修改时间
-    header.writeUInt16LE(0, 12)                       // 修改日期
-    header.writeUInt32LE(crc, 14)                     // CRC-32
-    header.writeUInt32LE(content.length, 18)          // 压缩大小
-    header.writeUInt32LE(content.length, 22)          // 原始大小
-    header.writeUInt16LE(fileNameBuf.length, 26)      // 文件名长度
-    header.writeUInt16LE(0, 28)                       // 额外字段长度
+    header.writeUInt32LE(LOCAL_FILE_HEADER_SIG, 0)
+    header.writeUInt16LE(20, 4)
+    header.writeUInt16LE(0, 6)
+    header.writeUInt16LE(0, 8)    // 压缩方式：store
+    header.writeUInt16LE(0, 10)
+    header.writeUInt16LE(0, 12)
+    header.writeUInt32LE(crc, 14)
+    header.writeUInt32LE(content.length, 18)
+    header.writeUInt32LE(content.length, 22)
+    header.writeUInt16LE(fileNameBuf.length, 26)
+    header.writeUInt16LE(0, 28)
 
     this.stream.write(Buffer.concat([header, fileNameBuf, content]))
 
-    this.entries.push({
-      name,
-      offset: this.offset,
-      crc32: crc,
-      size: content.length,
-    })
-
+    this.entries.push({ name, offset: this.offset, crc32: crc, size: content.length })
     this.offset += 30 + fileNameBuf.length + content.length
+  }
+
+  /**
+   * 开始流式写入一个文件（用于大表数据，避免缓存整表）
+   *
+   * 写入 Local File Header，使用 Data Descriptor 标志位（bit 3），
+   * CRC 和大小字段暂填 0，在 endFile() 时通过 Data Descriptor 补写。
+   */
+  beginFile(name: string): void {
+    if (this.currentFile) {
+      throw new Error(`上一个文件 "${this.currentFile.name}" 尚未调用 endFile()`)
+    }
+
+    const fileNameBuf = Buffer.from(name, 'utf8')
+    const headerOffset = this.offset
+
+    // Local File Header（使用 Data Descriptor 标志）
+    const header = Buffer.alloc(30)
+    header.writeUInt32LE(LOCAL_FILE_HEADER_SIG, 0)
+    header.writeUInt16LE(20, 4)
+    header.writeUInt16LE(0x08, 6)   // 标志位 bit 3：使用 Data Descriptor
+    header.writeUInt16LE(0, 8)      // 压缩方式：store
+    header.writeUInt16LE(0, 10)
+    header.writeUInt16LE(0, 12)
+    header.writeUInt32LE(0, 14)     // CRC-32（稍后补写）
+    header.writeUInt32LE(0, 18)     // 压缩大小（稍后补写）
+    header.writeUInt32LE(0, 22)     // 原始大小（稍后补写）
+    header.writeUInt16LE(fileNameBuf.length, 26)
+    header.writeUInt16LE(0, 28)
+
+    this.stream.write(Buffer.concat([header, fileNameBuf]))
+    this.offset += 30 + fileNameBuf.length
+
+    this.currentFile = {
+      name,
+      crc: 0xffffffff,  // CRC-32 初始值
+      size: 0,
+      headerOffset,
+    }
+  }
+
+  /**
+   * 写入一块数据（增量计算 CRC 和大小）
+   */
+  writeChunk(chunk: Buffer): void {
+    if (!this.currentFile) {
+      throw new Error('没有正在写入的文件，请先调用 beginFile()')
+    }
+
+    // 增量 CRC-32 计算
+    let crc = this.currentFile.crc
+    for (let i = 0; i < chunk.length; i++) {
+      crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ chunk[i]) & 0xff]
+    }
+    this.currentFile.crc = crc
+    this.currentFile.size += chunk.length
+
+    this.stream.write(chunk)
+    this.offset += chunk.length
+  }
+
+  /**
+   * 结束流式写入（写入 Data Descriptor 补充 CRC 和大小）
+   */
+  endFile(): void {
+    if (!this.currentFile) {
+      throw new Error('没有正在写入的文件')
+    }
+
+    const { name, crc: rawCrc, size, headerOffset } = this.currentFile
+    const finalCrc = (rawCrc ^ 0xffffffff) >>> 0  // CRC-32 最终异或
+
+    // Data Descriptor（16 字节：签名 + CRC + 压缩大小 + 原始大小）
+    const descriptor = Buffer.alloc(16)
+    descriptor.writeUInt32LE(0x08074b50, 0)   // Data Descriptor 签名
+    descriptor.writeUInt32LE(finalCrc, 4)
+    descriptor.writeUInt32LE(size, 8)          // 压缩大小
+    descriptor.writeUInt32LE(size, 12)         // 原始大小（store 模式相等）
+
+    this.stream.write(descriptor)
+    this.offset += 16
+
+    this.entries.push({ name, offset: headerOffset, crc32: finalCrc, size })
+    this.currentFile = null
   }
 
   /**
@@ -373,7 +465,7 @@ export async function createDbBackup(
   const { orderedTables } = topologicalSort(graph, allTables)
 
   // 5. 创建 ZIP 写入器
-  const zipWriter = new ZipFileWriter(outputPath)
+  const zipWriter = new StreamingZipWriter(outputPath)
 
   const fileChecksums: Record<string, string> = {}
   let totalRows = 0
@@ -398,9 +490,11 @@ export async function createDbBackup(
     let tableRows = 0
     const fileName = `${tableName}.jsonl`
 
-    // 创建收集流和 JSONL 写入器
-    const collectStream = new BufferCollectStream()
-    const jsonlWriter = new JsonlWriter(collectStream)
+    // 流式写入：JsonlWriter → ChunkBridgeStream → StreamingZipWriter → 磁盘
+    // 数据不缓存在内存中，边序列化边写 ZIP 文件
+    zipWriter.beginFile(fileName)
+    const bridgeStream = new ChunkBridgeStream(zipWriter)
+    const jsonlWriter = new JsonlWriter(bridgeStream)
 
     try {
       let offset = 0
@@ -421,7 +515,7 @@ export async function createDbBackup(
           break
         }
 
-        // 逐行序列化并写入 JSONL
+        // 逐行序列化并流式写入 JSONL
         for (const row of rows) {
           jsonlWriter.writeRow(row)
           tableRows++
@@ -457,12 +551,11 @@ export async function createDbBackup(
       })
     }
 
-    // 获取收集到的 JSONL 内容
-    const content = collectStream.toBuffer()
-    const sha256 = createHash('sha256').update(content).digest('hex')
+    // 结束流式写入，写入 Data Descriptor（CRC + 大小）
+    zipWriter.endFile()
 
-    // 添加到 ZIP（空表生成 0 字节文件）
-    zipWriter.addFile(fileName, content)
+    // 获取增量计算的 SHA256 校验和
+    const sha256 = bridgeStream.getSha256()
     fileChecksums[tableName] = sha256
 
     // 更新进度

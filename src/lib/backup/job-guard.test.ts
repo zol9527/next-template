@@ -21,7 +21,7 @@ describe('acquireJobLock', () => {
     expect(result.activeJobId).toBeUndefined()
     expect(result.reason).toBeUndefined()
 
-    // 验证 SQL 查询正确
+    // 验证 SQL 查询正确（不含排除条件）
     expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
       `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') LIMIT 1`
     )
@@ -40,7 +40,7 @@ describe('acquireJobLock', () => {
     expect(result.activeJobId).toBe(activeJobId)
     expect(result.reason).toBe('已有正在执行的备份任务')
 
-    // 验证 SQL 查询正确
+    // 验证 SQL 查询正确（不含排除条件）
     expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
       `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') LIMIT 1`
     )
@@ -59,9 +59,52 @@ describe('acquireJobLock', () => {
     expect(result.activeJobId).toBe(activeJobId)
     expect(result.reason).toBe('已有正在执行的备份任务')
 
-    // 验证 SQL 查询正确
+    // 验证 SQL 查询正确（不含排除条件）
     expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
       `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') LIMIT 1`
+    )
+  })
+
+  it('传入 excludeJobId 时排除自身任务', async () => {
+    // Arrange: 无其他活跃任务（排除自身后）
+    const mockPrisma = createMockPrisma([])
+
+    // Act: 获取锁并排除当前任务
+    const result = await acquireJobLock({
+      prisma: mockPrisma,
+      excludeJobId: 'job-self-789',
+    })
+
+    // Assert: 应该允许（排除自身后无其他活跃任务）
+    expect(result.allowed).toBe(true)
+
+    // 验证 SQL 包含排除条件
+    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') AND id != ? LIMIT 1`,
+      'job-self-789'
+    )
+  })
+
+  it('排除自身后仍有其他活跃任务时拒绝', async () => {
+    // Arrange: 排除自身后仍有另一个活跃任务
+    const otherJobId = 'job-other-999'
+    const mockPrisma = createMockPrisma([{ id: otherJobId }])
+
+    // Act: 获取锁并排除当前任务
+    const result = await acquireJobLock({
+      prisma: mockPrisma,
+      excludeJobId: 'job-self-789',
+    })
+
+    // Assert: 应该拒绝（有其他活跃任务）
+    expect(result.allowed).toBe(false)
+    expect(result.activeJobId).toBe(otherJobId)
+    expect(result.reason).toBe('已有正在执行的备份任务')
+
+    // 验证 SQL 包含排除条件
+    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      `SELECT id FROM backup_jobs WHERE status IN ('pending', 'processing') AND id != ? LIMIT 1`,
+      'job-self-789'
     )
   })
 })

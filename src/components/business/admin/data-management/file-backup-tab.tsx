@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card,
@@ -20,7 +20,22 @@ import type { ApiResponse } from '@/contracts/api-response.schema'
 /** 备份任务状态 */
 type BackupStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
-/** 备份预估响应 */
+/** API 返回的原始预估数据结构（与 EstimateResult 对齐） */
+interface BackupEstimateRaw {
+  db: {
+    tablesTotal: number
+    totalRows: number
+    estimatedSizeBytes: number
+    estimatedDurationMs: number
+  }
+  files: {
+    totalFiles: number
+    totalBytes: number
+    estimatedDurationMs: number
+  }
+}
+
+/** 组件内部使用的扁平化预估信息 */
 interface BackupEstimate {
   estimatedTables: number
   estimatedRows: number
@@ -30,10 +45,18 @@ interface BackupEstimate {
   estimatedZipSizeMB: number
 }
 
-/** 备份任务响应 */
+/** 创建备份 API 的响应（仅返回摘要字段） */
+interface CreateBackupResponse {
+  id: string
+  status: 'pending'
+  jobType: string
+  requestedBy: string
+}
+
+/** 任务详情 API 的响应（GET /backups/:id） */
 interface BackupJob {
   id: string
-  jobType: 'full_backup'
+  jobType: string
   status: BackupStatus
   requestedBy: string
   backupFileKey: string | null
@@ -45,7 +68,7 @@ interface BackupJob {
   updatedAt: string
 }
 
-/** 备份进度响应 */
+/** 备份进度响应（包含 job 状态信息） */
 interface BackupProgress {
   phase: string | null
   tablesTotal: number
@@ -55,6 +78,20 @@ interface BackupProgress {
   filesTotal: number
   bytesTransferred: number
   errors: string[]
+  /** job 当前状态（从 stats 端点返回） */
+  status?: string
+  /** 失败原因 */
+  errorMessage?: string | null
+  /** 备份文件 key（completed 时有值） */
+  backupFileKey?: string | null
+  /** 完成时间 */
+  completedAt?: string | null
+}
+
+/** 下载 API 的响应（返回签名 URL，非文件流） */
+interface DownloadResponse {
+  signedUrl: string
+  fileName: string
 }
 
 // ── 辅助函数 ──────────────────────────────────────────────
@@ -113,6 +150,23 @@ export function FileBackupTab() {
   // 当前备份任务 ID（创建备份后设置）
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
 
+  // ── 检查是否有活跃任务（页面加载时检测） ──────────────────
+
+  const { data: activeJob } = useQuery<{ id: string; status: string } | null>({
+    queryKey: ['admin', 'data-management', 'file-backup-active'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/admin/data-management/backups?status=processing&limit=1', {
+        credentials: 'include',
+      })
+      if (!res.ok) return null
+      const json = await res.json()
+      const items = json.data?.items as Array<{ id: string; status: string }> | undefined
+      return items && items.length > 0 ? items[0] : null
+    },
+    enabled: !activeJobId,
+    staleTime: 30_000,
+  })
+
   // ── 查询：备份预估 ──────────────────────────────────────
 
   const { data: estimate, isLoading: estimateLoading, error: estimateError } = useQuery<BackupEstimate>({
@@ -127,11 +181,25 @@ export function FileBackupTab() {
       if (!res.ok) {
         throw new Error(`获取预估信息失败: ${res.statusText}`)
       }
-      const json = (await res.json()) as ApiResponse<BackupEstimate>
+      const json = (await res.json()) as ApiResponse<BackupEstimateRaw>
       if (!json.success) {
         throw new Error(json.error.message)
       }
-      return json.data
+      // 将 API 嵌套结构映射为组件所需的扁平结构
+      const raw = json.data
+      return {
+        estimatedTables: raw.db.tablesTotal,
+        estimatedRows: raw.db.totalRows,
+        estimatedFiles: raw.files.totalFiles,
+        estimatedTotalBytes: raw.db.estimatedSizeBytes + raw.files.totalBytes,
+        estimatedDurationSeconds: Math.ceil(
+          (raw.db.estimatedDurationMs + raw.files.estimatedDurationMs) / 1000
+        ),
+        // 压缩比约 0.15（JSONL→GZIP 经验值）
+        estimatedZipSizeMB: Number(
+          ((raw.db.estimatedSizeBytes + raw.files.totalBytes) * 0.15 / 1024 / 1024).toFixed(1)
+        ),
+      } satisfies BackupEstimate
     },
     // 有活跃任务时不自动刷新预估
     enabled: !activeJobId,
@@ -186,6 +254,14 @@ export function FileBackupTab() {
   const isFailed = jobStatus?.status === 'failed'
   const isProcessing = !!activeJobId && !isCompleted && !isFailed
 
+  // ── 自动恢复进度面板（检测到活跃任务时自动切换） ──────────
+
+  useEffect(() => {
+    if (activeJob && !activeJobId) {
+      setActiveJobId(activeJob.id)
+    }
+  }, [activeJob?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Mutation：创建备份 ──────────────────────────────────
 
   const createMutation = useMutation({
@@ -199,7 +275,7 @@ export function FileBackupTab() {
       if (!res.ok) {
         throw new Error(`创建备份失败: ${res.statusText}`)
       }
-      const json = (await res.json()) as ApiResponse<BackupJob>
+      const json = (await res.json()) as ApiResponse<CreateBackupResponse>
       if (!json.success) {
         throw new Error(json.error.message)
       }
@@ -224,24 +300,31 @@ export function FileBackupTab() {
     if (!activeJobId) return
 
     try {
+      // 第一步：获取签名 URL（API 返回 JSON，非文件流）
       const res = await fetch(
         `/api/v1/admin/data-management/backups/${activeJobId}/download`,
         { credentials: 'include' },
       )
       if (!res.ok) {
-        throw new Error('下载失败')
+        throw new Error('获取下载链接失败')
       }
-      const blob = await res.blob()
-      // 从响应头获取文件名，或使用默认名
-      const contentDisposition = res.headers.get('content-disposition')
-      const filename = contentDisposition
-        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
-        : `backup-${activeJobId}.zip`
+      const json = (await res.json()) as ApiResponse<DownloadResponse>
+      if (!json.success) {
+        throw new Error(json.error.message)
+      }
 
+      // 第二步：通过签名 URL 下载文件
+      const { signedUrl, fileName } = json.data
+      const fileRes = await fetch(signedUrl)
+      if (!fileRes.ok) {
+        throw new Error('下载备份文件失败')
+      }
+
+      const blob = await fileRes.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = filename
+      a.download = fileName
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -265,8 +348,15 @@ export function FileBackupTab() {
 
   // ── 进度百分比计算 ──────────────────────────────────────
 
-  const fileProgress = progress && progress.filesTotal > 0
-    ? Math.round((progress.filesCompleted / progress.filesTotal) * 100)
+  // 安全提取 progress 字段（API 可能在任务刚开始时返回空 stats）
+  const pFilesCompleted = progress?.filesCompleted ?? 0
+  const pFilesTotal = progress?.filesTotal ?? 0
+  const pBytesTransferred = progress?.bytesTransferred ?? 0
+  const pTablesCompleted = progress?.tablesCompleted ?? 0
+  const pTablesTotal = progress?.tablesTotal ?? 0
+
+  const fileProgress = pFilesTotal > 0
+    ? Math.round((pFilesCompleted / pFilesTotal) * 100)
     : 0
 
   // ── 渲染：预估面板（初始状态）───────────────────────────
@@ -350,13 +440,22 @@ export function FileBackupTab() {
                 </div>
 
                 {/* 创建备份按钮 */}
-                <div className="flex justify-end pt-2">
+                <div className="flex flex-col items-end gap-1 pt-2">
                   <Button
                     onClick={() => createMutation.mutate()}
-                    disabled={createMutation.isPending}
+                    disabled={createMutation.isPending || !!activeJob}
                   >
-                    {createMutation.isPending ? '创建中...' : '创建文件备份'}
+                    {createMutation.isPending
+                      ? '创建中...'
+                      : activeJob
+                        ? '已有任务执行中...'
+                        : '创建文件备份'}
                   </Button>
+                  {activeJob && (
+                    <p className="text-xs text-muted-foreground">
+                      已有备份任务正在执行中（任务 ID: {activeJob.id.slice(0, 8)}...）
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -425,13 +524,13 @@ export function FileBackupTab() {
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">文件数</p>
                   <p className="text-lg font-semibold">
-                    {progress ? progress.filesCompleted.toLocaleString() : '-'}
+                    {pFilesCompleted.toLocaleString()}
                   </p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">传输大小</p>
                   <p className="text-lg font-semibold">
-                    {progress ? formatBytes(progress.bytesTransferred) : '-'}
+                    {formatBytes(pBytesTransferred)}
                   </p>
                 </div>
                 <div className="rounded-lg border p-3">
@@ -486,30 +585,26 @@ export function FileBackupTab() {
             </div>
 
             {/* 实时统计 */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">已完成文件</p>
-                <p className="text-lg font-semibold">
-                  {progress
-                    ? `${progress.filesCompleted.toLocaleString()} / ${progress.filesTotal.toLocaleString()}`
-                    : '-'}
-                </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">已完成文件</p>
+                  <p className="text-lg font-semibold">
+                    {pFilesCompleted.toLocaleString()} / {pFilesTotal.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">已传输</p>
+                  <p className="text-lg font-semibold">
+                    {formatBytes(pBytesTransferred)}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">数据表</p>
+                  <p className="text-lg font-semibold">
+                    {pTablesCompleted} / {pTablesTotal}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">已传输</p>
-                <p className="text-lg font-semibold">
-                  {progress ? formatBytes(progress.bytesTransferred) : '-'}
-                </p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">数据表</p>
-                <p className="text-lg font-semibold">
-                  {progress
-                    ? `${progress.tablesCompleted} / ${progress.tablesTotal}`
-                    : '-'}
-                </p>
-              </div>
-            </div>
 
             {/* 错误列表（如有） */}
             {progress?.errors && progress.errors.length > 0 && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Card,
@@ -18,7 +18,22 @@ import { toast } from 'sonner'
 // 类型定义
 // ============================================================================
 
-/** 预估信息 */
+/** API 返回的原始预估数据结构（与 EstimateResult 对齐） */
+interface BackupEstimateRaw {
+  db: {
+    tablesTotal: number
+    totalRows: number
+    estimatedSizeBytes: number
+    estimatedDurationMs: number
+  }
+  files: {
+    totalFiles: number
+    totalBytes: number
+    estimatedDurationMs: number
+  }
+}
+
+/** 组件内部使用的扁平化预估信息 */
 interface BackupEstimate {
   estimatedTables: number
   estimatedRows: number
@@ -46,7 +61,7 @@ interface BackupJob {
   updatedAt: string
 }
 
-/** 备份进度统计 */
+/** 备份进度统计（包含 job 状态信息） */
 interface BackupProgress {
   phase: string | null
   tablesTotal: number
@@ -56,6 +71,14 @@ interface BackupProgress {
   filesTotal: number
   bytesTransferred: number
   errors: string[]
+  /** job 当前状态（从 stats 端点返回） */
+  status?: string
+  /** 失败原因 */
+  errorMessage?: string | null
+  /** 备份文件 key（completed 时有值） */
+  backupFileKey?: string | null
+  /** 完成时间 */
+  completedAt?: string | null
 }
 
 // ============================================================================
@@ -130,7 +153,7 @@ function getStatusBadge(status: BackupJobStatus) {
 // API 请求函数
 // ============================================================================
 
-/** 获取预估信息 */
+/** 获取预估信息（将 API 嵌套结构映射为扁平结构） */
 async function fetchEstimate(): Promise<BackupEstimate> {
   const res = await fetch('/api/v1/admin/data-management/backups/estimate', {
     method: 'POST',
@@ -143,7 +166,20 @@ async function fetchEstimate(): Promise<BackupEstimate> {
     throw new Error(err.error?.message || '获取预估信息失败')
   }
   const json = await res.json()
-  return json.data
+  const raw: BackupEstimateRaw = json.data
+  return {
+    estimatedTables: raw.db.tablesTotal,
+    estimatedRows: raw.db.totalRows,
+    estimatedFiles: raw.files.totalFiles,
+    estimatedTotalBytes: raw.db.estimatedSizeBytes + raw.files.totalBytes,
+    estimatedDurationSeconds: Math.ceil(
+      (raw.db.estimatedDurationMs + raw.files.estimatedDurationMs) / 1000
+    ),
+    // 压缩比约 0.15（JSONL→GZIP 经验值）
+    estimatedZipSizeMB: Number(
+      ((raw.db.estimatedSizeBytes + raw.files.totalBytes) * 0.15 / 1024 / 1024).toFixed(1)
+    ),
+  }
 }
 
 /** 创建备份任务 */
@@ -160,6 +196,17 @@ async function createBackup(): Promise<BackupJob> {
   }
   const json = await res.json()
   return json.data
+}
+
+/** 获取当前活跃的备份任务（processing/pending 状态） */
+async function fetchActiveJob(): Promise<BackupJob | null> {
+  const res = await fetch('/api/v1/admin/data-management/backups?status=processing&limit=1', {
+    credentials: 'include',
+  })
+  if (!res.ok) return null
+  const json = await res.json()
+  const items = json.data?.items as BackupJob[] | undefined
+  return items && items.length > 0 ? items[0] : null
 }
 
 /** 获取备份进度 */
@@ -235,38 +282,87 @@ export function DatabaseBackupTab() {
       ? Math.round((progress.tablesCompleted / progress.tablesTotal) * 100)
       : 0
 
-  // ---- 检测备份是否完成（进度轮询中所有表都已完成） ----
-  // 当进度显示所有表完成时，标记任务完成
-  if (
-    activeJobId &&
-    progress &&
-    progress.tablesTotal > 0 &&
-    progress.tablesCompleted >= progress.tablesTotal &&
-    !completedJob
-  ) {
-    // 异步更新状态，避免渲染中 setState
-    const fakeCompletedJob: BackupJob = {
-      id: activeJobId,
-      jobType: 'db_backup',
-      status: 'completed',
-      requestedBy: '',
-      backupFileKey: null,
-      stats: null,
-      errorMessage: null,
-      startedAt: null,
-      completedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  // ---- 检测备份终态（通过 status 字段或进度完成判断） ----
+  // 新增状态引用，避免闭包问题
+  const [failedError, setFailedError] = useState<string | null>(null)
+
+  // ---- 检查是否有活跃任务（页面加载时检测，用于恢复进度面板） ----
+  const { data: activeJob } = useQuery<BackupJob | null>({
+    queryKey: ['admin', 'data-management', 'backup-active'],
+    queryFn: fetchActiveJob,
+    // 仅在没有 activeJobId 且没有完成任务时检查（避免重复查询）
+    enabled: !activeJobId && !completedJob && !failedError,
+    // 30 秒后视为过期，避免缓存已结束的任务数据
+    staleTime: 30_000,
+  })
+
+  // 当检测到活跃任务时，自动恢复进度面板
+  useEffect(() => {
+    if (activeJob && !activeJobId && !completedJob && !failedError) {
+      setActiveJobId(activeJob.id)
     }
-    // 使用 queueMicrotask 避免渲染期间状态更新
-    queueMicrotask(() => {
-      setCompletedJob(fakeCompletedJob)
-      setActiveJobId(null)
-      // 刷新预估信息
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'data-management', 'backup-estimate'],
+  }, [activeJob?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (activeJobId && progress && !completedJob && !failedError) {
+    const jobStatus = progress.status
+
+    // 1. 任务失败
+    if (jobStatus === 'failed') {
+      queueMicrotask(() => {
+        setFailedError(progress.errorMessage || '备份任务失败，请重试')
+        setActiveJobId(null)
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'data-management', 'backup-estimate'],
+        })
       })
-    })
+    }
+    // 2. 任务完成（通过 status 字段判断，比进度更可靠）
+    else if (jobStatus === 'completed') {
+      queueMicrotask(() => {
+        setCompletedJob({
+          id: activeJobId,
+          jobType: 'db_backup',
+          status: 'completed',
+          requestedBy: '',
+          backupFileKey: progress.backupFileKey ?? null,
+          stats: null,
+          errorMessage: null,
+          startedAt: null,
+          completedAt: progress.completedAt ?? new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        setActiveJobId(null)
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'data-management', 'backup-estimate'],
+        })
+      })
+    }
+    // 3. 兼容旧逻辑：通过进度完成判断（无 status 字段的 fallback）
+    else if (
+      progress.tablesTotal > 0 &&
+      progress.tablesCompleted >= progress.tablesTotal
+    ) {
+      queueMicrotask(() => {
+        setCompletedJob({
+          id: activeJobId,
+          jobType: 'db_backup',
+          status: 'completed',
+          requestedBy: '',
+          backupFileKey: null,
+          stats: null,
+          errorMessage: null,
+          startedAt: null,
+          completedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        setActiveJobId(null)
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'data-management', 'backup-estimate'],
+        })
+      })
+    }
   }
 
   // ---- 下载处理 ----
@@ -283,6 +379,7 @@ export function DatabaseBackupTab() {
   const handleReset = () => {
     setActiveJobId(null)
     setCompletedJob(null)
+    setFailedError(null)
     queryClient.invalidateQueries({
       queryKey: ['admin', 'data-management', 'backup-estimate'],
     })
@@ -396,10 +493,19 @@ export function DatabaseBackupTab() {
           <div className="mt-6">
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || !!activeJob}
             >
-              {createMutation.isPending ? '正在创建...' : '创建数据库备份'}
+              {createMutation.isPending
+                ? '正在创建...'
+                : activeJob
+                  ? '已有任务执行中...'
+                  : '创建数据库备份'}
             </Button>
+            {activeJob && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                已有备份任务正在执行中（任务 ID: {activeJob.id.slice(0, 8)}...）
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -570,14 +676,44 @@ export function DatabaseBackupTab() {
   }
 
   // ============================================================================
+  // 渲染：失败面板
+  // ============================================================================
+  const renderFailedPanel = () => {
+    if (!failedError) return null
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">备份失败</CardTitle>
+              <CardDescription>任务执行过程中发生错误</CardDescription>
+            </div>
+            <Badge variant="destructive">失败</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 mb-4">
+            <p className="text-sm text-destructive">{failedError}</p>
+          </div>
+          <Button variant="outline" onClick={handleReset}>
+            重新备份
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // ============================================================================
   // 主渲染
   // ============================================================================
   return (
     <div className="flex flex-col gap-6">
-      {/* 优先级：完成面板 > 进度面板 > 预估面板 */}
+      {/* 优先级：完成面板 > 失败面板 > 进度面板 > 预估面板 */}
       {renderCompletedPanel()}
+      {renderFailedPanel()}
       {renderProgressPanel()}
-      {!activeJobId && !completedJob && renderEstimatePanel()}
+      {!activeJobId && !completedJob && !failedError && renderEstimatePanel()}
     </div>
   )
 }
