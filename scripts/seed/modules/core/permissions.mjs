@@ -53,6 +53,7 @@ function flattenScopeTree() {
     logs: { description: '日志管理' },
     sessions: { description: '会话管理（全局）' },
     exports: { description: '导出管理' },
+    backup: { description: '数据备份与恢复管理' },
     dashboard: { description: '仪表盘' },
     health: { description: '健康检查' },
     ai: { description: 'AI 功能管理', children: { settings: { description: 'AI 提供商与模型配置' }, templates: { description: 'AI 提示词模板管理' }, generate: { description: 'AI 内容生成' }, logs: { description: 'AI 使用日志查看' } } },

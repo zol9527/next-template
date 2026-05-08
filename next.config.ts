@@ -91,6 +91,7 @@ function buildImageRemotePatterns() {
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+
   // 配置允许的远程图片域名（用于 next/image 组件）
   // 从环境变量动态提取云存储域名
   images: {

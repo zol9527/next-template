@@ -1,19 +1,29 @@
 /**
- * 阿里云 OSS 对象存储提供者 - 基于 AWS S3 SDK
+ * 阿里云 OSS 对象存储提供者 - 基于 AWS S3 SDK (S3 兼容模式)
  *
- * 阿里云 OSS 兼容 S3 协议，使用 @aws-sdk/client-s3 替代 ali-oss SDK
- * 解决 ali-oss 的 proxy-agent 依赖链安全漏洞问题
- *
+ * 阿里云 OSS 兼容 S3 协议，使用 @aws-sdk/client-s3 进行标准操作
+ * 图片处理 (x-oss-process) 使用手动 OSS V1 签名（S3 协议不覆盖此功能）
  * S3 兼容文档: https://help.aliyun.com/document_detail/64919.html
  */
 
 import crypto from 'node:crypto'
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3'
+import { Readable } from 'node:stream'
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  GetObjectCommand,
+  S3ClientConfig,
+} from '@aws-sdk/client-s3'
 import { getSignedUrl as s3GetSignedUrl } from '@aws-sdk/s3-request-presigner'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { AliyunOssConfig } from '@/lib/storage/types/config'
 import type { UploadPolicyRequest } from '@/lib/storage/schema'
-import type { ImageProcessingOptions, ImageProcessingResult } from '@/lib/storage/types/image-processing'
+import type {
+  ImageProcessingOptions,
+  ImageProcessingResult,
+} from '@/lib/storage/types/image-processing'
 import { buildImageProcessingParams } from '@/lib/storage/utils/image-processing-builder'
 
 // ============================================================
@@ -44,7 +54,71 @@ function extensionFromContentType(contentType: string): string {
 }
 
 /**
- * 创建阿里云 OSS Provider
+ * Function: buildOssSignedUrl
+ *
+ * Description: 手动构建阿里云 OSS V1 签名 URL
+ * 用于图片处理等 OSS 专有功能（S3 预签名不支持 x-oss-process 参数）
+ *
+ * Parameters:
+ *   method(string): HTTP 方法（GET、PUT 等）
+ *   bucket(string): Bucket 名称
+ *   objectKey(string): 对象键
+ *   accessKeyId(string): AccessKey ID
+ *   accessKeySecret(string): AccessKey Secret
+ *   baseUrl(string): 已处理的访问基础 URL（含协议、尾部 /）
+ *   expiresInSeconds(number): URL 过期时间（秒）
+ *   process(string | undefined): OSS 图片处理参数（如 "image/resize,w_200"）
+ *
+ * Returns:
+ *   string: 带 OSS V1 签名的完整 URL
+ */
+function buildOssSignedUrl(
+  method: string,
+  bucket: string,
+  objectKey: string,
+  accessKeyId: string,
+  accessKeySecret: string,
+  baseUrl: string,
+  expiresInSeconds: number,
+  process?: string
+): string {
+  // 构建 Expires 时间戳（Unix 秒级时间戳）
+  const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
+
+  // CanonicalizedResource：签名中的资源路径
+  const canonicalizedResource = `/${bucket}/${objectKey}`
+
+  // StringToSign: METHOD\nContent-MD5\nContent-Type\nExpires\nCanonicalizedResource
+  const stringToSign = [
+    method,
+    '', // Content-MD5（可选，此处留空）
+    '', // Content-Type（可选，此处留空）
+    String(expires),
+    canonicalizedResource,
+  ].join('\n')
+
+  // HMAC-SHA1 签名
+  const signature = crypto
+    .createHmac('sha1', accessKeySecret)
+    .update(stringToSign)
+    .digest('base64')
+
+  // 构建完整 URL
+  const params = new URLSearchParams({
+    OSSAccessKeyId: accessKeyId,
+    Expires: String(expires),
+    Signature: signature,
+  })
+
+  if (process) {
+    params.set('x-oss-process', process)
+  }
+
+  return `${baseUrl}${objectKey}?${params.toString()}`
+}
+
+/**
+ * 创建阿里云 OSS Provider（S3 兼容模式）
  *
  * 使用 S3 兼容协议，无需 ali-oss SDK
  *
@@ -85,23 +159,26 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
   let s3Client: S3Client | null = null
 
   /**
-   * 获取或初始化 S3 客户端（使用阿里云 OSS S3 兼容 endpoint）
+   * 获取或初始化 S3 客户端（S3 兼容模式）
+   *
+   * 使用阿里云 OSS S3 兼容 endpoint，从 region 构建
    */
   const getClient = (): S3Client => {
     if (s3Client) return s3Client
 
-    // 阿里云 OSS S3 兼容 endpoint 格式
-    const s3Endpoint = `https://oss.${region}.aliyuncs.com`
+    // 规范化 region（去除可能的 oss- 前缀）
+    const normalizedRegion = region.replace(/^oss-/, '')
+    // S3 兼容 endpoint 格式
+    const s3Endpoint = `https://oss-${normalizedRegion}.aliyuncs.com`
 
     const config: S3ClientConfig = {
-      region,
+      region: normalizedRegion,
       endpoint: s3Endpoint,
       credentials: {
         accessKeyId,
         secretAccessKey: accessKeySecret,
       },
-      // 阿里云 OSS 使用虚拟主机样式寻址
-      forcePathStyle: false,
+      forcePathStyle: false, // 使用虚拟托管风格
     }
 
     s3Client = new S3Client(config)
@@ -109,67 +186,52 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
   }
 
   /**
-   * 获取用户配置的访问 endpoint（可能是自定义域名）
+   * 获取文件访问基础 URL
+   * 使用用户配置的 endpoint（可能是自定义域名），用于构建公共文件 URL
    */
-  const getAccessUrl = (): string => {
-    return endpoint.endsWith('/') ? endpoint : `${endpoint}/`
-  }
-
-  // 保留: PostObject 签名辅助函数（纯 crypto，不依赖 ali-oss SDK）
-  const base64 = (input: string): string => {
-    return Buffer.from(input, 'utf8').toString('base64')
-  }
-
-  const hmacSha1Base64 = (secret: string, payload: string): string => {
-    return crypto.createHmac('sha1', secret).update(payload).digest('base64')
+  const getBaseUrl = (): string => {
+    const base = endpoint.startsWith('http') ? endpoint : `${secure ? 'https' : 'http'}://${endpoint}`
+    return base.endsWith('/') ? base : `${base}/`
   }
 
   return {
     /**
-     * 签发上传策略（阿里云 OSS PostObject 签名方式）
+     * 签发上传策略（预签名 PUT URL）
      *
-     * 使用 HMAC-SHA1 签名，不依赖 S3 SDK
-     * PostObject 文档: https://help.aliyun.com/document_detail/31988.html
+     * 使用 S3 预签名生成 PUT URL，前端直接 PUT 上传
      */
     async issueUploadPolicy({ contentType, sizeBytes, purpose }: UploadPolicyRequest) {
-      const expireAtDate = new Date(Date.now() + ttlSeconds * 1000)
-      const expireAt = expireAtDate.toISOString()
+      const client = getClient()
 
+      // 构建对象键路径
       const purposePrefix = purpose ? sanitizePrefix(purpose) : ''
       const ext = extensionFromContentType(contentType)
       const prefix = sanitizePrefix(dirPrefix)
       const objectKey = `${prefix}${purposePrefix}${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`
 
-      const policy = {
-        expiration: expireAt,
-        conditions: [
-          ['content-length-range', 0, sizeBytes],
-          ['eq', '$key', objectKey],
-          ['eq', '$Content-Type', contentType],
-          { bucket },
-        ],
-      }
+      const expireAt = new Date(Date.now() + ttlSeconds * 1000).toISOString()
 
-      const policyBase64 = base64(JSON.stringify(policy))
-      const signature = hmacSha1Base64(accessKeySecret, policyBase64)
+      // 使用 S3 预签名生成 PUT URL
+      const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: objectKey,
+        ContentType: contentType,
+        ContentLength: sizeBytes,
+      })
 
-      const uploadUrl = getAccessUrl()
+      const uploadUrl = await s3GetSignedUrl(client, command, {
+        expiresIn: ttlSeconds,
+      })
+
+      const fileUrl = `${getBaseUrl()}${objectKey}`
 
       return {
         provider: 'aliyun_oss',
         uploadUrl,
-        formFields: {
-          bucket,
-          key: objectKey,
-          policy: policyBase64,
-          OSSAccessKeyId: accessKeyId,
-          Signature: signature,
-          'Content-Type': contentType,
-          success_action_status: '200',
-        },
+        formFields: {}, // 空对象表示使用 PUT 请求
         expireAt,
         objectKey,
-        fileUrl: `${uploadUrl}${objectKey}`,
+        fileUrl,
       }
     },
 
@@ -188,10 +250,8 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
 
       await client.send(command)
 
-      const uploadUrl = getAccessUrl()
-
       return {
-        url: `${uploadUrl}${key}`,
+        url: `${getBaseUrl()}${key}`,
         key,
       }
     },
@@ -199,7 +259,7 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     /**
      * 删除文件
      */
-    async deleteFile(key: string): Promise<void> {
+    async deleteFile(key: string) {
       const client = getClient()
 
       const command = new DeleteObjectCommand({
@@ -211,11 +271,39 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     },
 
     /**
-     * 获取文件访问 URL（使用自定义 endpoint）
+     * 下载文件，返回完整 Buffer
+     */
+    async downloadFile(key: string): Promise<Buffer> {
+      const client = getClient()
+
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key })
+      const response = await client.send(command)
+
+      const chunks: Uint8Array[] = []
+      for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+        chunks.push(chunk)
+      }
+
+      return Buffer.concat(chunks)
+    },
+
+    /**
+     * 下载文件，返回流式 Readable
+     */
+    async downloadFileStream(key: string): Promise<Readable> {
+      const client = getClient()
+
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key })
+      const response = await client.send(command)
+
+      return response.Body as Readable
+    },
+
+    /**
+     * 获取文件访问 URL（公共 URL）
      */
     async getFileUrl(key: string): Promise<string> {
-      const uploadUrl = getAccessUrl()
-      return `${uploadUrl}${key}`
+      return `${getBaseUrl()}${key}`
     },
 
     /**
@@ -233,7 +321,7 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     },
 
     /**
-     * 列出文件列表
+     * 列出文件
      */
     async listFiles({ prefix, maxKeys = 100, continuationToken }) {
       const client = getClient()
@@ -264,10 +352,10 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     },
 
     /**
-     * 搜索文件（基于前缀匹配）
+     * 搜索文件（基于前缀 + 内容匹配）
      */
     async searchFiles({ query, maxResults = 20 }) {
-      const listResult = await this.listFiles({ prefix: query, maxKeys: 100 })
+      const listResult = await this.listFiles({ maxKeys: 100 })
 
       const normalizedQuery = query.toLowerCase()
       const matched = listResult.files.filter((file) =>
@@ -283,69 +371,59 @@ export function createAliyun(options: AliyunOssConfig): ObjectStorageProvider {
     /**
      * 获取带图片处理参数的签名 URL
      *
-     * 阿里云 OSS 通过 x-oss-process 查询参数实现图片处理
-     * 在预签名 URL 后追加处理参数
+     * 使用手动 OSS V1 签名（S3 预签名不支持 x-oss-process 参数）
      */
     async getImageProcessingUrl(
       key: string,
       options: ImageProcessingOptions,
       expiresIn: number = signedUrlTtlSeconds
     ): Promise<string> {
-      const client = getClient()
-
-      // 构建图片处理参数
       const processParams = buildImageProcessingParams(options)
       const imageProcess = `image/${processParams}`
 
-      // 生成预签名 URL
-      const command = new GetObjectCommand({
-        Bucket: bucket,
-        Key: key,
-      })
-
-      const signedUrl = await s3GetSignedUrl(client, command, { expiresIn })
-
-      // 在签名 URL 后追加 OSS 图片处理参数
-      // x-oss-process 参数不参与签名计算，直接追加即可
-      const separator = signedUrl.includes('?') ? '&' : '?'
-      return `${signedUrl}${separator}x-oss-process=${imageProcess}`
+      return buildOssSignedUrl(
+        'GET',
+        bucket,
+        key,
+        accessKeyId,
+        accessKeySecret,
+        getBaseUrl(),
+        expiresIn,
+        imageProcess
+      )
     },
 
     /**
-     * 获取多个尺寸的图片 URL（用于响应式图片）
+     * 获取多个尺寸的图片处理 URL
      */
     async getImageProcessingUrls(
       key: string,
       sizes: ImageProcessingOptions[],
       expiresIn: number = signedUrlTtlSeconds
     ): Promise<ImageProcessingResult[]> {
-      const client = getClient()
-      const results: ImageProcessingResult[] = []
-      const uploadUrl = getAccessUrl()
+      const originalUrl = `${getBaseUrl()}${key}`
 
-      for (const options of sizes) {
+      return sizes.map((options) => {
         const processParams = buildImageProcessingParams(options)
         const imageProcess = `image/${processParams}`
 
-        const command = new GetObjectCommand({
-          Bucket: bucket,
-          Key: key,
-        })
+        const processedUrl = buildOssSignedUrl(
+          'GET',
+          bucket,
+          key,
+          accessKeyId,
+          accessKeySecret,
+          getBaseUrl(),
+          expiresIn,
+          imageProcess
+        )
 
-        const signedUrl = await s3GetSignedUrl(client, command, { expiresIn })
-
-        // 追加图片处理参数
-        const separator = signedUrl.includes('?') ? '&' : '?'
-        const processedUrl = `${signedUrl}${separator}x-oss-process=${imageProcess}`
-
-        results.push({
-          originalUrl: `${uploadUrl}${key}`,
+        return {
+          originalUrl,
           processedUrl,
           processParams: imageProcess,
-        })
-      }
-
-      return results
+        }
+      })
     },
   }
 }

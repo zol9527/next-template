@@ -9,6 +9,8 @@
 
 import path from 'node:path'
 import fs from 'node:fs/promises'
+import { createReadStream } from 'node:fs'
+import { Readable } from 'node:stream'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { LocalStorageConfig } from '@/lib/storage/types/config'
 import type { UploadPolicyRequest } from '@/lib/storage/schema'
@@ -191,6 +193,24 @@ export function createLocal(options: LocalStorageConfig): ObjectStorageProvider 
           throw error
         }
       }
+    },
+
+    /**
+     * 下载文件，返回完整 Buffer
+     */
+    async downloadFile(key: string): Promise<Buffer> {
+      const relativeKey = stripDirPrefix(key)
+      const filePath = getSafePath(absoluteBaseDir, relativeKey)
+      return fs.readFile(filePath)
+    },
+
+    /**
+     * 下载文件，返回流式 Readable
+     */
+    async downloadFileStream(key: string): Promise<Readable> {
+      const relativeKey = stripDirPrefix(key)
+      const filePath = getSafePath(absoluteBaseDir, relativeKey)
+      return createReadStream(filePath)
     },
 
     /**

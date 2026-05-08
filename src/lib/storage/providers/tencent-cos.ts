@@ -5,6 +5,7 @@
  * 文档: https://cloud.tencent.com/document/product/436/31995
  */
 
+import { Readable } from 'node:stream'
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3'
 import { getSignedUrl as s3GetSignedUrl } from '@aws-sdk/s3-request-presigner'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
@@ -174,6 +175,35 @@ export function createTencent(options: TencentCosConfig): ObjectStorageProvider 
       })
 
       await client.send(command)
+    },
+
+    /**
+     * 下载文件，返回完整 Buffer
+     */
+    async downloadFile(key: string): Promise<Buffer> {
+      const client = getClient()
+
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key })
+      const response = await client.send(command)
+
+      const chunks: Uint8Array[] = []
+      for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+        chunks.push(chunk)
+      }
+
+      return Buffer.concat(chunks)
+    },
+
+    /**
+     * 下载文件，返回流式 Readable
+     */
+    async downloadFileStream(key: string): Promise<Readable> {
+      const client = getClient()
+
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key })
+      const response = await client.send(command)
+
+      return response.Body as Readable
     },
 
     /**

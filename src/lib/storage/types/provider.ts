@@ -12,6 +12,7 @@ import type {
   SearchFilesRequest,
   SearchFilesResponse,
 } from '@/lib/storage/schema'
+import type { Readable } from 'node:stream'
 import type {
   ImageProcessingOptions,
   ImageProcessingResult,
@@ -79,6 +80,16 @@ export interface ObjectStorageProvider {
    * 搜索文件
    */
   searchFiles(params: SearchFilesRequest): Promise<SearchFilesResponse>
+
+  /**
+   * 下载文件，返回完整 Buffer
+   */
+  downloadFile(key: string): Promise<Buffer>
+
+  /**
+   * 下载文件，返回流式 Readable
+   */
+  downloadFileStream(key: string): Promise<Readable>
 
   /**
    * 获取带图片处理参数的签名 URL
