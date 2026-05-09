@@ -303,7 +303,7 @@ export function MiniprogramHomeConfigForm() {
               label="标签文字"
               required
               error={errors.tagText}
-              description="Banner 左上角的标签文字，如"限时免费""
+              description={'Banner 左上角的标签文字，如"限时免费"'}
             >
               <Input
                 placeholder="例如：限时免费"
