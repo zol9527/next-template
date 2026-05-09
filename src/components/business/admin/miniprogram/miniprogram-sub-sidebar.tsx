@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Image as ImageIcon, Settings, Smartphone } from 'lucide-react'
+import { Home, Image as ImageIcon, Settings, ShoppingBag, Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -42,10 +42,22 @@ const miniprogramNavItems: SubSidebarItem[] = [
     description: '管理首页轮播图',
   },
   {
+    name: '首页设置',
+    href: '/admin/miniprogram/home-config',
+    icon: Home,
+    description: '首页 Banner 配置',
+  },
+  {
     name: '基础设置',
     href: '/admin/miniprogram/settings',
     icon: Settings,
     description: '小程序基础配置',
+  },
+  {
+    name: '商城设置',
+    href: '/admin/miniprogram/shop-config',
+    icon: ShoppingBag,
+    description: '商城相关配置',
   },
 ]
 
