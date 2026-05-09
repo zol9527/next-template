@@ -118,13 +118,20 @@ export function setPluginCache(pluginName: string, active: boolean): void {
  * Function: refreshPluginCache
  *
  * Description: 从数据库加载所有插件激活状态到内存缓存。
- *   调用 plugin-activate.service 获取激活状态并写入缓存。
+ *   优化：当所有插件缓存均在 TTL 有效期内时跳过数据库查询，
+ *   避免 admin layout 每次渲染都触发 DB 访问。
  *   适用于：(1) admin 页面加载时 (2) 管理员修改插件状态后。
  *
  * Returns:
  *   Promise<void>
  */
 export async function refreshPluginCache(): Promise<void> {
+  // 快速路径：所有已安装插件的缓存都还在 TTL 内，跳过查库
+  const allCached = ALL_PLUGIN_NAMES.every((name) => memoryCache.get<boolean>(getCacheKey(name)) !== undefined)
+  if (allCached) {
+    return
+  }
+
   const activationService = await tryGetActivationService()
   if (!activationService) {
     return
