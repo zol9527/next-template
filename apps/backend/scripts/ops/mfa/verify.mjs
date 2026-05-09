@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
 import { loadEnvFile } from 'node:process'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// 从 ops/mfa/ 上溯 3 级到达后端根目录 apps/backend/
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const BACKEND_ROOT = join(__dirname, '..', '..', '..')
 
 {
   const nodeEnv = process.env.NODE_ENV || 'development'
@@ -9,7 +14,7 @@ import { join } from 'node:path'
   let loaded = false
   for (const file of candidates) {
     try {
-      loadEnvFile(join(process.cwd(), file))
+      loadEnvFile(join(BACKEND_ROOT, file))
       loaded = true
       break
     } catch {

@@ -1,11 +1,18 @@
 import { access, stat } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-const projectRoot = process.cwd()
+// 使用脚本自身位置推导包根目录，兼容 monorepo 下从任意 cwd 执行的场景
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+const projectRoot = resolve(scriptDir, '..')
 const defaultCliPath = '/Applications/wechatwebdevtools.app/Contents/MacOS/cli'
 const cliPath = process.env.WECHAT_DEVTOOLS_CLI_PATH || defaultCliPath
-const projectDir = resolve(projectRoot, process.argv[2] || 'dist/dev/mp-weixin')
+// 支持传入绝对路径（由 dev-mp-weixin.mjs 调用时传入）或相对路径（手动调用时）
+const inputPath = process.argv[2] || 'dist/dev/mp-weixin'
+const projectDir = resolve(inputPath) === inputPath
+  ? inputPath
+  : resolve(projectRoot, inputPath)
 const port = process.env.WEAPP_DEVTOOLS_PORT || '9420'
 
 async function assertFile(path, message) {

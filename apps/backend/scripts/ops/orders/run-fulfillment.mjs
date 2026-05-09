@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import pino from 'pino'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// 从 ops/orders/ 上溯 3 级到达后端根目录 apps/backend/
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const BACKEND_ROOT = join(__dirname, '..', '..', '..')
 
 const nodeEnv = process.env.NODE_ENV || 'development'
 const envFiles = [`.env.${nodeEnv}`, '.env']
 for (const file of envFiles) {
-  const filePath = `${process.cwd()}/${file}`
+  const filePath = join(BACKEND_ROOT, file)
   try {
     process.loadEnvFile(filePath)
     console.log(`✓ Loaded env file: ${file}`)

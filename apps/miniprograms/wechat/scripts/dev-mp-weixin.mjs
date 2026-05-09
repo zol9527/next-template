@@ -1,12 +1,15 @@
 import { access, stat } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 
-const projectRoot = process.cwd()
+// 使用脚本自身位置推导包根目录，兼容 monorepo 下从任意 cwd 执行的场景
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+const projectRoot = resolve(scriptDir, '..')
 const uniBin = resolve(projectRoot, 'node_modules/.bin/uni')
 const devOutputDir = resolve(projectRoot, 'dist/dev/mp-weixin')
 const appJsonPath = resolve(devOutputDir, 'app.json')
-const devtoolsScript = resolve(projectRoot, 'scripts/open-wechat-devtools.mjs')
+const devtoolsScript = resolve(scriptDir, 'open-wechat-devtools.mjs')
 const startedAt = Date.now()
 
 let devtoolsOpened = false

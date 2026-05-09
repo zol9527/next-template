@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
+import { resolve } from "node:path";
 
 type ImagesConfig = NonNullable<NextConfig['images']>
 type ImageRemotePattern = NonNullable<ImagesConfig['remotePatterns']>[number]
+
+/**
+ * Monorepo 根目录（用于解析提升到 root node_modules 的依赖）
+ *
+ * bun workspace 会将部分依赖提升到 monorepo root 的 node_modules/.bun/ 下，
+ * 而非在每个 app 的 node_modules 中创建符号链接。
+ * Next.js 的 webpack 默认只从 app 目录开始向上查找 node_modules，
+ * 需要显式告诉它也到 monorepo root 的 node_modules 中查找。
+ */
+const monorepoRoot = resolve(__dirname, "../..")
 
 function parseUrlList(value: string | undefined): string[] {
   if (!value) return []
@@ -91,6 +102,15 @@ function buildImageRemotePatterns() {
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+
+  // ── Monorepo 支持 ──
+  // bun workspace 将部分依赖提升到 monorepo root 的 node_modules/.bun/ 下，
+  // 而非在每个 app 的 node_modules 中创建符号链接。
+  // 配置 Turbopack 的 root 为 monorepo 根目录，让它能解析这些提升的依赖。
+  outputFileTracingRoot: monorepoRoot,
+  turbopack: {
+    root: monorepoRoot,
+  },
 
   // 配置允许的远程图片域名（用于 next/image 组件）
   // 从环境变量动态提取云存储域名

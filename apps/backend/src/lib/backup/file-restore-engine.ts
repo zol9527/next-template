@@ -17,7 +17,7 @@ import { createWriteStream, mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve as pathResolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
-import { env } from '@/config'
+import { env, BACKEND_ROOT_DIR } from '@/config'
 import { parseManifestFromZip, extractFileFromZip } from './integrity-check'
 import { RateController } from './rate-controller'
 import { StatsTracker } from './stats-tracker'
@@ -124,7 +124,7 @@ export async function restoreFiles(
         if (isLocalStorage) {
           // 本地存储：流式 pipe 直接写入目标文件（零缓冲）
           const uploadDir = env.LOCAL_UPLOAD_DIR ?? 'uploads'
-          const filePath = pathResolve(process.cwd(), uploadDir, objectKey)
+          const filePath = pathResolve(BACKEND_ROOT_DIR, uploadDir, objectKey)
 
           // 确保目标目录存在
           mkdirSync(dirname(filePath), { recursive: true })

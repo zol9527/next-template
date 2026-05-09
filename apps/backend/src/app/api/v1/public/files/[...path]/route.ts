@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
 import { NextResponse } from 'next/server'
-import { env } from '@/config'
+import { env, BACKEND_ROOT_DIR } from '@/config'
 
 /**
 Function: GET
@@ -18,7 +18,7 @@ Returns:
 
 Notes:
 	- 路径格式：/api/v1/public/files/uploads/2026-01-10/xxx.png
-	- 映射到：{process.cwd()}/uploads/2026-01-10/xxx.png
+	- 映射到：{BACKEND_ROOT_DIR}/uploads/2026-01-10/xxx.png
 	- 防止路径穿越攻击
 	- 根据文件扩展名设置 Content-Type
 	- 1 年缓存策略
@@ -63,11 +63,11 @@ export const GET = withV1Route({
       relativePath = `${normalizedUploadsDir}/${filePathInQuery}`
     }
 
-    const fullPath = path.join(process.cwd(), relativePath)
+    const fullPath = path.join(BACKEND_ROOT_DIR, relativePath)
 
     // 验证文件路径是否在允许的目录内
     const resolvedFullPath = path.resolve(fullPath)
-    const resolvedUploadsDir = path.resolve(process.cwd(), normalizedUploadsDir)
+    const resolvedUploadsDir = path.resolve(BACKEND_ROOT_DIR, normalizedUploadsDir)
     if (!resolvedFullPath.startsWith(resolvedUploadsDir)) {
       logger.warn({ action: 'public:storage:read', reason: 'path_outside_allowed_dir', path: filePathInQuery }, '文件路径在允许的目录之外')
       return new NextResponse('Access denied', { status: 403 })

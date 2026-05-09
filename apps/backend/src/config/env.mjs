@@ -1,5 +1,17 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
+
+/**
+ * 后端项目根目录（即 next.config.ts 所在目录）
+ *
+ * 使用 import.meta.url 定位本文件（src/config/env.mjs），
+ * 然后向上回溯两级到达后端根目录。这样无论 process.cwd() 是什么，
+ * 解析出来的路径始终一致。
+ */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+export const BACKEND_ROOT_DIR = path.resolve(__dirname, '../..')
 
 /**
  * 集中校验并导出运行时环境变量（避免在组件中直接读取 process.env）

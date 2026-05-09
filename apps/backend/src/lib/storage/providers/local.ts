@@ -15,6 +15,7 @@ import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { LocalStorageConfig } from '@/lib/storage/types/config'
 import type { UploadPolicyRequest } from '@/lib/storage/schema'
 import type { FileMetadata } from '@/lib/storage/schema'
+import { BACKEND_ROOT_DIR } from '@/config/env.mjs'
 
 // ============================================================
 // 工具函数
@@ -102,8 +103,10 @@ export function createLocal(options: LocalStorageConfig): ObjectStorageProvider 
     throw new Error('Local Storage: uploadDir is required')
   }
 
-  // 计算绝对基础路径
-  const absoluteBaseDir = path.resolve(process.cwd(), uploadDir)
+  // 计算绝对基础路径：基于后端项目根目录解析，而非 process.cwd()
+  // 这样无论 seed 脚本、dev server 还是通过 bun --filter 启动，
+  // 上传和文件服务路由都会使用同一个物理目录
+  const absoluteBaseDir = path.resolve(BACKEND_ROOT_DIR, uploadDir)
 
   /**
    * 获取目录前缀（用于生成 objectKey）

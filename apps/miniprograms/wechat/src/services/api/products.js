@@ -67,11 +67,17 @@ const normalizeProduct = (product) => {
   const categoryIdFromList = Array.isArray(product.categoryIds) && product.categoryIds.length > 0
     ? product.categoryIds[0]
     : ''
-  const coverUrl = product.coverUrl || product.coverImage || product.imageUrl || ''
+  // 封面图优先级: coverUrl > coverImage > imageUrl > mediaUrls[0]
+  // 当用户只配置了 mediaUrls（媒体图库）而未设置 coverUrl 时，使用第一张媒体图作为封面
+  const coverUrl = product.coverUrl
+    || product.coverImage
+    || product.imageUrl
+    || (Array.isArray(product.mediaUrls) && product.mediaUrls.length > 0 ? product.mediaUrls[0] : '')
+    || ''
 
   return {
     ...product,
-    // 封面图映射: 后端 coverUrl → 前端 coverImage / imageUrl
+    // 封面图映射: 后端 coverUrl / mediaUrls → 前端 coverImage / imageUrl
     // 后端公开文件接口返回的是 /api/v1/public/files/... 相对路径，小程序 image 需要完整 URL。
     coverImage: buildFullUrl(coverUrl),
     imageUrl: buildFullUrl(coverUrl),

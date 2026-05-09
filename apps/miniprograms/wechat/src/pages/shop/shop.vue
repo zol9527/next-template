@@ -60,11 +60,12 @@
         >
           <view class="product-thumb">
             <image
-              v-if="product.coverImage || product.imageUrl"
-              :src="product.coverImage || product.imageUrl"
+              v-if="getProductImage(product)"
+              :src="getProductImage(product)"
               mode="aspectFill"
               class="product-thumb-img"
               lazy-load
+              @error="onImageError(product, $event)"
             />
             <view v-else class="product-thumb-placeholder" />
           </view>
@@ -104,6 +105,7 @@ import { httpClient } from '@/core/http-client'
 import { showError } from '@/utils/toast'
 import { checkMiniProgramUpdate } from '@/utils/update-manager'
 import { syncCustomTabBar } from '@/utils/tab-bar'
+import { buildFullUrl } from '@/utils/url'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { logger } from '@/utils/logger'
@@ -233,6 +235,19 @@ const loadProducts = async (reset = true) => {
       isFavorite: false
     }))
 
+    // 调试日志：检查商品图片字段
+    logger.debug('商品列表数据', {
+      total: newItems.length,
+      images: newItems.map((p: any) => ({
+        name: p.name,
+        resolvedImage: getProductImage(p) || '(空)',
+        coverImage: p.coverImage || '(空)',
+        imageUrl: p.imageUrl || '(空)',
+        coverUrl: p.coverUrl || '(空)',
+        mediaUrls: p.mediaUrls || [],
+      })),
+    })
+
     nextCursor.value = result.nextCursor ?? null
     hasMore.value = !!result.nextCursor && newItems.length > 0
 
@@ -255,6 +270,41 @@ const formatPrice = (price: any) => {
     return `¥${price.amount}`
   }
   return `¥${price}`
+}
+
+/**
+ * Function: getProductImage
+ *
+ * Description: 获取商城卡片图片地址，兼容前端适配字段与后端原始字段。
+ *
+ * Parameters:
+ *	product(any): 商品列表项
+ *
+ * Returns:
+ *	imageUrl(string): 可直接给小程序 image 使用的完整图片地址
+ */
+const getProductImage = (product: any): string => {
+  const imageUrl = product?.coverImage
+    || product?.imageUrl
+    || product?.coverUrl
+    || (Array.isArray(product?.mediaUrls) && product.mediaUrls.length > 0 ? product.mediaUrls[0] : '')
+    || ''
+
+  return buildFullUrl(imageUrl)
+}
+
+/** 图片加载失败回调，用于调试 */
+const onImageError = (product: any, event: any) => {
+  logger.warn('商品图片加载失败', {
+    productId: product.id,
+    productName: product.name,
+    resolvedImage: getProductImage(product),
+    coverImage: product.coverImage,
+    imageUrl: product.imageUrl,
+    coverUrl: product.coverUrl,
+    mediaUrls: product.mediaUrls,
+    error: event?.detail?.errMsg || 'unknown',
+  })
 }
 
 const handleCategoryChange = (index: number) => {
@@ -499,13 +549,13 @@ defineExpose({
 
   .product-thumb {
     width: 100%;
-    aspect-ratio: 160 / 110;
+    height: 220rpx;
     background-color: $color-background;
 
     .product-thumb-img {
       width: 100%;
       height: 100%;
-      border-radius: $radius-12;
+      display: block;
     }
 
     .product-thumb-placeholder {

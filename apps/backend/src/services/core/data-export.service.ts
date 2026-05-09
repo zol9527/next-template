@@ -35,7 +35,7 @@ import { AppError } from '@/lib/errors/app-error'
 import { ForbiddenError } from '@/lib/errors/app-error'
 import { buildSignedDownloadUrl, verifySignedToken } from '@/lib/security/signed-url'
 import { getStorageProvider } from '@/lib/storage/helper'
-import { env } from '@/config'
+import { env, BACKEND_ROOT_DIR } from '@/config'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { ExportJobRepository } from '@/repositories/interfaces/core/export-job.interface'
 import type { ServiceContext } from '@/types/service/service-context'
@@ -464,7 +464,7 @@ export function createDataExportService(
       storageKey: string,
     ): Promise<{ totalRows: number; bytesWritten: number }> {
       const uploadDir = env.LOCAL_UPLOAD_DIR ?? 'uploads'
-      const filePath = pathResolve(process.cwd(), uploadDir, storageKey)
+      const filePath = pathResolve(BACKEND_ROOT_DIR, uploadDir, storageKey)
 
       // 确保目标目录存在
       mkdirSync(dirname(filePath), { recursive: true })

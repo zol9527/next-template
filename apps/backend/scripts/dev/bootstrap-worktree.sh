@@ -7,6 +7,11 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
+# Monorepo 适配：计算后端在 git 仓库中的相对路径
+# git worktree list 返回 monorepo 根目录，而 .env.* 文件在 apps/backend/ 下
+readonly GIT_ROOT="$(git rev-parse --show-toplevel)"
+readonly BACKEND_REL_PATH="${PROJECT_ROOT#"${GIT_ROOT}/"}"
+
 readonly ENV_LOCAL_PATH="${PROJECT_ROOT}/.env.local"
 readonly ENV_EXAMPLE_LOCAL_PATH="${PROJECT_ROOT}/.env.example.local"
 readonly ENV_DEVELOPMENT_PATH="${PROJECT_ROOT}/.env.development"
@@ -51,15 +56,19 @@ ensure_local_env() {
         local worktree_path=""
         while IFS= read -r worktree_path; do
             [[ -n "${worktree_path}" ]] || continue
-            [[ "${worktree_path}" == "${PROJECT_ROOT}" ]] && continue
+            # 跳过当前 worktree（比较 monorepo 根目录级别）
+            [[ "${worktree_path}" == "${GIT_ROOT}" ]] && continue
 
-            if [[ -f "${worktree_path}/.env.local" ]]; then
-                copy_env_file "${worktree_path}/.env.local" "${worktree_path}/.env.local"
+            # worktree_path 是 monorepo 根目录，需要拼接后端子路径
+            local wt_backend_dir="${worktree_path}/${BACKEND_REL_PATH}"
+
+            if [[ -f "${wt_backend_dir}/.env.local" ]]; then
+                copy_env_file "${wt_backend_dir}/.env.local" "${wt_backend_dir}/.env.local"
                 return
             fi
 
-            if [[ -f "${worktree_path}/.env.development" ]]; then
-                copy_env_file "${worktree_path}/.env.development" "${worktree_path}/.env.development"
+            if [[ -f "${wt_backend_dir}/.env.development" ]]; then
+                copy_env_file "${wt_backend_dir}/.env.development" "${wt_backend_dir}/.env.development"
                 return
             fi
         done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
