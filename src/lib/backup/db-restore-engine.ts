@@ -16,8 +16,8 @@
  * - 不恢复 backup_jobs 表自身（由 manifest 决定表列表）
  */
 
-import { deserializeRow, JsonlReader } from './serializer'
-import { parseManifestFromZip, extractFileFromZip } from './integrity-check'
+import { JsonlReader } from './serializer'
+import { parseManifestFromZip } from './integrity-check'
 import { StreamingZipReader } from './streaming-zip-reader'
 import type { BackupManifest } from './integrity-check'
 import { RateController } from './rate-controller'
@@ -91,35 +91,6 @@ export interface DbRestoreResult {
 }
 
 // ─── 内部辅助函数 ─────────────────────────────────────
-
-/**
- * Function: extractAndParseJsonl
- *
- * Description: 从 ZIP 中提取指定表的 JSONL 数据并解析为行数组。
- * 每行 JSONL 数据经过 deserializeRow 反序列化恢复原始类型。
- *
- * Parameters:
- *   zipPath(string): ZIP 文件路径
- *   tableName(string): 表名（对应 ZIP 中的 tables/<tableName>.jsonl）
- *
- * Returns:
- *   Promise<Record<string, unknown>[]>: 反序列化后的行数据数组
- */
-async function extractAndParseJsonl(
-  zipPath: string,
-  tableName: string,
-): Promise<Record<string, unknown>[]> {
-  const jsonlBuffer = await extractFileFromZip(zipPath, `tables/${tableName}.jsonl`)
-  const content = jsonlBuffer.toString('utf8')
-
-  // 空内容返回空数组
-  if (!content.trim()) {
-    return []
-  }
-
-  const lines = content.split('\n').filter((line) => line.trim())
-  return lines.map((line) => deserializeRow(JSON.parse(line)))
-}
 
 /**
  * Function: restoreTableFromZipStream
@@ -200,23 +171,6 @@ async function restoreTableFromZipStream(
   }
 
   return { insertedRows: totalInserted }
-}
-
-/**
- * Function: getColumnsFromRows
- *
- * Description: 从行数据中提取有序的列名列表。
- * 以第一行的 key 顺序为准，确保所有 INSERT 语句的列顺序一致。
- *
- * Parameters:
- *   rows(Record<string, unknown>[]): 行数据数组
- *
- * Returns:
- *   string[]: 列名数组
- */
-function getColumnsFromRows(rows: Record<string, unknown>[]): string[] {
-  if (rows.length === 0) return []
-  return Object.keys(rows[0])
 }
 
 /**

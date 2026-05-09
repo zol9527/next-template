@@ -138,9 +138,36 @@ export function createDataExportService(
 
       if (items.length === 0) return
 
-      ctx.logger.info({ action: 'export:recover_stuck', count: items.length }, '发现中断的导出任务，标记为失败')
+      // 宽限期：10 分钟。
+      // 与备份服务同理：HMR 热更新会重置模块状态，但 Promise 仍在执行。
+      // 只有超过 10 分钟未更新的任务才视为真正卡住。
+      const STUCK_THRESHOLD_MS = 10 * 60 * 1000
+      const now = Date.now()
 
-      for (const job of items) {
+      const stuckJobs = items.filter((job) => {
+        const startedAt = job.startedAt ? new Date(job.startedAt).getTime() : 0
+        const updatedAt = job.updatedAt ? new Date(job.updatedAt).getTime() : 0
+        const lastActive = Math.max(startedAt, updatedAt)
+        const elapsed = now - lastActive
+
+        if (elapsed < STUCK_THRESHOLD_MS) {
+          ctx.logger.info(
+            { action: 'export:recover_skip', jobId: job.id, elapsedMs: elapsed },
+            '导出任务仍在宽限期内，跳过恢复',
+          )
+          return false
+        }
+        return true
+      })
+
+      if (stuckJobs.length === 0) {
+        ctx.logger.info({ action: 'export:recover_stuck', total: items.length }, '所有 processing 任务均在宽限期内，无需恢复')
+        return
+      }
+
+      ctx.logger.info({ action: 'export:recover_stuck', total: items.length, stuck: stuckJobs.length }, '发现真正卡住的导出任务，标记为失败')
+
+      for (const job of stuckJobs) {
         await deps.exportJobs.updateExportJobStatus(repoCtx, {
           id: job.id,
           status: 'failed',

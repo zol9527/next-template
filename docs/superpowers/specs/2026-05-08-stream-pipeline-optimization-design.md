@@ -1,7 +1,7 @@
 # 流式管道优化：Export / Import / Backup 内存治理
 
 > 日期: 2026-05-08
-> 状态: 设计中
+> 状态: 已完成
 > 范围: data-export, backup upload, db-restore, file-restore
 
 ---

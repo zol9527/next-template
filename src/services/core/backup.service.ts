@@ -389,11 +389,38 @@ export function createBackupService(deps: BackupServiceDeps, ctx: ServiceContext
 
       if (items.length === 0) return
 
-      // 过滤掉当前进程正在执行的任务（避免误杀后台任务）
-      const stuckJobs = items.filter((job) => !activeJobIds.has(job.id))
+      // 宽限期：10 分钟。
+      // 背景：processBackupJob 以 fire-and-forget 方式在 Next.js 请求上下文中运行。
+      // HMR（开发环境热更新）会导致模块重新加载，activeJobIds 被重置为空 Set，
+      // 但实际 Promise 仍在事件循环中执行。如果此时 recoverStuckJobs 被触发，
+      // 会误判正在运行的任务为"卡住的"并标记 failed。
+      // 通过宽限期确保：只有真正卡住（超过 10 分钟无更新）的任务才被清理。
+      const STUCK_THRESHOLD_MS = 10 * 60 * 1000
+      const now = Date.now()
+
+      const stuckJobs = items.filter((job) => {
+        // 跳过当前进程正在执行的任务
+        if (activeJobIds.has(job.id)) return false
+
+        // 跳过最近还在活跃更新的任务（updatedAt 距今不足 10 分钟）
+        // 注：listBackupJobs 返回类型不含 startedAt，但 updatedAt 足够判断活跃度
+        // 每次 statsTracker forceFlush 都会更新 job 记录，因此 updatedAt 反映最新进度
+        const updatedAt = job.updatedAt ? new Date(job.updatedAt).getTime() : 0
+        const elapsed = now - updatedAt
+
+        if (elapsed < STUCK_THRESHOLD_MS) {
+          logger.info(
+            { action: 'backup:recover_skip', jobId: job.id, elapsedMs: elapsed, thresholdMs: STUCK_THRESHOLD_MS },
+            '任务仍在宽限期内，跳过恢复',
+          )
+          return false
+        }
+
+        return true
+      })
 
       if (stuckJobs.length === 0) {
-        logger.info({ action: 'backup:recover_stuck', total: items.length, active: items.length }, '所有 processing 任务均在运行中，无需恢复')
+        logger.info({ action: 'backup:recover_stuck', total: items.length }, '所有 processing 任务均在运行中或宽限期内，无需恢复')
         return
       }
 
