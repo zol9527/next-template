@@ -1,3 +1,5 @@
+'use client'
+
 import { MiniprogramFaqList } from '@/components/business/admin/miniprogram/faq-list'
 
 /**

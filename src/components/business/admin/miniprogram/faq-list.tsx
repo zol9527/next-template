@@ -39,7 +39,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
+// 注意：不使用 motion/react，改用 CSS transition 以保持和其他管理页面一致的加载性能
 
 /**
  * FAQ 条目数据类型
@@ -316,22 +316,14 @@ export function MiniprogramFaqList() {
       ) : (
         <ScrollArea className="bg-transparent">
           <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {sortedList.map((item, index) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div
-                    className={cn(
-                      'bg-card rounded-xl border border-border/20 shadow-sm p-5 transition-opacity duration-200',
-                      !item.enabled && 'opacity-50'
-                    )}
-                  >
+            {sortedList.map((item, index) => (
+              <div
+                key={item.id}
+                className={cn(
+                  'bg-card rounded-xl border border-border/20 shadow-sm p-5 transition-all duration-200',
+                  !item.enabled && 'opacity-50'
+                )}
+              >
                     <div className="flex items-start gap-3">
                       {/* 排序按钮 */}
                       <div className="flex flex-col gap-1 pt-1">
@@ -398,10 +390,8 @@ export function MiniprogramFaqList() {
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+              </div>
+            ))}
           </div>
         </ScrollArea>
       )}
