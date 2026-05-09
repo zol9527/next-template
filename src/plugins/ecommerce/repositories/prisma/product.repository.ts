@@ -3,6 +3,31 @@ import type { ProductRepository, ProductMediaAttachmentRecord } from '@/plugins/
 import type { AdminProduct } from '@/plugins/ecommerce/contracts/admin-products.dto'
 import type { RepoContext } from '@/types/repo/repo-context'
 
+/**
+ * 从 extensions JSON 中提取 serviceGuarantees 数组
+ * Prisma 存储为 String (JSON)，Supabase 存储为 JSONB
+ * 此函数统一处理两种格式
+ */
+function extractServiceGuarantees(extensions: unknown): string[] {
+  const defaults = ['正品保障']
+  // 先解析 JSON 字符串（Prisma 情况）
+  let parsed = extensions
+  if (typeof extensions === 'string') {
+    try {
+      parsed = JSON.parse(extensions)
+    } catch {
+      return defaults
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return defaults
+  const ext = parsed as Record<string, unknown>
+  const sg = ext.serviceGuarantees
+  if (!Array.isArray(sg) || sg.length === 0) return defaults
+  // 过滤确保所有元素都是字符串
+  const filtered = sg.filter((v): v is string => typeof v === 'string')
+  return filtered.length > 0 ? filtered : defaults
+}
+
 function mapProduct(product: {
   id: string
   name: string
@@ -54,7 +79,11 @@ function mapProduct(product: {
     categoryIds: [],
     coverAssetId: null,
     mediaAssetIds: [],
-    extensions: product.extensions as Record<string, unknown> ?? null,
+    extensions: typeof product.extensions === 'string'
+      ? (() => { try { return JSON.parse(product.extensions) } catch { return null } })()
+      : product.extensions as Record<string, unknown> ?? null,
+    // 从 extensions 中提取 serviceGuarantees，默认 ['正品保障']
+    serviceGuarantees: extractServiceGuarantees(product.extensions),
     createdBy: product.createdById,
     updatedBy: product.updatedById,
     createdAt: product.createdAt.toISOString(),
@@ -83,11 +112,11 @@ function mapAttachment(attachment: {
 
 export function createPrismaProductRepository(): ProductRepository {
   return {
-    async listProducts(ctx: RepoContext, params: { limit: number; cursor?: string | null; keyword?: string; status?: string; kind?: string; categoryIds?: string[] }) {
+    async listProducts(ctx: RepoContext, params: { limit: number; cursor?: string | null; keyword?: string; status?: string; kind?: string; categoryIds?: string[]; isFeatured?: boolean }) {
       const { logger } = ctx
       const safeLimit = Math.max(1, Math.min(params.limit, 50))
 
-      logger.info({ action: 'list_products', limit: safeLimit, keyword: params.keyword })
+      logger.info({ action: 'list_products', limit: safeLimit, keyword: params.keyword, isFeatured: params.isFeatured })
 
       const where: Record<string, unknown> = {
         deletedAt: null,
@@ -98,6 +127,7 @@ export function createPrismaProductRepository(): ProductRepository {
       }
       if (params.status) where.status = params.status
       if (params.kind) where.productKind = params.kind
+      if (params.isFeatured !== undefined) where.isFeatured = params.isFeatured
 
       if (params.categoryIds && params.categoryIds.length > 0) {
         const productCategories = await prisma.productCategory.findMany({
@@ -190,6 +220,7 @@ export function createPrismaProductRepository(): ProductRepository {
       stockQuantity?: number | null
       isFeatured?: boolean
       tags?: string[]
+      serviceGuarantees?: string[]
       currencyCode: string
       createdBy: string
     }) {
@@ -210,6 +241,8 @@ export function createPrismaProductRepository(): ProductRepository {
           isFeatured: params.isFeatured ?? false,
           tags: JSON.stringify(params.tags ?? []),
           currencyCode: params.currencyCode,
+          // 将 serviceGuarantees 存入 extensions JSON 字段（数据库中为 String 类型）
+          extensions: JSON.stringify({ serviceGuarantees: params.serviceGuarantees ?? ['正品保障'] }),
           createdById: params.createdBy,
           updatedById: params.createdBy,
         },
@@ -228,6 +261,7 @@ export function createPrismaProductRepository(): ProductRepository {
       stockQuantity?: number | null
       isFeatured?: boolean
       tags?: string[]
+      serviceGuarantees?: string[]
       updatedBy: string
     }) {
       const { logger } = ctx
@@ -243,6 +277,10 @@ export function createPrismaProductRepository(): ProductRepository {
       if (params.stockQuantity !== undefined) updates.stockQuantity = params.stockQuantity
       if (params.isFeatured !== undefined) updates.isFeatured = params.isFeatured
       if (params.tags !== undefined) updates.tags = JSON.stringify(params.tags)
+      // 如果传入了 serviceGuarantees，更新 extensions 字段（数据库中为 String 类型）
+      if (params.serviceGuarantees !== undefined) {
+        updates.extensions = JSON.stringify({ serviceGuarantees: params.serviceGuarantees })
+      }
 
       const product = await prisma.product.update({
         where: { id: params.productId },

@@ -117,6 +117,7 @@ export function AdminProductForm({
   const [stockQuantity, setStockQuantity] = React.useState<number | null>(null)
   const [isFeatured, setIsFeatured] = React.useState(false)
   const [tags, setTags] = React.useState<string[]>([])
+  const [serviceGuarantees, setServiceGuarantees] = React.useState<string[]>(['正品保障'])
   const [categoryIds, setCategoryIds] = React.useState<string[]>([])
   const [coverAssetId, setCoverAssetId] = React.useState<string>('')
   const [showZeroPriceConfirm, setShowZeroPriceConfirm] = React.useState(false)
@@ -205,6 +206,7 @@ export function AdminProductForm({
       setStockQuantity(productData.stockQuantity)
       setIsFeatured(productData.isFeatured)
       setTags(productData.tags)
+      setServiceGuarantees(productData.serviceGuarantees ?? ['正品保障'])
       setCategoryIds(productData.categoryIds ?? [])
       setCoverAssetId(productData.coverAssetId ?? '')
       setCoverUrl(productData.coverUrl ?? '')
@@ -619,6 +621,7 @@ export function AdminProductForm({
         stockQuantity,
         isFeatured,
         tags,
+        serviceGuarantees,
         categoryIds,
         coverAssetId: coverAssetId.trim() === '' ? null : coverAssetId,
         mediaAssetIds: finalMediaAssetIds,
@@ -744,12 +747,12 @@ export function AdminProductForm({
     const timer = setTimeout(() => {
       const draft = {
         name, summary, description, kind, priceAmount, originalPriceAmount,
-        stockQuantity, isFeatured, tags, categoryIds, coverAssetId, newMediaAssetIds
+        stockQuantity, isFeatured, tags, serviceGuarantees, categoryIds, coverAssetId, newMediaAssetIds
       }
       localStorage.setItem(cacheKey, JSON.stringify(draft))
     }, 1000)
     return () => clearTimeout(timer)
-  }, [name, summary, description, kind, priceAmount, originalPriceAmount, stockQuantity, isFeatured, tags, categoryIds, coverAssetId, newMediaAssetIds, cacheKey, loading, isSubmitting])
+  }, [name, summary, description, kind, priceAmount, originalPriceAmount, stockQuantity, isFeatured, tags, serviceGuarantees, categoryIds, coverAssetId, newMediaAssetIds, cacheKey, loading, isSubmitting])
 
   const restoreDraft = () => {
     const saved = localStorage.getItem(cacheKey)
@@ -765,6 +768,7 @@ export function AdminProductForm({
       setStockQuantity(draft.stockQuantity)
       setIsFeatured(draft.isFeatured)
       setTags(draft.tags)
+      setServiceGuarantees(draft.serviceGuarantees ?? ['正品保障'])
       setCategoryIds(draft.categoryIds)
       setCoverAssetId(draft.coverAssetId)
       // 恢复新添加的媒体资产 IDs 和 URLs（如果草稿中有）
@@ -1320,10 +1324,51 @@ export function AdminProductForm({
                         )}
                       </div>
                     </div>
+
+                    {/* 服务保障标签 */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-foreground/70">
+                        服务保障
+                        <span className="text-xs text-muted-foreground ml-2 font-normal">（至少选择2项，最多4项）</span>
+                      </Label>
+                      <div className="flex flex-wrap gap-2 p-3 bg-muted/10 border-border/30 rounded-xl">
+                        {['正品保障', '7天无理由', '极速退款', '假一赔四'].map((option) => {
+                          const isSelected = serviceGuarantees.includes(option)
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              disabled={viewing}
+                              className={cn(
+                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all',
+                                isSelected
+                                  ? 'bg-primary/15 text-primary border border-primary/30'
+                                  : 'bg-muted/20 text-muted-foreground border border-border/20 hover:border-border/40',
+                                viewing && 'cursor-default'
+                              )}
+                              onClick={() => {
+                                if (isSelected) {
+                                  // 至少保留2个
+                                  if (serviceGuarantees.length > 2) {
+                                    setServiceGuarantees(prev => prev.filter(g => g !== option))
+                                  }
+                                } else {
+                                  // 最多4个
+                                  if (serviceGuarantees.length < 4) {
+                                    setServiceGuarantees(prev => [...prev, option])
+                                  }
+                                }
+                              }}
+                            >
+                              {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                              {option}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-
-                {/* Variant Management Placeholder */}
                 <Card className="overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between border-b">
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">

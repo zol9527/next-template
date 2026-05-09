@@ -141,6 +141,7 @@ model SiteConfig {
   logoUrl       String?  @map("logo_url")
   contactPhone  String?  @map("contact_phone")
   contactWechat String?  @map("contact_wechat")
+  contactEmail  String?  @map("contact_email")
   icpFiling     String?  @map("icp_filing")
   copyright     String?  @map("copyright")
   createdAt     DateTime @default(now()) @map("created_at")

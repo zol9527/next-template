@@ -43,6 +43,8 @@ export const AdminProductSchema = z
     coverUrl: z.string().nullable().optional().openapi({ description: '封面图片 URL（可选，实时生成）' }),
     mediaAssetIds: z.array(z.string().uuid()).default([]).openapi({ description: '媒体资源 ID 列表（可选）' }),
     mediaUrls: z.array(z.string()).default([]).optional().openapi({ description: '媒体图片 URL 列表（实时生成）' }),
+    // 服务保障标签（如"正品保障"、"7天无理由"、"极速退款"），从 extensions.serviceGuarantees 提取
+    serviceGuarantees: z.array(z.string()).default(['正品保障']).openapi({ description: '服务保障标签（2-4个，默认：正品保障）' }),
     extensions: z.unknown().nullable().optional().openapi({ description: '扩展字段（可为空）' }),
     createdBy: z.string().uuid().nullable().optional().openapi({ description: '创建者 ID（可为空）' }),
     updatedBy: z.string().uuid().nullable().optional().openapi({ description: '更新者 ID（可为空）' }),
@@ -122,6 +124,7 @@ export const AdminCreateProductRequestSchema = z
     categoryIds: z.array(z.string().uuid()).optional().openapi({ description: '分类 ID 列表（可选）' }),
     coverAssetId: z.string().uuid().nullable().optional().openapi({ description: '封面媒体 ID（可选）' }),
     mediaAssetIds: z.array(z.string().uuid()).optional().openapi({ description: '媒体资源 ID 列表（可选）' }),
+    serviceGuarantees: z.array(z.string()).min(2).max(4).optional().openapi({ description: '服务保障标签（2-4个，可选）' }),
   })
   .openapi({ description: '创建商品请求（通用字段）' })
 
@@ -141,6 +144,7 @@ export const AdminUpdateProductRequestSchema = z
     categoryIds: z.array(z.string().uuid()).optional().openapi({ description: '分类 ID 列表（可选）' }),
     coverAssetId: z.string().uuid().nullable().optional().openapi({ description: '封面媒体 ID（可选）' }),
     mediaAssetIds: z.array(z.string().uuid()).optional().openapi({ description: '媒体资源 ID 列表（可选）' }),
+    serviceGuarantees: z.array(z.string()).min(2).max(4).optional().openapi({ description: '服务保障标签（2-4个，可选）' }),
   })
   .openapi({ description: '更新商品请求（通用字段）' })
 

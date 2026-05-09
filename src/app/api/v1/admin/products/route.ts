@@ -68,6 +68,7 @@ export const POST = withV1Route({
       categoryIds: body!.categoryIds,
       coverAssetId: body!.coverAssetId,
       mediaAssetIds: body!.mediaAssetIds,
+      serviceGuarantees: body!.serviceGuarantees,
       createdBy: userId!,
     })
 

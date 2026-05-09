@@ -24,6 +24,7 @@ function sanitizeSiteConfigInput(params: {
 	logoUrl?: string | null
 	contactPhone?: string | null
 	contactWechat?: string | null
+	contactEmail?: string | null
 	icpFiling?: string | null
 	copyright?: string | null
 }) {
@@ -32,6 +33,7 @@ function sanitizeSiteConfigInput(params: {
 		logoUrl: params.logoUrl,
 		contactPhone: params.contactPhone,
 		contactWechat: params.contactWechat ? escapeHtml(params.contactWechat.trim()) ?? null : null,
+		contactEmail: params.contactEmail ? escapeHtml(params.contactEmail.trim()) ?? null : null,
 		icpFiling: params.icpFiling,
 		copyright: params.copyright ? escapeHtml(params.copyright.trim()) ?? null : null,
 	}
@@ -67,6 +69,7 @@ function mapSiteConfig(config: {
 	logoUrl: string | null
 	contactPhone: string | null
 	contactWechat: string | null
+	contactEmail: string | null
 	icpFiling: string | null
 	copyright: string | null
 	createdAt: Date
@@ -78,6 +81,7 @@ function mapSiteConfig(config: {
 		logoUrl: config.logoUrl,
 		contactPhone: config.contactPhone,
 		contactWechat: config.contactWechat,
+		contactEmail: config.contactEmail,
 		icpFiling: config.icpFiling,
 		copyright: config.copyright,
 		createdAt: config.createdAt.toISOString(),
@@ -184,6 +188,7 @@ export function createPrismaSiteConfigRepository(): SiteConfigRepository {
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
+					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
 				},
@@ -193,6 +198,7 @@ export function createPrismaSiteConfigRepository(): SiteConfigRepository {
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
+					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
 				},
@@ -216,6 +222,7 @@ export function createPrismaSiteConfigRepository(): SiteConfigRepository {
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
+					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
 				},

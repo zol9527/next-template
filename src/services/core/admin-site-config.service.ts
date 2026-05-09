@@ -59,6 +59,7 @@ export function createAdminSiteConfigService(
 				logoUrl: config.logoUrl,
 				contactPhone: config.contactPhone,
 				contactWechat: config.contactWechat,
+				contactEmail: config.contactEmail,
 				icpFiling: config.icpFiling,
 				copyright: config.copyright,
 				createdAt: config.createdAt,
@@ -74,6 +75,7 @@ export function createAdminSiteConfigService(
 			logoUrl?: string | null
 			contactPhone?: string | null
 			contactWechat?: string | null
+			contactEmail?: string | null
 			icpFiling?: string | null
 			copyright?: string | null
 		}): Promise<SiteConfig> {
@@ -92,6 +94,7 @@ export function createAdminSiteConfigService(
 				logoUrl: updated.logoUrl,
 				contactPhone: updated.contactPhone,
 				contactWechat: updated.contactWechat,
+				contactEmail: updated.contactEmail,
 				icpFiling: updated.icpFiling,
 				copyright: updated.copyright,
 				createdAt: updated.createdAt,

@@ -9,6 +9,7 @@ export type SiteConfigDto = {
 	logoUrl: string | null
 	contactPhone: string | null
 	contactWechat: string | null
+	contactEmail: string | null
 	icpFiling: string | null
 	copyright: string | null
 	createdAt: string
@@ -75,6 +76,7 @@ export interface SiteConfigRepository {
 		logoUrl?: string | null
 		contactPhone?: string | null
 		contactWechat?: string | null
+		contactEmail?: string | null
 		icpFiling?: string | null
 		copyright?: string | null
 	}): Promise<SiteConfigDto>
@@ -87,6 +89,7 @@ export interface SiteConfigRepository {
 		logoUrl?: string | null
 		contactPhone?: string | null
 		contactWechat?: string | null
+		contactEmail?: string | null
 		icpFiling?: string | null
 		copyright?: string | null
 	}): Promise<SiteConfigDto>

@@ -18,6 +18,7 @@ export interface ProductRepository {
 		status?: string
 		kind?: string
 		categoryIds?: string[]
+		isFeatured?: boolean
 	}): Promise<{ items: AdminProduct[]; nextCursor: string | null; totalCount: number }>
 
 	getProductById(ctx: RepoContext, params: { productId: string }): Promise<AdminProduct | null>
@@ -36,6 +37,7 @@ export interface ProductRepository {
 		stockQuantity?: number | null
 		isFeatured?: boolean
 		tags?: string[]
+		serviceGuarantees?: string[]
 		currencyCode: string
 		createdBy: string
 	}): Promise<AdminProduct>
@@ -51,6 +53,7 @@ export interface ProductRepository {
 		stockQuantity?: number | null
 		isFeatured?: boolean
 		tags?: string[]
+		serviceGuarantees?: string[]
 		updatedBy: string
 	}): Promise<AdminProduct | null>
 

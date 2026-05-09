@@ -45,6 +45,7 @@ export const SCOPE_TREE = {
     description: '小程序管理',
     children: {
       carousels: { description: '轮播图管理' },
+      'shop-config': { description: '商城设置管理' },
     },
   },
   agreements: { description: '协议管理' },

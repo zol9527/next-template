@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
 import { useSiteConfigContext } from '@/components/context/site-config-context'
-import { Loader2, Globe, Phone, MessageSquare, Copyright, CheckCircle2, Upload, Sparkles } from 'lucide-react'
+import { Loader2, Globe, Phone, MessageSquare, Mail, Copyright, CheckCircle2, Upload, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SiteConfig, UpdateSiteConfigRequest } from '@/contracts/dtos/admin/site-config.dto'
 import { MaterialPicker } from '@/components/business/admin/media/material-picker'
@@ -157,6 +157,7 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
   const [contactPhone, setContactPhone] = React.useState('')
   const [contactWechat, setContactWechat] = React.useState('')
+  const [contactEmail, setContactEmail] = React.useState('')
   const [icpFiling, setIcpFiling] = React.useState('')
   const [copyright, setCopyright] = React.useState('')
   const [errors, setErrors] = React.useState<Record<string, string>>({})
@@ -172,6 +173,7 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
       setLogoUrl(siteConfig.logoUrl ?? null)
       setContactPhone(siteConfig.contactPhone ?? '')
       setContactWechat(siteConfig.contactWechat ?? '')
+      setContactEmail(siteConfig.contactEmail ?? '')
       setIcpFiling(siteConfig.icpFiling ?? '')
       setCopyright(siteConfig.copyright ?? '')
     }
@@ -265,6 +267,7 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
       logoUrl,
       contactPhone: contactPhone.trim() || null,
       contactWechat: contactWechat.trim() || null,
+      contactEmail: contactEmail.trim() || null,
       icpFiling: icpFiling.trim() || null,
       copyright: copyright.trim() || null,
     }
@@ -415,6 +418,21 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
                     placeholder="请输入客服微信号..."
                     value={contactWechat}
                     onChange={(e) => setContactWechat(e.target.value)}
+                    disabled={isSubmitting}
+                    className="h-12 pl-10 bg-muted/5 border-border/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                  />
+                </div>
+              </FormField>
+
+              {/* 客服邮箱 */}
+              <FormField label="客服邮箱">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="email"
+                    placeholder="请输入客服邮箱..."
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
                     disabled={isSubmitting}
                     className="h-12 pl-10 bg-muted/5 border-border/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
                   />

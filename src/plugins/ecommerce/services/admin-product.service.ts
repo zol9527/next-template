@@ -277,6 +277,7 @@ export function createAdminProductService(
       categoryIds?: string[]
       coverAssetId?: string | null
       mediaAssetIds?: string[]
+      serviceGuarantees?: string[]
       createdBy: string
     }): Promise<AdminProduct> {
       const currencyCode = env.SITE_CURRENCY_CODE
@@ -293,6 +294,7 @@ export function createAdminProductService(
         stockQuantity: params.stockQuantity ?? null,
         isFeatured: params.isFeatured ?? false,
         tags: params.tags ?? [],
+        serviceGuarantees: params.serviceGuarantees,
         currencyCode,
         createdBy: params.createdBy,
       })
@@ -341,6 +343,7 @@ export function createAdminProductService(
       categoryIds?: string[]
       coverAssetId?: string | null
       mediaAssetIds?: string[]
+      serviceGuarantees?: string[]
       updatedBy: string
     }): Promise<AdminProduct | null> {
       const updated = await deps.products.updateProduct(repoCtx, {
@@ -354,6 +357,7 @@ export function createAdminProductService(
         stockQuantity: params.stockQuantity,
         isFeatured: params.isFeatured,
         tags: params.tags,
+        serviceGuarantees: params.serviceGuarantees,
         updatedBy: params.updatedBy,
       })
 

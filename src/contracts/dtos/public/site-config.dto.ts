@@ -16,6 +16,7 @@ export const PublicSiteConfigSchema = z
     logoUrl: z.string().url().nullable().optional().openapi({ description: 'Logo URL 或品牌图片地址' }),
     contactPhone: z.string().nullable().optional().openapi({ description: '客服联系电话' }),
     contactWechat: z.string().nullable().optional().openapi({ description: '客服微信号' }),
+    contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
     updatedAt: z.string().openapi({ description: '更新时间 ISO（用于版本控制）' }),

@@ -19,6 +19,7 @@ export const SiteConfigSchema = z
     logoUrl: z.string().url().nullable().optional().openapi({ description: 'Logo URL 或品牌图片地址' }),
     contactPhone: z.string().nullable().optional().openapi({ description: '客服联系电话' }),
     contactWechat: z.string().nullable().optional().openapi({ description: '客服微信号' }),
+    contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
     createdAt: z.string().openapi({ description: '创建时间 ISO' }),
@@ -43,6 +44,7 @@ export const UpdateSiteConfigRequestSchema = z
       .openapi({ description: `Logo URL 或品牌图片地址（最长 ${MAX_LOGO_URL_LENGTH} 字符）` }),
     contactPhone: z.string().nullable().optional().openapi({ description: '客服联系电话' }),
     contactWechat: z.string().nullable().optional().openapi({ description: '客服微信号' }),
+    contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
   })

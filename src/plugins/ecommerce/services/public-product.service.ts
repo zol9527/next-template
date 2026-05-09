@@ -27,6 +27,7 @@ function mapPublicProduct(params: {
     stockQuantity: number | null
     isFeatured: boolean
     tags: string[]
+    serviceGuarantees: string[]
     createdAt: string
     currencyCode: string
   }
@@ -46,6 +47,7 @@ function mapPublicProduct(params: {
     originalPrice: record.originalPrice,
     isFeatured: record.isFeatured,
     tags: record.tags,
+    serviceGuarantees: record.serviceGuarantees,
     coverAssetId,
     mediaAssetIds,
     createdAt: record.createdAt,
@@ -197,6 +199,7 @@ export function createPublicProductService(
         keyword: params?.keyword,
         status: 'published',
         categoryIds: params?.categoryId ? [params.categoryId] : undefined,
+        isFeatured: params?.featured,
       })
 
       const productIds = page.items.map((p) => p.id)
@@ -221,6 +224,7 @@ export function createPublicProductService(
               stockQuantity: p.stockQuantity,
               isFeatured: p.isFeatured,
               tags: p.tags,
+              serviceGuarantees: p.serviceGuarantees,
               createdAt: p.createdAt,
               currencyCode: 'CNY'
             },
@@ -232,11 +236,6 @@ export function createPublicProductService(
           mediaAssetIds,
         }
       })
-
-      // 如果只需要精选商品，先过滤再进行媒体 URL 填充，避免为无用商品获取媒体资源
-      if (params?.featured === true) {
-        items = items.filter((item) => item.product.isFeatured)
-      }
 
       // 批量填充媒体 URL
       const enrichedItems = await enrichProductsWithMediaUrls(items)
@@ -269,6 +268,7 @@ export function createPublicProductService(
           stockQuantity: p.stockQuantity,
           isFeatured: p.isFeatured,
           tags: p.tags,
+          serviceGuarantees: p.serviceGuarantees,
           createdAt: p.createdAt,
           currencyCode: 'CNY'
         },

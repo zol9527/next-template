@@ -8,6 +8,20 @@ const PRODUCT_SELECT =
 
 const ATTACHMENT_SELECT = 'id,product_id,asset_id,usage,sort_order,created_at'
 
+/**
+ * 从 extensions JSON 中提取 serviceGuarantees 数组
+ * 存储格式: { serviceGuarantees: ['正品保障', '7天无理由'] }
+ */
+function extractServiceGuarantees(extensions: unknown): string[] {
+  const defaults = ['正品保障']
+  if (!extensions || typeof extensions !== 'object') return defaults
+  const ext = extensions as Record<string, unknown>
+  const sg = ext.serviceGuarantees
+  if (!Array.isArray(sg) || sg.length === 0) return defaults
+  const filtered = sg.filter((v): v is string => typeof v === 'string')
+  return filtered.length > 0 ? filtered : defaults
+}
+
 function getString(row: Record<string, unknown>, key: string): string | null {
   const value = row[key]
   return typeof value === 'string' ? value : null
@@ -91,6 +105,8 @@ function mapProduct(row: Record<string, unknown>): AdminProduct {
     coverAssetId: null,
     mediaAssetIds: [],
     extensions: (row as { extensions?: unknown }).extensions ?? null,
+    // 从 extensions 中提取 serviceGuarantees，默认 ['正品保障']
+    serviceGuarantees: extractServiceGuarantees((row as { extensions?: unknown }).extensions),
     createdBy: getString(row, 'created_by'),
     updatedBy: getString(row, 'updated_by'),
     createdAt,
@@ -239,6 +255,7 @@ export function createSupabaseProductRepository(): ProductRepository {
       stockQuantity?: number | null
       isFeatured?: boolean
       tags?: string[]
+      serviceGuarantees?: string[]
       currencyCode: string
       createdBy: string
     }) {
@@ -260,6 +277,8 @@ export function createSupabaseProductRepository(): ProductRepository {
           is_featured: params.isFeatured ?? false,
           // 修复：Supabase text[] 类型直接存储数组，不需要 JSON.stringify
           tags: params.tags ?? [],
+          // 将 serviceGuarantees 存入 extensions JSON 字段
+          extensions: { serviceGuarantees: params.serviceGuarantees ?? ['正品保障'] },
           currency_code: params.currencyCode,
           created_by: params.createdBy,
           updated_by: params.createdBy,
@@ -282,6 +301,7 @@ export function createSupabaseProductRepository(): ProductRepository {
       stockQuantity?: number | null
       isFeatured?: boolean
       tags?: string[]
+      serviceGuarantees?: string[]
       updatedBy: string
     }) {
       const { logger } = ctx
@@ -302,6 +322,10 @@ export function createSupabaseProductRepository(): ProductRepository {
       if (params.isFeatured !== undefined) updates.is_featured = params.isFeatured
       // 修复：Supabase text[] 类型直接存储数组，不需要 JSON.stringify
       if (params.tags !== undefined) updates.tags = params.tags
+      // 如果传入了 serviceGuarantees，更新 extensions 字段
+      if (params.serviceGuarantees !== undefined) {
+        updates.extensions = { serviceGuarantees: params.serviceGuarantees }
+      }
 
       const { data, error } = await supabase
         .from('products')

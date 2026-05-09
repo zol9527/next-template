@@ -52,6 +52,7 @@ function mapSiteConfig(row: Record<string, unknown>): SiteConfigDto {
 	const logoUrl = getString(row, 'logo_url')
 	const contactPhone = getString(row, 'contact_phone')
 	const contactWechat = getString(row, 'contact_wechat')
+	const contactEmail = getString(row, 'contact_email')
 	const icpFiling = getString(row, 'icp_filing')
 	const copyright = getString(row, 'copyright')
 	const createdAt = getString(row, 'created_at')
@@ -67,6 +68,7 @@ function mapSiteConfig(row: Record<string, unknown>): SiteConfigDto {
 		logoUrl,
 		contactPhone,
 		contactWechat,
+		contactEmail,
 		icpFiling,
 		copyright,
 		createdAt,
@@ -183,6 +185,7 @@ export function createSupabaseSiteConfigRepository(): SiteConfigRepository {
 				logo_url: params.logoUrl ?? null,
 				contact_phone: params.contactPhone ?? null,
 				contact_wechat: params.contactWechat ?? null,
+				contact_email: params.contactEmail ?? null,
 				icp_filing: params.icpFiling ?? null,
 				copyright: params.copyright ?? null,
 				updated_at: new Date().toISOString(),
@@ -222,6 +225,7 @@ export function createSupabaseSiteConfigRepository(): SiteConfigRepository {
 				logo_url: params.logoUrl ?? null,
 				contact_phone: params.contactPhone ?? null,
 				contact_wechat: params.contactWechat ?? null,
+				contact_email: params.contactEmail ?? null,
 				icp_filing: params.icpFiling ?? null,
 				copyright: params.copyright ?? null,
 			}
