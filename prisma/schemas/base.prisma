@@ -622,6 +622,22 @@ model FeedbackReply {
 }
 
 // ============================================================================
+// 小程序常见问题
+// ============================================================================
+
+model MiniProgramFaq {
+  id        String   @id @default(uuid())
+  question  String                    // 问题标题
+  answer    String   @db.Text         // 问题答案
+  sort      Int      @default(0)      // 排序权重，值越小越靠前
+  enabled   Boolean  @default(true)   // 是否启用
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mini_program_faqs")
+}
+
+// ============================================================================
 // 枚举（核心）
 // ============================================================================
 
