@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { motion } from 'motion/react'
+
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -63,12 +63,7 @@ interface FormFieldProps {
 
 function FormField({ label, description, required, error, children }: FormFieldProps) {
   return (
-    <motion.div
-      className="space-y-2"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className="space-y-2">
       <Label className={cn(
         'text-sm font-semibold text-foreground/70 transition-colors',
         error && 'text-destructive'
@@ -80,15 +75,11 @@ function FormField({ label, description, required, error, children }: FormFieldP
       )}
       {children}
       {error && (
-        <motion.p
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="text-xs text-destructive"
-        >
+        <p className="text-xs text-destructive">
           {error}
-        </motion.p>
+        </p>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -106,12 +97,7 @@ interface ConfigCardProps {
 
 function ConfigCard({ icon, title, children, delay = 0 }: ConfigCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-      className="bg-card rounded-xl border border-border/20 shadow-sm overflow-hidden"
-    >
+    <div className="bg-card rounded-xl border border-border/20 shadow-sm overflow-hidden">
       {/* 卡片头部 */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-border/10 bg-muted/20">
         <div className="text-primary">{icon}</div>
@@ -122,7 +108,7 @@ function ConfigCard({ icon, title, children, delay = 0 }: ConfigCardProps) {
       <div className="p-6 space-y-6">
         {children}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -373,11 +359,7 @@ export function MiniprogramShopConfigForm() {
 
             {/* 商品 ID（仅当 linkType 为 product 时显示） */}
             {linkType === 'product' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-              >
+              <div>
                 <FormField
                   label="商品 ID"
                   required
@@ -400,16 +382,12 @@ export function MiniprogramShopConfigForm() {
                     )}
                   />
                 </FormField>
-              </motion.div>
+              </div>
             )}
 
             {/* 自定义链接（仅当 linkType 为 custom 时显示） */}
             {linkType === 'custom' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-              >
+              <div>
                 <FormField
                   label="自定义链接"
                   required
@@ -432,18 +410,13 @@ export function MiniprogramShopConfigForm() {
                     )}
                   />
                 </FormField>
-              </motion.div>
+              </div>
             )}
           </ConfigCard>
 
           {/* 操作按钮区域 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="flex flex-col items-center gap-4 pt-4"
-          >
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <div className="flex flex-col items-center gap-4 pt-4">
+            <div>
               <Button
                 onClick={handleSave}
                 disabled={isSubmitting}
@@ -466,8 +439,8 @@ export function MiniprogramShopConfigForm() {
                   </>
                 )}
               </Button>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
       </div>
     </ScrollArea>
