@@ -47,6 +47,7 @@ export const SCOPE_TREE = {
       carousels: { description: '轮播图管理' },
       'shop-config': { description: '商城设置管理' },
       'home-config': { description: '首页 Banner 配置管理' },
+      faq: { description: '常见问题管理' },
     },
   },
   agreements: { description: '协议管理' },
