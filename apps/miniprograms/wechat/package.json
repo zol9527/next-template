@@ -6,13 +6,13 @@
   "scripts": {
     "dev": "node scripts/dev-mp-weixin.mjs",
     "dev:mp-weixin": "node scripts/dev-mp-weixin.mjs",
-    "compile": "npm run compile:mp-weixin",
+    "compile": "bun run compile:mp-weixin",
     "compile:mp-weixin": "uni build -p mp-weixin",
     "watch:mp-weixin": "uni -p mp-weixin",
     "open:mp-weixin": "node scripts/open-wechat-devtools.mjs dist/dev/mp-weixin",
     "open:mp-weixin:build": "node scripts/open-wechat-devtools.mjs dist/build/mp-weixin",
-    "build": "npm run build:mp-weixin && npm run open:mp-weixin:build",
-    "build:mp-weixin": "npm run compile:mp-weixin",
+    "build": "bun run build:mp-weixin && bun run open:mp-weixin:build",
+    "build:mp-weixin": "bun run compile:mp-weixin",
     "test": "vitest run"
   },
   "keywords": [],

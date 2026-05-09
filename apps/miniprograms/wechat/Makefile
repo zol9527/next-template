@@ -10,19 +10,19 @@ help:
 	@echo "  make open-weixin  打开当前开发产物"
 
 install:
-	npm install
+	bun install
 
 dev:
-	npm run dev
+	bun run dev
 
 compile:
-	npm run compile:mp-weixin
+	bun run compile:mp-weixin
 
 watch:
-	npm run watch:mp-weixin
+	bun run watch:mp-weixin
 
 build:
-	npm run build
+	bun run build
 
 open-weixin:
-	npm run open:mp-weixin
+	bun run open:mp-weixin

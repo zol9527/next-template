@@ -13,7 +13,7 @@ help:
 	@echo "📦 Monorepo 命令"
 	@echo ""
 	@echo "  依赖:"
-	@echo "    install              安装所有 workspace 依赖"
+	@echo "    install              使用 Bun 安装所有 workspace 依赖"
 	@echo ""
 	@echo "  后端 Next.js:"
 	@echo "    dev                  启动后端开发服务"
@@ -38,43 +38,43 @@ help:
 	@echo "    wechat-shell         查看微信小程序原 Makefile 帮助"
 
 install:
-	npm install
+	bun install
 
 dev: dev-backend
 
 dev-backend:
-	npm run dev -w @repo/backend
+	bun run --filter @repo/backend dev
 
 dev-wechat:
-	npm run dev -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat dev
 
 build: build-backend
 
 build-backend:
-	npm run build -w @repo/backend
+	bun run --filter @repo/backend build
 
 build-wechat:
-	npm run build -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat build
 
 compile-wechat:
-	npm run compile:mp-weixin -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat compile:mp-weixin
 
 watch-wechat:
-	npm run watch:mp-weixin -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat watch:mp-weixin
 
 open-wechat:
-	npm run open:mp-weixin -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat open:mp-weixin
 
 lint:
-	npm run lint -w @repo/backend
+	bun run --filter @repo/backend lint
 
 test: test-backend
 
 test-backend:
-	npm run test -w @repo/backend
+	bun run --filter @repo/backend test
 
 test-wechat:
-	npm run test -w @repo/miniprogram-wechat
+	bun run --filter @repo/miniprogram-wechat test
 
 backend-shell:
 	$(MAKE) -C $(BACKEND_DIR) help
