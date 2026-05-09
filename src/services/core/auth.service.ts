@@ -445,7 +445,7 @@ export function createAuthService(
      *   - 该方法仅用于补全展示资料，不涉及登录
      *   - nickname 不参与唯一性约束，可以直接更新
      */
-    async completeWechatProfile(params: { userId: string; nickname: string; avatarUrl: string }): Promise<void> {
+    async completeWechatProfile(params: { userId: string; nickname: string; avatarUrl?: string }): Promise<void> {
       const user = await deps.users.getUserById(repoCtx, { userId: params.userId })
       if (!user) {
         throw new AuthError('UNAUTHORIZED', 'User not found')

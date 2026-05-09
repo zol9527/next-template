@@ -35,7 +35,7 @@ function mapPublicProduct(params: {
   coverAssetId: string | null
   mediaAssetIds: string[]
 }): PublicProduct {
-  const { record, coverAssetId, mediaAssetIds } = params
+  const { record, categoryIds, coverAssetId, mediaAssetIds } = params
   return {
     id: record.id,
     name: record.name,
@@ -46,6 +46,8 @@ function mapPublicProduct(params: {
     price: record.price,
     originalPrice: record.originalPrice,
     isFeatured: record.isFeatured,
+    categoryId: categoryIds[0] ?? null,
+    categoryIds,
     tags: record.tags,
     serviceGuarantees: record.serviceGuarantees,
     coverAssetId,

@@ -25,6 +25,8 @@ export const PublicProductSchema = z
     price: MoneySchema.openapi({ description: '售价' }),
     originalPrice: MoneySchema.nullable().openapi({ description: '原价' }),
     isFeatured: z.boolean().openapi({ description: '是否推荐' }),
+    categoryId: z.string().uuid().nullable().optional().openapi({ description: '主分类 ID（兼容小程序单分类展示）' }),
+    categoryIds: z.array(z.string().uuid()).default([]).optional().openapi({ description: '商品所属分类 ID 列表' }),
     tags: z.array(z.string()).openapi({ description: '商品标签' }),
     // 服务保障标签，从 extensions.serviceGuarantees 提取
     serviceGuarantees: z.array(z.string()).default(['正品保障']).openapi({ description: '服务保障标签' }),

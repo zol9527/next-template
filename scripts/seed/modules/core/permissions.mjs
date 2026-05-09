@@ -41,7 +41,7 @@ function flattenScopeTree() {
     'user-documents': { description: '用户文档管理' },
     media: { description: '媒体资源管理' },
     storage: { description: '文件上传与存储' },
-    miniprogram: { description: '小程序管理', children: { carousels: { description: '轮播图管理' } } },
+    miniprogram: { description: '小程序管理', children: { carousels: { description: '轮播图管理' }, 'shop-config': { description: '商城设置管理' }, 'home-config': { description: '首页 Banner 配置管理' }, faq: { description: '常见问题管理' } } },
     agreements: { description: '协议管理' },
     announcements: { description: '公告管理' },
     blog: { description: '博客管理', children: { articles: { description: '博客文章管理' }, categories: { description: '博客分类管理' }, tags: { description: '博客标签管理' }, analytics: { description: '博客阅读数据' } } },

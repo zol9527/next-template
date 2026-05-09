@@ -25,7 +25,7 @@ export const WechatProfileCompletionRequestSchema = z
       .min(1, '昵称不能为空')
       .max(64, '昵称最多 64 个字符')
       .openapi({ description: '用户昵称（展示名称，不唯一）' }),
-    avatarUrl: z.string().url('头像 URL 格式不正确').openapi({ description: '用户头像 URL' }),
+    avatarUrl: z.string().url('头像 URL 格式不正确').optional().openapi({ description: '用户头像 URL（可选，不传则不更新头像）' }),
   })
   .openapi({ description: '微信资料补全请求' })
 

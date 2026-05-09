@@ -284,21 +284,26 @@ export function createPrismaUserRepository(): UserRepository {
      * Returns:
      *   void: 无返回值
      */
-    async updateWechatDisplayProfile(
-      ctx: RepoContext,
-      params: { userId: string; nickname: string; avatarUrl: string }
-    ) {
-      const { logger } = ctx
-      logger.info({ action: 'update_wechat_display_profile', userId: params.userId })
+     async updateWechatDisplayProfile(
+       ctx: RepoContext,
+       params: { userId: string; nickname: string; avatarUrl?: string }
+     ) {
+       const { logger } = ctx
+       logger.info({ action: 'update_wechat_display_profile', userId: params.userId })
 
-      await prisma.user.update({
-        where: { id: params.userId },
-        data: {
-          nickname: params.nickname,
-          avatarUrl: params.avatarUrl,
-        },
-      })
-    },
+       // 构建更新数据，只包含有值的字段
+       const data: { nickname: string; avatarUrl?: string } = {
+         nickname: params.nickname,
+       }
+       if (params.avatarUrl) {
+         data.avatarUrl = params.avatarUrl
+       }
+
+       await prisma.user.update({
+         where: { id: params.userId },
+         data,
+       })
+     },
 
     /**
      * Function: updateUserPhone

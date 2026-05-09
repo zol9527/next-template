@@ -115,7 +115,7 @@ export interface UserRepository {
    */
   updateWechatDisplayProfile(
     ctx: RepoContext,
-    params: { userId: string; nickname: string; avatarUrl: string }
+    params: { userId: string; nickname: string; avatarUrl?: string }
   ): Promise<void>
 
   /**

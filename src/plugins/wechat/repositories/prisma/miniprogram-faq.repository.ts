@@ -61,7 +61,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 			const { logger } = ctx
 			logger.info({ action: 'miniprogram_faq.list_all' })
 
-			const faqs = await prisma.miniprogramFaq.findMany({
+			const faqs = await prisma.miniProgramFaq.findMany({
 				orderBy: { sort: 'asc' },
 			})
 
@@ -75,7 +75,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 			const { logger } = ctx
 			logger.info({ action: 'miniprogram_faq.list_enabled' })
 
-			const faqs = await prisma.miniprogramFaq.findMany({
+			const faqs = await prisma.miniProgramFaq.findMany({
 				where: { enabled: true },
 				orderBy: { sort: 'asc' },
 			})
@@ -90,7 +90,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 			const { logger } = ctx
 			logger.info({ action: 'miniprogram_faq.get_by_id', id: params.id })
 
-			const faq = await prisma.miniprogramFaq.findUnique({
+			const faq = await prisma.miniProgramFaq.findUnique({
 				where: { id: params.id },
 			})
 
@@ -108,7 +108,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 				sort: params.sort,
 			})
 
-			const faq = await prisma.miniprogramFaq.create({
+			const faq = await prisma.miniProgramFaq.create({
 				data: {
 					question: params.question,
 					answer: params.answer,
@@ -134,7 +134,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 			if (data.sort !== undefined) updates.sort = data.sort
 			if (data.enabled !== undefined) updates.enabled = data.enabled
 
-			const faq = await prisma.miniprogramFaq.update({
+			const faq = await prisma.miniProgramFaq.update({
 				where: { id },
 				data: updates,
 			})
@@ -149,7 +149,7 @@ export function createPrismaMiniProgramFaqRepository(): MiniProgramFaqRepository
 			const { logger } = ctx
 			logger.info({ action: 'miniprogram_faq.delete', id: params.id })
 
-			await prisma.miniprogramFaq.delete({
+			await prisma.miniProgramFaq.delete({
 				where: { id: params.id },
 			})
 		},

@@ -19,7 +19,6 @@ import {
   MessageSquare,
   CalendarCheck,
   Database,
-  ShoppingBag,
 } from 'lucide-react'
 import type { Action, Scope } from '@/config/access'
 
@@ -137,7 +136,6 @@ const pluginSidebarGroups: SidebarGroupConfig[] = [
         requiredAccess: { action: 'read', scope: 'miniprogram.carousels' },
         children: [
           { name: '微信小程序', href: '/admin/miniprogram', icon: ImageIcon, requiredAccess: { action: 'read', scope: 'miniprogram.carousels' } },
-          { name: '商城设置', href: '/admin/miniprogram/shop-config', icon: ShoppingBag, requiredAccess: { action: 'read', scope: 'miniprogram.shop-config' } },
         ],
       },
     ],
