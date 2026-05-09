@@ -1,2 +1,3 @@
-!.sisyphus
-!.logs
+!.sisyphus/
+!.logs/
+!.tmp/

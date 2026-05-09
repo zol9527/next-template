@@ -76,31 +76,29 @@ prisma/schema.prisma
 *.tsbuildinfo
 next-env.d.ts
 
-# AI related files
-.codex/
-.claude/
-!apps/*/.claude/
-!apps/*/.claude/**
-!apps/miniprograms/*/.claude/
-!apps/miniprograms/*/.claude/**
-.opencode/
-memories/
-.openviking/
-.sisyphus/
+# AI Code Tools related files
+**/.jules/
+**/.codex/
+**/.claude/
+**/opencode/
+
+# AI agent related files
+**/.openviking/
+**/.sisyphus/
 ov.conf
-CLAUDE.md
-AGENTS.md
-!apps/*/AGENTS.md
-!apps/miniprograms/*/AGENTS.md
-.beads/
 opencode.json
+opencode.jsonc
+
+# prompts
+**/CLAUDE.md
+**/AGENTS.md
+!apps/*/AGENTS.md
+
+# mcp
 .mcp.json
 
 # Git worktrees for isolated development
-.worktrees/
-
-# Dolt database files (added by bd init)
-.dolt/
+**/.worktrees/
 
 # 自定义打包文件
 deploy-prepare/
@@ -109,5 +107,11 @@ deploy-prepare/
 CHANGELOG.md
 RELEASE_NOTES.md
 
-# Beads / Dolt files (added by bd init)
+# beads 相关文件
+**/.dolt/
+**/.beads/
 .beads-credential-key
+
+# 其他
+**/backups/
+**/exports/
