@@ -5,21 +5,27 @@
   "description": "书博达业务系统 monorepo，统一管理后端、Web、桌面端、小程序和未来移动端应用。",
   "workspaces": [
     "apps/*",
+    "apps/miniprograms/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "npm run dev -w @shuoboda/backend",
     "dev:backend": "npm run dev -w @shuoboda/backend",
-    "dev:miniprogram": "npm run dev -w @shuoboda/miniprogram",
+    "dev:miniprogram:wechat": "npm run dev -w @shuoboda/miniprogram-wechat",
+    "dev:wechat": "npm run dev -w @shuoboda/miniprogram-wechat",
     "build": "npm run build -w @shuoboda/backend",
     "build:backend": "npm run build -w @shuoboda/backend",
-    "build:miniprogram": "npm run build -w @shuoboda/miniprogram",
-    "compile:miniprogram": "npm run compile:mp-weixin -w @shuoboda/miniprogram",
-    "watch:miniprogram": "npm run watch:mp-weixin -w @shuoboda/miniprogram",
+    "build:miniprogram:wechat": "npm run build -w @shuoboda/miniprogram-wechat",
+    "build:wechat": "npm run build -w @shuoboda/miniprogram-wechat",
+    "compile:miniprogram:wechat": "npm run compile:mp-weixin -w @shuoboda/miniprogram-wechat",
+    "compile:wechat": "npm run compile:mp-weixin -w @shuoboda/miniprogram-wechat",
+    "watch:miniprogram:wechat": "npm run watch:mp-weixin -w @shuoboda/miniprogram-wechat",
+    "watch:wechat": "npm run watch:mp-weixin -w @shuoboda/miniprogram-wechat",
     "lint": "npm run lint -w @shuoboda/backend",
     "test": "npm run test -w @shuoboda/backend",
     "test:backend": "npm run test -w @shuoboda/backend",
-    "test:miniprogram": "npm run test -w @shuoboda/miniprogram"
+    "test:miniprogram:wechat": "npm run test -w @shuoboda/miniprogram-wechat",
+    "test:wechat": "npm run test -w @shuoboda/miniprogram-wechat"
   },
   "engines": {
     "node": ">=20.19.0",

@@ -60,8 +60,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example.local
-!apps/miniprogram/.env.development
-!apps/miniprogram/.env.production
+!apps/miniprograms/wechat/.env.development
+!apps/miniprograms/wechat/.env.production
 
 # vercel
 .vercel
@@ -81,6 +81,8 @@ next-env.d.ts
 .claude/
 !apps/*/.claude/
 !apps/*/.claude/**
+!apps/miniprograms/*/.claude/
+!apps/miniprograms/*/.claude/**
 .opencode/
 memories/
 .openviking/
@@ -89,6 +91,7 @@ ov.conf
 CLAUDE.md
 AGENTS.md
 !apps/*/AGENTS.md
+!apps/miniprograms/*/AGENTS.md
 .beads/
 opencode.json
 .mcp.json
