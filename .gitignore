@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,16 +16,21 @@ node_modules
 
 # next.js
 /.next/
+**/.next/
 /out/
+**/out/
 
 # production
 /build
+**/build/
 
 # build outputs
 /dist
+**/dist/
 
 # app logs (enterprise logging feature)
 /logs
+**/logs/
 
 # misc
 .DS_Store
@@ -43,6 +49,7 @@ __pycache__/
 
 # upload files
 /uploads/
+**/uploads/
 
 # debug
 npm-debug.log*
@@ -53,6 +60,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example.local
+!apps/miniprogram/.env.development
+!apps/miniprogram/.env.production
 
 # vercel
 .vercel
@@ -61,6 +70,7 @@ yarn-error.log*
 generated/
 # 生成的合并 schema（由 prisma:merge 脚本生成，源文件在 prisma/schemas/ 下）
 prisma/schema.prisma
+**/prisma/schema.prisma
 
 # typescript
 *.tsbuildinfo
@@ -69,6 +79,8 @@ next-env.d.ts
 # AI related files
 .codex/
 .claude/
+!apps/*/.claude/
+!apps/*/.claude/**
 .opencode/
 memories/
 .openviking/
@@ -76,6 +88,7 @@ memories/
 ov.conf
 CLAUDE.md
 AGENTS.md
+!apps/*/AGENTS.md
 .beads/
 opencode.json
 .mcp.json

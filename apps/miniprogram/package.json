@@ -1,0 +1,38 @@
+{
+  "name": "@shuoboda/miniprogram",
+  "version": "1.0.0",
+  "description": "> 本文档说明小程序的基础架构模块使用方法",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "node scripts/dev-mp-weixin.mjs",
+    "dev:mp-weixin": "node scripts/dev-mp-weixin.mjs",
+    "compile": "npm run compile:mp-weixin",
+    "compile:mp-weixin": "uni build -p mp-weixin",
+    "watch:mp-weixin": "uni -p mp-weixin",
+    "open:mp-weixin": "node scripts/open-wechat-devtools.mjs dist/dev/mp-weixin",
+    "open:mp-weixin:build": "node scripts/open-wechat-devtools.mjs dist/build/mp-weixin",
+    "build": "npm run build:mp-weixin && npm run open:mp-weixin:build",
+    "build:mp-weixin": "npm run compile:mp-weixin",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-5000820260430001",
+    "@dcloudio/uni-components": "3.0.0-alpha-5000820260430001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5000820260430001",
+    "pinia": "3.0.4",
+    "vue": "3.5.27"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.31",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5000820260430001",
+    "@types/wechat-miniprogram": "3.4.10",
+    "@uni-helper/uni-app-types": "1.0.0-alpha.7",
+    "sass": "1.69.5",
+    "vite": "5.2.8",
+    "vitest": "^3.2.4"
+  }
+}

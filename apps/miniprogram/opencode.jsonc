@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    ".claude/rules/*.md"
+  ],
+  "permission": {
+    "external_directory": {
+      "/Users/loyd/dev/project/nextjs/next-template/*": "allow"
+    }
+  },
+  "mcp": {
+    "weapp-dev": {
+      "type": "local",
+      "enabled": true,
+      "command": ["npx", "-y", "@yfme/weapp-dev-mcp"],
+      "environment": {
+        "WECHAT_DEVTOOLS_CLI_PATH": "/Applications/wechatwebdevtools.app/Contents/MacOS/cli",
+        "WEAPP_AUTOLAUNCH": "true",
+        "WEAPP_PROJECT_PATH": "/Users/loyd/dev/project/mini-program/shuoboda-miniprograme/dist/dev/mp-weixin",
+        "WEAPP_WS_ENDPOINT": "ws://localhost:65310",
+        "WEAPP_DEVTOOLS_PORT": "65310",
+        "WEAPP_LAUNCH_TIMEOUT": "60000",
+        "WEAPP_CONNECT_TIMEOUT": "60000"
+      }
+    }
+  }
+}
