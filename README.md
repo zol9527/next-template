@@ -1,6 +1,6 @@
-# shuoboda-monorepo
+# next-template-monorepo
 
-这个仓库现在是书博达业务系统的 monorepo。根目录负责统一依赖、统一命令和跨端协作；具体应用代码放在 `apps/` 下。
+这个仓库是通用全栈 monorepo 模板。根目录负责统一依赖、统一命令和跨端协作；具体应用代码放在 `apps/` 下。
 
 ## 目录结构
 
@@ -30,8 +30,8 @@ make build-backend
 也可以直接使用 npm workspace：
 
 ```bash
-npm run dev -w @shuoboda/backend
-npm run compile:mp-weixin -w @shuoboda/miniprogram-wechat
+npm run dev -w @repo/backend
+npm run compile:mp-weixin -w @repo/miniprogram-wechat
 ```
 
 ## 迁移说明

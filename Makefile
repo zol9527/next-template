@@ -43,38 +43,38 @@ install:
 dev: dev-backend
 
 dev-backend:
-	npm run dev -w @shuoboda/backend
+	npm run dev -w @repo/backend
 
 dev-wechat:
-	npm run dev -w @shuoboda/miniprogram-wechat
+	npm run dev -w @repo/miniprogram-wechat
 
 build: build-backend
 
 build-backend:
-	npm run build -w @shuoboda/backend
+	npm run build -w @repo/backend
 
 build-wechat:
-	npm run build -w @shuoboda/miniprogram-wechat
+	npm run build -w @repo/miniprogram-wechat
 
 compile-wechat:
-	npm run compile:mp-weixin -w @shuoboda/miniprogram-wechat
+	npm run compile:mp-weixin -w @repo/miniprogram-wechat
 
 watch-wechat:
-	npm run watch:mp-weixin -w @shuoboda/miniprogram-wechat
+	npm run watch:mp-weixin -w @repo/miniprogram-wechat
 
 open-wechat:
-	npm run open:mp-weixin -w @shuoboda/miniprogram-wechat
+	npm run open:mp-weixin -w @repo/miniprogram-wechat
 
 lint:
-	npm run lint -w @shuoboda/backend
+	npm run lint -w @repo/backend
 
 test: test-backend
 
 test-backend:
-	npm run test -w @shuoboda/backend
+	npm run test -w @repo/backend
 
 test-wechat:
-	npm run test -w @shuoboda/miniprogram-wechat
+	npm run test -w @repo/miniprogram-wechat
 
 backend-shell:
 	$(MAKE) -C $(BACKEND_DIR) help
