@@ -1,6 +1,0 @@
-# mac 相关必要设置
---container-architecture linux/amd64
-
-# 其他
---rm
---artifact-server-path .artifacts

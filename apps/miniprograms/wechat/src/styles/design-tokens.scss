@@ -1,0 +1,177 @@
+// ============================================
+// 硕博达小程序 - Design Tokens
+// ============================================
+// 集中管理所有设计 Token（颜色、渐变、间距、圆角、阴影、字体层级）
+// ============================================
+
+// ============================================
+// 1. 颜色系统 (Color System)
+// ============================================
+
+// Primary 主色
+$color-primary: #009666;        // 主按钮、Active Tab、关键 CTA、品牌强调
+$color-brand-dark: #004D40;     // Logo 文字、深色 Banner 渐变起点
+$color-primary-light: #E8F7F0;  // 图标背景容器、Active Tag 背景
+
+// Neutral 中性色
+$color-background: #F5F7F6;     // 页面全局背景
+$color-surface: #FFFFFF;        // 卡片、面板、弹窗背景
+$color-border: #E2EBED;         // 边框、分割线
+$color-text-primary: #1A2E35;   // 主要文字、标题
+$color-text-muted: #6B8A94;     // 辅助文字、说明、Caption
+
+// Accent 强调色
+$color-accent: #F5A623;         // 邀请按钮、特殊 CTA
+$color-warm-bg: #FFF0E8;        // 邀请 Banner 背景
+
+// ============================================
+// 2. 渐变色 (Gradients)
+// ============================================
+
+$gradient-light-teal: linear-gradient(135deg, #E8F5EE, #CEE8DA);     // Banner 背景、探索卡片
+$gradient-dark-teal: linear-gradient(135deg, #3B6B5E, #2A5247);     // 每日学习卡片、VIP Banner
+$gradient-profile-hero: linear-gradient(135deg, #4A7A6D, #3A6358); // 个人中心头部
+$gradient-thumbnail: linear-gradient(135deg, #F0F5F2, #DDE9E3);    // 课程/商品缩略图占位
+
+// ============================================
+// 3. 间距系统 (Spacing)
+// ============================================
+
+// 基于 4px/8px 基准的标准间距值
+$spacing-2: 2px;   // 极小间距（如邀请 Banner 文字行距）
+$spacing-4: 4px;   // 图标与文字间距、卡片内子元素最小间距
+$spacing-6: 6px;   // Quick Grid gap、进度指示器间距
+$spacing-8: 8px;   // Tab 间距、搜索框内 gap
+$spacing-10: 10px; // 卡片内部 padding-top/bottom
+$spacing-12: 12px; // 课程列表 gap、菜单项图标间距、搜索框 padding-bottom、Section 间距
+$spacing-14: 14px; // 课程卡片内 padding、订单项 padding
+$spacing-16: 16px; // 搜索框 padding-inline、订单列表 padding、组件间距
+$spacing-18: 18px; // 邀请 Banner padding-block
+$spacing-20: 20px; // 页面水平 padding、Section 间距、Banner margin
+$spacing-24: 24px; // Banner padding-block、Footer padding-top
+$spacing-32: 32px; // Footer padding-bottom、大区块间距
+
+// ============================================
+// 4. 圆角系统 (Border Radius)
+// ============================================
+
+$radius-8: 8px;   // 缩略图圆角（课程小图）
+$radius-10: 10px; // 设计规范中色块展示
+$radius-12: 12px; // 图标容器（Quick Grid）、缩略图、菜单图标背景
+$radius-16: 16px; // 卡片、面板、商品卡、订单卡
+$radius-20: 20px; // 药丸形按钮、搜索框、Banner、Tab 标签
+
+// ============================================
+// 5. 阴影系统 (Shadow)
+// ============================================
+
+$shadow-tab-bar: 0px -1px 12px rgba(0, 0, 0, 0.06); // 底部导航栏上方微阴影
+
+// ============================================
+// 6. 字体层级 (Typography)
+// ============================================
+
+// 字体族
+$font-family-brand: 'Inter', system-ui, sans-serif;                  // 品牌英文 Logo
+$font-family-title: 'PingFang SC', system-ui, sans-serif;            // 中文标题
+$font-family-body: system-ui, sans-serif;                            // 正文/UI
+$font-family-code: 'JetBrains Mono', monospace;                      // 代码/数值标注
+
+// 字体层级 Token (font-size / font-weight / line-height)
+$typography-brand-logo: (
+  font-family: $font-family-brand,
+  font-weight: 800,
+  font-size: 22px,
+  line-height: 28px
+); // VANTAGE 品牌标识，letter-spacing: 2px
+
+$typography-page-title: (
+  font-family: $font-family-title,
+  font-weight: 600,
+  font-size: 22px,
+  line-height: 30px
+); // 页面主标题（如"我的订单"）
+
+$typography-section-title: (
+  font-family: $font-family-title,
+  font-weight: 600,
+  font-size: 17px,
+  line-height: 24px
+); // 区块标题（如"探索内容""热门推荐"）
+
+$typography-banner-subtitle: (
+  font-family: $font-family-title,
+  font-weight: 600,
+  font-size: 20px,
+  line-height: 28px
+); // Banner 内副标题
+
+$typography-card-title: (
+  font-family: $font-family-body,
+  font-weight: 600,
+  font-size: 14px,
+  line-height: 20px
+); // 卡片内标题、课程名
+
+$typography-body: (
+  font-family: $font-family-title,
+  font-weight: 400,
+  font-size: 13px,
+  line-height: 18px
+); // 正文内容
+
+$typography-caption: (
+  font-family: $font-family-body,
+  font-weight: 400,
+  font-size: 13px,
+  line-height: 18px
+); // 辅助说明（如"查看全部→"）
+
+$typography-label: (
+  font-family: $font-family-body,
+  font-weight: 500,
+  font-size: 11px,
+  line-height: 14px
+); // 小标签（如"128门课程""每日签到"）
+
+$typography-badge-text: (
+  font-family: $font-family-body,
+  font-weight: 600,
+  font-size: 11px,
+  line-height: 14px
+); // VIP/限时 标签
+
+$typography-button: (
+  font-family: $font-family-body,
+  font-weight: 600,
+  font-size: 13px,
+  line-height: 16px
+); // 按钮文字
+
+$typography-button-small: (
+  font-family: $font-family-body,
+  font-weight: 600,
+  font-size: 12px,
+  line-height: 16px
+); // 小按钮文字（如"立即邀请"）
+
+$typography-tab-bar: (
+  font-family: $font-family-body,
+  font-weight: 400,
+  font-size: 10px,
+  line-height: 12px
+); // 底部导航文字（inactive 状态）
+
+$typography-tab-bar-active: (
+  font-family: $font-family-body,
+  font-weight: 500,
+  font-size: 10px,
+  line-height: 12px
+); // 底部导航文字（active 状态）
+
+$typography-section-label: (
+  font-family: $font-family-body,
+  font-weight: 600,
+  font-size: 11px,
+  line-height: 14px
+); // Section 编号标签（如"01 · COLOR"），letter-spacing: 1px

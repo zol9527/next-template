@@ -1,193 +1,83 @@
-.PHONY: help dev check dev-deploy clean status logs shell pack pack-if-needed \
-  seed-minimal seed-development seed-full seed-remote seed-help \
-  setup-db reset-db reset-db-empty fix-prisma \
-  release release-sync release-patch release-minor release-major release-version release-commit
+.PHONY: help install dev dev-backend dev-wechat \
+  build build-backend build-wechat \
+  compile-wechat watch-wechat open-wechat \
+  lint test test-backend test-wechat \
+  backend-shell wechat-shell
 
 .DEFAULT_GOAL := help
-.EXPORT_ALL_VARIABLES:
 
-SEED_SCRIPT := node scripts/seed/index.mjs
-RELEASE_SYNC_SCRIPT := node scripts/release/sync-version-releases.mjs
-FLOW_RUNNER := python3 ./scripts/flow/run.py
-
-# ============================================
-# 帮助
-# ============================================
+BACKEND_DIR := apps/backend
+WECHAT_MINIPROGRAM_DIR := apps/miniprograms/wechat
 
 help:
-	@echo "🚀 部署命令"
+	@echo "📦 Monorepo 命令"
 	@echo ""
-	@echo "  开发环境:"
-	@echo "    dev      自动预处理后启动本地开发"
-	@echo "    check    检查服务器依赖"
-	@echo "    dev-deploy      上传并部署（使用已存在的 deploy.zip）"
-	@echo "    pack     生产构建后使用 release-cli 打包"
-	@echo "    clean    清理本地构建产物"
-	@echo "    status   查看 PM2 状态"
-	@echo "    logs     查看 PM2 日志"
-	@echo "    shell    SSH 登录服务器"
+	@echo "  依赖:"
+	@echo "    install              使用 Bun 安装所有 workspace 依赖"
 	@echo ""
-	@echo "  版本发布 (release-cli):"
-	@echo "    release          统一发布入口 (默认 patch，可传 TYPE=minor)"
-	@echo "    release-sync     同步 docs/changes 到数据库"
-	@echo "    release-patch    兼容别名，等价于 make release TYPE=patch"
-	@echo "    release-minor    兼容别名，等价于 make release TYPE=minor"
-	@echo "    release-major    兼容别名，等价于 make release TYPE=major"
-	@echo "    release-version  兼容别名，自定义版本号 (make release-version V=1.2.3)"
+	@echo "  后端 Next.js:"
+	@echo "    dev                  启动后端开发服务"
+	@echo "    dev-backend          启动后端开发服务"
+	@echo "    build-backend        构建后端"
+	@echo "    lint                 执行后端 lint"
+	@echo "    test                 执行后端测试"
 	@echo ""
-	@echo "  Seed 数据:"
-	@echo "    seed-minimal       执行核心 seed (admin + permission)"
-	@echo "    seed-development   执行开发环境 seed"
-	@echo "    seed-full          执行完整 seed"
-	@echo "    seed-remote        在远程服务器执行 seed"
+	@echo "  微信小程序:"
+	@echo "    dev-wechat           监听编译并自动打开微信开发者工具"
+	@echo "    compile-wechat       一次性编译 mp-weixin 后退出"
+	@echo "    watch-wechat         只监听编译，不自动打开工具"
+	@echo "    build-wechat         构建微信小程序并打开构建产物"
+	@echo "    open-wechat          打开当前微信小程序开发产物"
 	@echo ""
-	@echo "  数据库管理:"
-	@echo "    setup-db           数据库初始化/刷新"
-	@echo "    reset-db           重置数据库 (⚠️ 危险操作)"
-	@echo "    reset-db-empty       重置数据库但不执行 seed (⚠️ 危险操作)"
+	@echo "  未来小程序:"
+	@echo "    apps/miniprograms/douyin   抖音小程序预留位置"
+	@echo "    apps/miniprograms/alipay   支付宝小程序预留位置"
 	@echo ""
-	@echo "  自定义参数:"
-	@echo "    DEPLOY_HOST=192.168.1.100 make dev-deploy"
-	@echo "    SEED_MODE=development make seed-remote"
-	@echo "    REPACK=1 DB_RESET=1 make dev-deploy"
-	@echo "    make dev-deploy FLOW_FROM=pack-if-needed FLOW_TO=deploy"
-	@echo "    make dev-deploy FLOW_ONLY=deploy"
-	@echo "    make dev-deploy FLOW_SKIP=check"
-	@echo "    make dev-deploy FLOW_DRY_RUN=1"
-	@echo "    make release TYPE=minor"
-	@echo "    make release VERSION=1.2.3 RELEASE_TITLE='发布新版本'"
-	@echo "    make release RELEASE_CREATE_PR=1 RELEASE_PUSH=1"
+	@echo "  子项目原生命令:"
+	@echo "    backend-shell        查看后端原 Makefile 帮助"
+	@echo "    wechat-shell         查看微信小程序原 Makefile 帮助"
 
-# ============================================
-# 本地开发
-# ============================================
+install:
+	bun install
 
-dev:
-	@$(FLOW_RUNNER) dev
+dev: dev-backend
 
-# ============================================
-# 服务器环境检查
-# ============================================
+dev-backend:
+	bun run --filter @repo/backend dev
 
-check:
-	@$(FLOW_RUNNER) check
+dev-wechat:
+	bun run --filter @repo/miniprogram-wechat dev
 
-# ============================================
-# 部署
-# ============================================
+build: build-backend
 
-pack:
-	@$(FLOW_RUNNER) pack
+build-backend:
+	bun run --filter @repo/backend build
 
-pack-if-needed:
-	@$(FLOW_RUNNER) pack-if-needed
+build-wechat:
+	bun run --filter @repo/miniprogram-wechat build
 
-dev-deploy:
-	@$(FLOW_RUNNER) dev-deploy
+compile-wechat:
+	bun run --filter @repo/miniprogram-wechat compile:mp-weixin
 
-# ============================================
-# 清理和停止
-# ============================================
+watch-wechat:
+	bun run --filter @repo/miniprogram-wechat watch:mp-weixin
 
-clean:
-	@echo "🧹 清理本地构建产物..."
-	@echo "  - 删除 .next/..."
-	@rm -rf .next/
-	@echo "  - 删除部署打包产物..."
-	@rm -rf deploy-prepare
-	@rm -f deploy-prepare/deploy.zip
-	@rm -f /tmp/deploy*/
-	@echo "  - 清理 node_modules/.cache..."
-	@rm -rf node_modules/.cache 2>/dev/null || true
-	@echo "  - 清理 Prisma 生成的 client..."
-	@rm -rf src/lib/prisma/generated 2>/dev/null || true
-	@echo "✅ 本地清理完成!"
+open-wechat:
+	bun run --filter @repo/miniprogram-wechat open:mp-weixin
 
-# ============================================
-# Seed 数据
-# ============================================
+lint:
+	bun run --filter @repo/backend lint
 
-seed-minimal:
-	@echo "🌱 执行 minimal seed（核心数据）..."
-	@$(SEED_SCRIPT) --mode=minimal
+test: test-backend
 
-seed-development:
-	@echo "🌱 执行 development seed..."
-	@$(SEED_SCRIPT) --mode=development
+test-backend:
+	bun run --filter @repo/backend test
 
-seed-full:
-	@echo "🌱 执行 full seed..."
-	@$(SEED_SCRIPT) --mode=full
+test-wechat:
+	bun run --filter @repo/miniprogram-wechat test
 
-seed-remote:
-	@$(FLOW_RUNNER) seed-remote
+backend-shell:
+	$(MAKE) -C $(BACKEND_DIR) help
 
-seed-help:
-	@$(SEED_SCRIPT) --help
-
-# ============================================
-# 工具
-# ============================================
-
-status:
-	@$(FLOW_RUNNER) status
-
-logs:
-	@$(FLOW_RUNNER) logs
-
-shell:
-	@$(FLOW_RUNNER) shell
-
-# ============================================
-# 版本发布 (使用 release-cli)
-# ============================================
-
-TYPE ?= patch
-V ?=
-
-release:
-	@RELEASE_TYPE=$(TYPE) $(FLOW_RUNNER) release
-
-release-sync:
-	@$(RELEASE_SYNC_SCRIPT)
-
-release-patch:
-	@$(MAKE) release TYPE=patch
-
-release-version:
-	@if [ -z "$(V)" ]; then echo "❌ 请传入 V=1.2.3"; exit 1; fi
-	@RELEASE_VERSION=$(V) $(FLOW_RUNNER) release
-
-release-minor:
-	@$(MAKE) release TYPE=minor
-
-release-major:
-	@$(MAKE) release TYPE=major
-
-release-commit:
-	@echo "⚠️ release-commit 已废弃，请直接使用 make release"
-	@exit 1
-
-# ============================================
-# 数据库初始化/重置
-# ============================================
-
-setup-db:
-	@echo "🔧 数据库初始化/刷新..."
-	@./scripts/db/prisma/setup.sh --force
-
-reset-db-empty:
-	@echo "🗑️  重置数据库但不执行 seed..."
-	@./scripts/db/prisma/setup.sh --reset --force
-
-reset-db:
-	@echo "🗑️  重置数据库..."
-	@./scripts/db/prisma/setup.sh --reset --seed --force
-
-fix-prisma:
-	@echo "🔧 修复 Prisma 安装（解决 worktree 路径问题）..."
-	@rm -rf node_modules/@prisma
-	@rm -rf src/lib/prisma/generated
-	@echo "🔨 重新安装 Prisma..."
-	@bun install prisma @prisma/client --force
-	@echo "✅ Prisma 修复完成！"
+wechat-shell:
+	$(MAKE) -C $(WECHAT_MINIPROGRAM_DIR) help
