@@ -34,6 +34,52 @@ bun run --filter @repo/backend dev
 bun run --filter @repo/miniprogram-wechat compile:mp-weixin
 ```
 
+## 发布管理
+
+仓库使用 `release-cli` 管理发布。每个发布单元有独立配置、版本文件、
+changelog 目录和 Git tag 前缀，避免 monorepo 内多个应用互相污染版本线。
+
+```text
+.release/
+  backend.yml      backend/v0.1.0
+  wechat.yml       wechat/v1.0.0
+  monorepo.yml     monorepo/v0.1.0
+  _shared/
+    hooks/
+      hook-version.py
+      hook-release.py
+  _state/
+    backend.VERSION
+    wechat.VERSION
+    monorepo.VERSION
+```
+
+常用命令：
+
+```bash
+make release-backend TYPE=patch
+make release-wechat TYPE=minor
+make release-monorepo VERSION=0.2.0
+make release-prepare RELEASE=backend
+make release-commit RELEASE=backend
+make release-pack RELEASE=wechat
+```
+
+`make release-*` 现在直接调用 `release-cli release` 内置流水线。默认阶段是
+`preflight -> prepare -> commit -> pr`，可以用下面的变量做分段执行：
+
+```bash
+make release-backend RELEASE_TO_STEP=prepare
+make release RELEASE=wechat RELEASE_ONLY=preflight,prepare
+make release-commit RELEASE=backend RELEASE_TO_STEP=commit
+```
+
+发布时 `.release/_shared/hooks/hook-version.py` 会把 `release-cli` 解析出的版本同步到
+对应发布单元的 `package.json`。微信小程序还会同步
+`apps/miniprograms/wechat/src/manifest.json` 的 `versionName` 和 `versionCode`。
+如果某个 workspace 需要定制发布检查或额外动作，直接改
+`.release/_shared/hooks/hook-release.py`，在对应阶段中补逻辑即可。
+
 ## 迁移说明
 
 - 原 `next-template` 已迁入 `apps/backend`，原后端内部的 `src/`、`prisma/`、`scripts/`、`deploy/` 等相对路径保持不变。

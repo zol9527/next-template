@@ -9,6 +9,7 @@
 SEED_SCRIPT := node scripts/seed/index.mjs
 RELEASE_SYNC_SCRIPT := node scripts/release/sync-version-releases.mjs
 FLOW_RUNNER := python3 ./scripts/flow/run.py
+MONOREPO_ROOT := ../..
 
 # ============================================
 # 帮助
@@ -146,7 +147,7 @@ TYPE ?= patch
 V ?=
 
 release:
-	@RELEASE_TYPE=$(TYPE) $(FLOW_RUNNER) release
+	@$(MAKE) -C $(MONOREPO_ROOT) release-backend TYPE=$(TYPE) VERSION=$(VERSION)
 
 release-sync:
 	@$(RELEASE_SYNC_SCRIPT)
@@ -156,7 +157,7 @@ release-patch:
 
 release-version:
 	@if [ -z "$(V)" ]; then echo "❌ 请传入 V=1.2.3"; exit 1; fi
-	@RELEASE_VERSION=$(V) $(FLOW_RUNNER) release
+	@$(MAKE) -C $(MONOREPO_ROOT) release-backend VERSION=$(V)
 
 release-minor:
 	@$(MAKE) release TYPE=minor
@@ -165,8 +166,7 @@ release-major:
 	@$(MAKE) release TYPE=major
 
 release-commit:
-	@echo "⚠️ release-commit 已废弃，请直接使用 make release"
-	@exit 1
+	@$(MAKE) -C $(MONOREPO_ROOT) release-commit RELEASE=backend
 
 # ============================================
 # 数据库初始化/重置

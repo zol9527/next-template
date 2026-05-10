@@ -1,0 +1,65 @@
+# =============================================================================
+# 微信小程序发布单元配置
+# =============================================================================
+
+version:
+  source: git-tag
+  tag_prefix: "wechat/v"
+  file: _state/wechat.VERSION
+  hook: _shared/hooks/hook-version.py
+
+changelog:
+  output_dir: docs/changes
+
+filter:
+  ignore_messages:
+    - "^docs:.*"
+    - "^chore:.*"
+    - "^style:.*"
+    - ".*WIP.*"
+    - ".*merge.*"
+    - "^Revert.*"
+  keep_types:
+    - feat
+    - fix
+    - perf
+    - refactor
+    - security
+
+release:
+  steps:
+    - preflight
+    - prepare
+    - commit
+    - pr
+  allowed_branches:
+    - "^dev$"
+    - "^hotfix/.+$"
+    - "^codex/.+$"
+  auto_stage: true
+  create_pr: false
+  push: false
+  base_branch: release
+
+workflow:
+  release:
+    script: _shared/hooks/hook-release.py
+
+packager:
+  root_dir: ../apps/miniprograms/wechat
+  output_dir: release
+  name: wechat-miniprogram-{version}
+  include:
+    - src
+    - package.json
+    - project.config.json
+    - docs
+  exclude:
+    - .git
+    - .github
+    - .beads
+    - __pycache__
+    - .venv
+    - node_modules
+    - dist
+    - release
