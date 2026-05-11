@@ -750,7 +750,11 @@ export default {
     }
 
     const goToNotifications = () => {
-      uni.showToast({ title: '通知功能开发中', icon: 'none' })
+      if (!auth.isLoggedIn.value) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/subpackages/notifications/index' })
     }
 
     const goToShop = () => {
