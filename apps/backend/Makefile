@@ -1,7 +1,7 @@
 .PHONY: help dev install start stop restart clean \
   seed-minimal seed-development seed-full seed-help \
   setup-db reset-db reset-db-empty fix-prisma \
-  release release-patch release-minor release-major release-version release-commit
+  release release-patch release-minor release-major release-version
 
 .DEFAULT_GOAL := help
 .EXPORT_ALL_VARIABLES:
@@ -137,9 +137,6 @@ release-minor:
 
 release-major:
 	@$(MAKE) release TYPE=major
-
-release-commit:
-	@$(MAKE) -C $(MONOREPO_ROOT) release-commit RELEASE=backend
 
 # ============================================
 # 数据库初始化/重置
