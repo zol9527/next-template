@@ -3,7 +3,7 @@
   compile-wechat watch-wechat open-wechat \
   lint test test-backend test-wechat \
   pack pack-backend pack-wechat pack-monorepo \
-  release release-backend release-wechat release-monorepo release-commit release-pack \
+  release release-backend release-wechat release-monorepo \
   deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
   backend-shell wechat-shell
 
@@ -14,16 +14,8 @@ WECHAT_MINIPROGRAM_DIR := apps/miniprograms/wechat
 RELEASE ?= backend
 TYPE ?= patch
 VERSION ?=
-RELEASE_FROM_STEP ?=
-RELEASE_TO_STEP ?=
-RELEASE_ONLY ?=
-RELEASE_SKIP ?=
 RELEASE_CONFIG := .release/$(RELEASE).yml
 RELEASE_VALUE := $(if $(VERSION),$(VERSION),$(TYPE))
-RELEASE_FLOW_ARGS := $(if $(RELEASE_FROM_STEP),--from-step $(RELEASE_FROM_STEP),) \
-	$(if $(RELEASE_TO_STEP),--to-step $(RELEASE_TO_STEP),) \
-	$(if $(RELEASE_ONLY),--only $(RELEASE_ONLY),) \
-	$(if $(RELEASE_SKIP),--skip $(RELEASE_SKIP),)
 
 # PM2 部署配置
 ENV ?= production
@@ -65,9 +57,6 @@ help:
 	@echo "    release-wechat       发布微信小程序单元，默认 patch"
 	@echo "    release-monorepo     发布 monorepo 模板单元，默认 patch"
 	@echo "    release              通用发布入口，可传 RELEASE=wechat TYPE=minor"
-	@echo "    release-prepare      只生成版本文件和 changelog"
-	@echo "    release-commit       只执行发布提交和 tag 创建"
-	@echo "    release-pack         按发布单元配置打包"
 	@echo ""
 	@echo "  子项目原生命令:"
 	@echo "    backend-shell        查看后端原 Makefile 帮助"
@@ -76,9 +65,6 @@ help:
 	@echo "  示例:"
 	@echo "    make release-backend TYPE=minor"
 	@echo "    make release-wechat VERSION=1.1.0"
-	@echo "    make release-prepare RELEASE=backend"
-	@echo "    make release-commit RELEASE=backend RELEASE_TO_STEP=commit"
-	@echo "    make release-pack RELEASE=wechat"
 	@echo "    make pack-wechat"
 	@echo "    make pack-monorepo"
 	@echo ""
@@ -138,7 +124,7 @@ test-wechat:
 
 release:
 	@if [ ! -f "$(RELEASE_CONFIG)" ]; then echo "❌ 未找到发布配置: $(RELEASE_CONFIG)"; exit 1; fi
-	release-cli --config "$(RELEASE_CONFIG)" release "$(RELEASE_VALUE)" $(RELEASE_FLOW_ARGS)
+	release-cli --config "$(RELEASE_CONFIG)" release "$(RELEASE_VALUE)"
 
 release-backend:
 	@$(MAKE) release RELEASE=backend TYPE=$(TYPE) VERSION=$(VERSION)
@@ -148,17 +134,6 @@ release-wechat:
 
 release-monorepo:
 	@$(MAKE) release RELEASE=monorepo TYPE=$(TYPE) VERSION=$(VERSION)
-
-release-prepare:
-	@$(MAKE) release RELEASE=$(RELEASE) TYPE=$(TYPE) VERSION=$(VERSION) RELEASE_TO_STEP=prepare
-
-release-commit:
-	@if [ ! -f "$(RELEASE_CONFIG)" ]; then echo "❌ 未找到发布配置: $(RELEASE_CONFIG)"; exit 1; fi
-	release-cli --config "$(RELEASE_CONFIG)" release "$(RELEASE_VALUE)" --from-step commit $(RELEASE_FLOW_ARGS)
-
-release-pack:
-	@if [ ! -f "$(RELEASE_CONFIG)" ]; then echo "❌ 未找到发布配置: $(RELEASE_CONFIG)"; exit 1; fi
-	release-cli --config "$(RELEASE_CONFIG)" pack
 
 # ==================== 打包命令 ====================
 
