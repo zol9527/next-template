@@ -177,30 +177,22 @@ make release-sync
 
 ### 本地 release flow
 
-相关文件：
-
-- `scripts/flow/manifests/release.json`
-- `scripts/flow/steps/release/preflight.py`
-- `scripts/flow/steps/release/prepare.py`
-- `scripts/flow/steps/release/commit.py`
-- `scripts/flow/steps/release/pr.py`
+由 `release-cli release` 驱动，配置在 `.release/backend.yml`。
 
 步骤说明：
 
 1. `preflight`
    - 检查是否位于 `dev` 或 `hotfix/*`
    - 检查工作区是否干净
-   - 检查 `git`、`release-cli`，以及可选的 `gh`
    - 检查目标 tag 是否已存在
-   - 检查是否疑似存在未完成的待发布版本
 2. `prepare`
    - 调用 `release-cli version ... --write`
    - 生成 `docs/changes/*.md`
-   - 触发 hook，同步 `package.json.version`
+   - 触发 version hook，同步 `package.json.version`
 3. `commit`
-   - 提交 `package.json` 和 `docs/changes`
+   - 自动暂存发布文件，创建提交和 tag
 4. `pr`
-   - 按需 push 并创建到 `release` 分支的 PR
+   - 可选创建到 `release` 分支的 PR（默认关闭）
 
 ### release-cli 配置
 
@@ -214,19 +206,6 @@ make release-sync
 - 从最新 Git tag 计算版本基线
 - 生成 `docs/changes` 发布说明
 - 在 hook 中同步 `package.json.version`
-
-### 数据库同步
-
-相关文件：
-
-- `scripts/release/sync-version-releases.mjs`
-
-职责：
-
-- 扫描发布说明文件
-- 解析版本、标题、发布日期和正文
-- 默认 upsert
-- 仅在 `--prune` 时删除数据库中的孤儿记录
 
 ## 使用前检查
 
@@ -308,8 +287,6 @@ node scripts/release/sync-version-releases.mjs --prune
 
 ```bash
 make help
-FLOW_DRY_RUN=1 make release TYPE=minor
-make release-sync
 ```
 
 如果要做真实演练，建议在临时分支或临时 clone 中执行：
