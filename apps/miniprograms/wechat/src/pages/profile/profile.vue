@@ -133,7 +133,7 @@
 
         <!-- Footer -->
         <view class="profile-footer">
-          <text class="version-text">{{ siteName }} v2.1.0</text>
+          <text class="version-text">{{ siteName }} v{{ appVersion }}</text>
         </view>
       </view>
     </scroll-view>
@@ -153,6 +153,7 @@ import { checkMiniProgramUpdate } from '@/utils/update-manager'
 import { syncCustomTabBar } from '@/utils/tab-bar'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
+import { APP_VERSION } from '@/config/version'
 import ProfileCompletion from '@/components/ProfileCompletion.vue'
 
 // ====== Hooks & Stores ======
@@ -160,6 +161,7 @@ const safeArea = useSafeArea()
 const { siteName, loadSiteConfig } = useSiteConfig()
 const authStore = useAuthStore()
 const documentsStore = useUserDocumentsStore()
+const appVersion = APP_VERSION
 
 // ====== Refs ======
 const profileCompletionRef = ref()

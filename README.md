@@ -75,8 +75,8 @@ make release-commit RELEASE=backend RELEASE_TO_STEP=commit
 ```
 
 发布时 `.release/_shared/hooks/hook-version.py` 会把 `release-cli` 解析出的版本同步到
-对应发布单元的 `package.json`。微信小程序还会同步
-`apps/miniprograms/wechat/src/manifest.json` 的 `versionName` 和 `versionCode`。
+对应发布单元的 `package.json`。微信小程序还会同步页面运行时读取的
+`apps/miniprograms/wechat/src/config/version.ts`。
 如果某个 workspace 需要定制发布检查或额外动作，直接改
 `.release/_shared/hooks/hook-release.py`，在对应阶段中补逻辑即可。
 

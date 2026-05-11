@@ -5,11 +5,13 @@
     `release-cli version <value> --write` 写入版本文件之后自动执行。
 
 默认行为:
-    只同步 release-cli 自己的版本状态文件，不假设任何业务技术栈。
+    同步 release-cli 自己的版本状态文件，并按 release unit 同步少量项目
+    版本声明文件。
 
 如何扩展:
     在 `sync_project_files()` 中补充当前 workspace 需要同步的版本逻辑。
-    这里不会默认修改 package.json、构建元数据或其他业务文件。
+    业务文件同步按 `release_unit(ctx)` 分支处理，避免不同 workspace 的
+    独立版本线互相污染。
 """
 
 from __future__ import annotations
@@ -60,6 +62,26 @@ def write_json_version(file_path: Path, version: str, key: str = "version") -> N
     file_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def write_wechat_version_module(file_path: Path, version: str) -> None:
+    """写入小程序运行时可直接 import 的版本模块。"""
+    write_text(
+        file_path,
+        "\n".join(
+            [
+                "/**",
+                " * 小程序版本信息。",
+                " *",
+                " * 该文件由 `.release/_shared/hooks/hook-version.py` 在 `wechat` 发布单元",
+                " * 执行 `version --write` 时同步更新。页面展示版本号时统一读取这里，",
+                " * 避免 UI 中出现和 release 系统脱节的硬编码版本。",
+                " */",
+                f"export const APP_VERSION = '{version}'",
+                "",
+            ]
+        ),
+    )
+
+
 def release_unit(ctx: HookContext) -> str:
     """返回当前发布单元名称。
 
@@ -95,7 +117,9 @@ def sync_version_file(ctx: HookContext) -> None:
 def sync_project_files(ctx: HookContext) -> None:
     """按需同步当前发布单元的项目文件。
 
-    这是业务逻辑的主要扩展入口。当前模板默认不做任何业务文件修改。
+    这是业务逻辑的主要扩展入口。`ctx.project_root` 来自 release-cli 的
+    `packager.root_dir`，因此在 monorepo release unit 中已经是当前
+    workspace 根目录，而不是仓库根目录。
     示例场景:
     - 同步当前 workspace 的 package.json
     - 前端 version.ts
@@ -112,28 +136,16 @@ def sync_project_files(ctx: HookContext) -> None:
         elif unit == "wechat":
             ...
     """
-    # 示例 1：同步当前发布单元根目录下的 package.json
-    # package_json = ctx.project_root / "package.json"
-    # if package_json.exists():
-    #     write_json_version(package_json, ctx.version)
-    #     print(f"✅ 已同步 package.json: {package_json}")
+    unit = release_unit(ctx)
+    package_json = ctx.project_root / "package.json"
+    if package_json.exists():
+        write_json_version(package_json, ctx.version)
+        print(f"✅ 已同步 package.json: {package_json}")
 
-    # 示例 2：根据发布单元分支处理
-    # unit = release_unit(ctx)
-    # if unit == "backend":
-    #     metadata = ctx.project_root / "release-info.json"
-    #     metadata.write_text(
-    #         json.dumps({"version": ctx.version, "tag": ctx.git_tag}, ensure_ascii=False, indent=2) + "\n",
-    #         encoding="utf-8",
-    #     )
-
-    # 示例 3：写入一个自定义 JSON 文件
-    # release_info = ctx.project_root / "release-info.json"
-    # release_info.write_text(
-    #     json.dumps({"version": ctx.version, "tag": ctx.git_tag}, ensure_ascii=False, indent=2) + "\n",
-    #     encoding="utf-8",
-    # )
-    pass
+    if unit == "wechat":
+        version_module = ctx.project_root / "src" / "config" / "version.ts"
+        write_wechat_version_module(version_module, ctx.version)
+        print(f"✅ 已同步小程序版本模块: {version_module}")
 
 
 def after_all(ctx: HookContext) -> None:

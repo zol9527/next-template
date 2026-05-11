@@ -40,6 +40,8 @@ release:
   create_pr: false
   push: false
   base_branch: release
+  stage_paths:
+    - src/config/version.ts
 
 workflow:
   release:
