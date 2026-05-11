@@ -47,27 +47,16 @@ workflow:
 
 packager:
   root_dir: ..
-  output_dir: release
+  output_dir: dist
   name: next-template-monorepo-{version}
+  respect_gitignore: true
   include:
-    - package.json
-    - bun.lock
-    - README.md
-    - Makefile
-    - AGENTS.md
-    - .release
-    - apps
-    - packages
+    - "*"
   exclude:
     - .git
     - .github
-    - .beads
     - .release/_state
-    - __pycache__
-    - .venv
-    - node_modules
-    - release
-    - apps/**/node_modules
-    - apps/**/dist
-    - apps/**/.next
-    - apps/**/deploy-prepare
+    - apps/backend/prisma/*.db-journal
+    - apps/backend/test-uploads
+  force_include:
+    - apps/backend/prisma/schema.prisma

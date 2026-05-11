@@ -47,30 +47,21 @@ workflow:
 
 packager:
   root_dir: ../apps/backend
-  output_dir: deploy-prepare
+  output_dir: dist
   name: backend-{version}
+  respect_gitignore: true
   include:
-    - .next
-    - public
-    - package.json
-    - ecosystem.config.cjs
-    - prisma/schema.prisma
-    - prisma/schemas
-    - prisma/migrations
-    - prisma.config.ts
-    - docs/changes
-    - scripts
-    - src/config
-    - src/lib
+    - "*"
   exclude:
     - .git
     - .github
-    - .beads
-    - __pycache__
-    - .venv
-    - node_modules
-    - deploy-prepare
-    - .next/dev
-    - .next/cache
     - scripts/seed/modules/optional
     - src/lib/prisma/generated
+  force_include:
+    - .next/BUILD_ID
+    - .next/package.json
+    - .next/*.json
+    - .next/*.js
+    - .next/server
+    - .next/static
+    - prisma/schema.prisma

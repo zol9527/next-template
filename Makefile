@@ -2,6 +2,7 @@
   build build-backend build-wechat \
   compile-wechat watch-wechat open-wechat \
   lint test test-backend test-wechat \
+  pack pack-backend pack-wechat pack-monorepo \
   release release-backend release-wechat release-monorepo release-commit release-pack \
   deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
   backend-shell wechat-shell
@@ -53,6 +54,12 @@ help:
 	@echo "    apps/miniprograms/douyin   抖音小程序预留位置"
 	@echo "    apps/miniprograms/alipay   支付宝小程序预留位置"
 	@echo ""
+	@echo "  打包:"
+	@echo "    pack                 打包后端（默认）"
+	@echo "    pack-backend         打包后端到 apps/backend/dist/"
+	@echo "    pack-wechat          打包微信小程序到 apps/miniprograms/wechat/dist/"
+	@echo "    pack-monorepo        打包 monorepo 模板到 dist/"
+	@echo ""
 	@echo "  发布管理 (release-cli):"
 	@echo "    release-backend      发布后端单元，默认 patch"
 	@echo "    release-wechat       发布微信小程序单元，默认 patch"
@@ -72,6 +79,8 @@ help:
 	@echo "    make release-prepare RELEASE=backend"
 	@echo "    make release-commit RELEASE=backend RELEASE_TO_STEP=commit"
 	@echo "    make release-pack RELEASE=wechat"
+	@echo "    make pack-wechat"
+	@echo "    make pack-monorepo"
 	@echo ""
 	@echo "  PM2 部署:"
 	@echo "    deploy              构建 + 启动 PM2（默认 ENV=production）"
@@ -150,6 +159,19 @@ release-commit:
 release-pack:
 	@if [ ! -f "$(RELEASE_CONFIG)" ]; then echo "❌ 未找到发布配置: $(RELEASE_CONFIG)"; exit 1; fi
 	release-cli --config "$(RELEASE_CONFIG)" pack
+
+# ==================== 打包命令 ====================
+
+pack: pack-backend
+
+pack-backend:
+	@release-cli --config .release/backend.yml pack
+
+pack-wechat:
+	@release-cli --config .release/wechat.yml pack
+
+pack-monorepo:
+	@release-cli --config .release/monorepo.yml pack
 
 backend-shell:
 	$(MAKE) -C $(BACKEND_DIR) help

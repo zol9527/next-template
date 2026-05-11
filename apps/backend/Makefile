@@ -1,4 +1,4 @@
-.PHONY: help dev clean \
+.PHONY: help dev install start stop restart clean \
   seed-minimal seed-development seed-full seed-help \
   setup-db reset-db reset-db-empty fix-prisma \
   release release-patch release-minor release-major release-version release-commit
@@ -17,6 +17,10 @@ help:
 	@echo "🚀 开发命令"
 	@echo ""
 	@echo "  dev      启动本地开发服务"
+	@echo "  install  安装生产依赖"
+	@echo "  start    启动生产服务 (PM2)"
+	@echo "  stop     停止生产服务 (PM2)"
+	@echo "  restart  重启生产服务 (PM2)"
 	@echo "  clean    清理本地构建产物"
 	@echo ""
 	@echo "  版本发布 (release-cli):"
@@ -50,6 +54,33 @@ dev:
 	@bun run dev
 
 # ============================================
+# 依赖安装（部署场景）
+# ============================================
+
+install:
+	@echo "📦 安装生产依赖..."
+	@bun install --production
+	@echo "✅ 依赖安装完成"
+
+# ============================================
+# 进程管理（部署场景，基于 PM2）
+# ============================================
+
+# ENV 环境变量，默认 production
+ENV ?= production
+
+start:
+	@pm2 delete nextjs-app 2>/dev/null || true
+	@pm2 start ecosystem.config.cjs --env $(ENV)
+
+stop:
+	@pm2 stop nextjs-app
+
+restart:
+	@pm2 delete nextjs-app 2>/dev/null || true
+	@pm2 start ecosystem.config.cjs --env $(ENV)
+
+# ============================================
 # 清理
 # ============================================
 
@@ -58,9 +89,7 @@ clean:
 	@echo "  - 删除 .next/..."
 	@rm -rf .next/
 	@echo "  - 删除部署打包产物..."
-	@rm -rf deploy-prepare
-	@rm -f deploy-prepare/deploy.zip
-	@rm -f /tmp/deploy*/
+	@rm -rf dist
 	@echo "  - 清理 node_modules/.cache..."
 	@rm -rf node_modules/.cache 2>/dev/null || true
 	@echo "  - 清理 Prisma 生成的 client..."

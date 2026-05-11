@@ -99,7 +99,7 @@ opencode.jsonc
 **/.worktrees/
 
 # 自定义打包文件
-deploy-prepare/
+dist/
 
 # 版本发布相关文件
 CHANGELOG.md

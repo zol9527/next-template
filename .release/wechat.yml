@@ -49,19 +49,12 @@ workflow:
 
 packager:
   root_dir: ../apps/miniprograms/wechat
-  output_dir: release
+  output_dir: dist
   name: wechat-miniprogram-{version}
+  respect_gitignore: true
   include:
-    - src
-    - package.json
-    - project.config.json
-    - docs
+    - "*"
   exclude:
     - .git
     - .github
-    - .beads
-    - __pycache__
-    - .venv
-    - node_modules
-    - dist
-    - release
+  force_include: []
