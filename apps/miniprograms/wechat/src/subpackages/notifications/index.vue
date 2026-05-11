@@ -338,6 +338,7 @@ onMounted(() => {
   position: relative;
   box-sizing: border-box;
   width: 100%;
+  overflow: hidden;
 }
 
 .notification-card.unread {
@@ -377,10 +378,10 @@ onMounted(() => {
 /* 通知内容 */
 .notification-content {
   flex: 1;
+  width: 0;
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  min-width: 0;
   overflow: hidden;
 }
 
@@ -390,6 +391,11 @@ onMounted(() => {
   color: #1A2E35;
   line-height: 40rpx;
   word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .notification-summary {
