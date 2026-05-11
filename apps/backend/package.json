@@ -12,7 +12,6 @@
     "seed:development": "node scripts/seed/index.mjs --mode=development",
     "seed:full": "node scripts/seed/index.mjs --mode=full",
     "seed:help": "node scripts/seed/index.mjs --help",
-    "release:sync": "node scripts/release/sync-version-releases.mjs",
     "prisma:merge": "bun run scripts/prisma/merge-schemas.ts",
     "prisma:generate": "bun run prisma:merge && bunx prisma generate",
     "prisma:migrate:dev": "bun run prisma:merge && bunx prisma migrate dev",
