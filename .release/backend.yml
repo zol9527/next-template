@@ -55,6 +55,7 @@ packager:
     - package.json
     - ecosystem.config.cjs
     - prisma/schema.prisma
+    - prisma/schemas
     - prisma/migrations
     - prisma.config.ts
     - docs/changes
@@ -69,5 +70,7 @@ packager:
     - .venv
     - node_modules
     - deploy-prepare
+    - .next/dev
+    - .next/cache
     - scripts/seed/modules/optional
     - src/lib/prisma/generated

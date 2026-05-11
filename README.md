@@ -34,6 +34,68 @@ bun run --filter @repo/backend dev
 bun run --filter @repo/miniprogram-wechat compile:mp-weixin
 ```
 
+## PM2 生产部署
+
+项目使用 PM2 管理 Next.js 进程。配置文件位于 `apps/backend/ecosystem.config.cjs`。
+
+PM2 只负责设置 `NODE_ENV` 并启动进程，Next.js 自动加载对应的 `.env` 文件：
+
+| ENV 参数            | NODE_ENV      | 加载的 .env 文件（按优先级）                |
+| ------------------- | ------------- | ------------------------------------------ |
+| `production`        | `production`  | `.env.production.local` > `.env.production` > `.env` |
+| `development`       | `development` | `.env.development.local` > `.env.development` > `.env` |
+
+> **注意**: `make dev-backend`（本地开发）不需要 PM2，直接用 `next dev` 热重载。`make deploy ENV=development` 是用 PM2 托管 development 环境的 `next start`（构建后运行）。
+
+### 前置条件
+
+```bash
+npm install -g pm2
+```
+
+### 快速部署
+
+```bash
+make deploy                      # 构建 + 启动（默认 production）
+make deploy ENV=production       # 同上，显式指定
+make deploy ENV=development      # 构建 + 启动 development 环境
+```
+
+### 常用运维命令
+
+```bash
+make pm2-status              # 查看进程状态
+make pm2-logs                # 查看实时日志
+make pm2-restart             # 硬重启（有短暂不可用）
+make pm2-stop                # 停止进程
+make pm2-start ENV=development  # 仅启动（不构建）
+make pm2-delete              # 彻底删除进程
+```
+
+### 日志架构
+
+| 系统       | 职责                         | 输出位置            |
+| ---------- | ---------------------------- | ------------------- |
+| **Pino**   | 结构化业务日志（traceId、请求上下文、敏感字段脱敏） | `logs/app.log`（按日期/大小滚动，自动保留 7 天） |
+| **PM2**    | 进程管理（启动、重启、崩溃恢复） | 日志文件已关闭，Pino 通过 `LOG_TO_STDOUT` 输出到 stdout，`pm2 logs` 可查看 |
+
+所有业务日志由 Pino 统一管理。日志相关配置写在 `.env` 文件中：
+
+| 变量                        | 默认值         | 说明                     |
+| --------------------------- | -------------- | ------------------------ |
+| `LOG_TO_STDOUT`             | `true`         | 是否输出到 stdout（`pm2 logs` 可查看） |
+| `LOG_LEVEL`                 | `info`(prod) / `debug`(dev) | 日志级别   |
+| `LOG_DIR`                   | `./logs`       | 日志文件目录             |
+| `LOG_RETENTION_DAYS`        | `7`            | 日志保留天数             |
+
+### 服务器首次部署
+
+```bash
+make deploy ENV=production
+pm2 save                      # 保存当前进程列表
+pm2 startup                   # 生成开机自启脚本（按提示执行输出的命令）
+```
+
 ## 发布管理
 
 仓库使用 `release-cli` 管理发布。每个发布单元有独立配置、版本文件、

@@ -28,11 +28,11 @@ https://www.shuoboda.cn {
 
         # 日志配置 (JSON 格式，便于 SIEM 分析)
         log {
-                # 默认生产路径: /var/log/caddy/edu-app-access.log
+                # 默认生产路径: /var/log/caddy/nextjs-app-access.log
                 # 日志保留: 14 天 (336h)
                 # 本地验证可通过环境变量覆盖:
                 # CADDY_ACCESS_LOG_PATH=/absolute/path/to/log caddy validate --config deploy/Caddyfile
-                output file {$CADDY_ACCESS_LOG_PATH:/var/log/caddy/edu-app-access.log} {
+                output file {$CADDY_ACCESS_LOG_PATH:/var/log/caddy/nextjs-app-access.log} {
                         roll_size 100mb
                         roll_keep 10
                         roll_keep_for 336h

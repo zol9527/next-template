@@ -3,6 +3,7 @@
   compile-wechat watch-wechat open-wechat \
   lint test test-backend test-wechat \
   release release-backend release-wechat release-monorepo release-commit release-pack \
+  deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
   backend-shell wechat-shell
 
 .DEFAULT_GOAL := help
@@ -22,6 +23,11 @@ RELEASE_FLOW_ARGS := $(if $(RELEASE_FROM_STEP),--from-step $(RELEASE_FROM_STEP),
 	$(if $(RELEASE_TO_STEP),--to-step $(RELEASE_TO_STEP),) \
 	$(if $(RELEASE_ONLY),--only $(RELEASE_ONLY),) \
 	$(if $(RELEASE_SKIP),--skip $(RELEASE_SKIP),)
+
+# PM2 部署配置
+ENV ?= production
+PM2_APP_NAME := nextjs-app
+BACKEND_ECOSYSTEM := $(BACKEND_DIR)/ecosystem.config.cjs
 
 help:
 	@echo "📦 Monorepo 命令"
@@ -66,6 +72,21 @@ help:
 	@echo "    make release-prepare RELEASE=backend"
 	@echo "    make release-commit RELEASE=backend RELEASE_TO_STEP=commit"
 	@echo "    make release-pack RELEASE=wechat"
+	@echo ""
+	@echo "  PM2 部署:"
+	@echo "    deploy              构建 + 启动 PM2（默认 ENV=production）"
+	@echo "    pm2-start           启动 PM2 进程（不构建）"
+	@echo "    pm2-stop            停止 PM2 进程"
+	@echo "    pm2-restart         重启 PM2 进程（硬重启，有短暂不可用）"
+	@echo "    pm2-reload          平滑重载 PM2 进程（零停机）"
+	@echo "    pm2-status          查看 PM2 进程状态"
+	@echo "    pm2-logs            查看实时日志（Ctrl+C 退出）"
+	@echo "    pm2-delete          删除 PM2 进程（彻底移除）"
+	@echo ""
+	@echo "  部署示例:"
+	@echo "    make deploy ENV=production"
+	@echo "    make deploy ENV=development"
+	@echo "    make pm2-restart ENV=development"
 
 install:
 	bun install
@@ -135,3 +156,45 @@ backend-shell:
 
 wechat-shell:
 	$(MAKE) -C $(WECHAT_MINIPROGRAM_DIR) help
+
+# ==================== PM2 部署命令 ====================
+
+# 完整部署流程：构建 → 启动 PM2
+deploy: build-backend pm2-start
+	@echo "✅ 部署完成 ($(ENV) 环境)"
+	@pm2 status $(PM2_APP_NAME)
+
+# 启动 PM2 进程（如果已存在则先删除再启动）
+pm2-start:
+	@echo "🚀 启动 PM2 ($(ENV) 环境)..."
+	@pm2 delete $(PM2_APP_NAME) 2>/dev/null || true
+	@pm2 start $(BACKEND_ECOSYSTEM) --env $(ENV)
+
+# 停止 PM2 进程（保留进程信息，可再次 start）
+pm2-stop:
+	@echo "⏹  停止 PM2 进程..."
+	@pm2 stop $(PM2_APP_NAME)
+
+# 硬重启（kill + 重新启动，有短暂不可用）
+pm2-restart:
+	@echo "🔄 重启 PM2 ($(ENV) 环境)..."
+	@pm2 delete $(PM2_APP_NAME) 2>/dev/null || true
+	@pm2 start $(BACKEND_ECOSYSTEM) --env $(ENV)
+
+# 平滑重载（推荐，零停机；基于已加载的配置重启进程）
+pm2-reload:
+	@echo "♻️  平滑重载 PM2 ($(ENV) 环境)..."
+	@pm2 gracefulReload $(PM2_APP_NAME)
+
+# 查看 PM2 进程状态
+pm2-status:
+	@pm2 status $(PM2_APP_NAME)
+
+# 查看实时日志
+pm2-logs:
+	@pm2 logs $(PM2_APP_NAME) --lines 50
+
+# 彻底删除 PM2 进程
+pm2-delete:
+	@echo "🗑  删除 PM2 进程..."
+	@pm2 delete $(PM2_APP_NAME)

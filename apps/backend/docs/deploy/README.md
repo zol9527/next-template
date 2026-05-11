@@ -117,8 +117,8 @@ sudo mkdir -p /var/www/edu-mini-app
 sudo chown $USER:$USER /var/www/edu-mini-app
 
 # 创建日志目录
-sudo mkdir -p /var/log/edu-app
-sudo chown $USER:$USER /var/log/edu-app
+sudo mkdir -p /var/log/nextjs-app
+sudo chown $USER:$USER /var/log/nextjs-app
 
 # 创建备份目录
 sudo mkdir -p /var/backups/edu-mini-app
@@ -213,7 +213,7 @@ pm2 save    # 保存进程列表，确保重启后自动恢复
 pm2 startup # 配置开机自启（按输出的命令执行）
 
 # 方式 B：直接启动（如果 ecosystem.config.cjs 不存在）
-pm2 start npm --name edu-app -- start
+pm2 start npm --name nextjs-app -- start
 pm2 save
 pm2 startup
 ```
@@ -225,7 +225,7 @@ pm2 startup
 pm2 status
 
 # 检查应用日志
-pm2 logs edu-app --lines 50
+pm2 logs nextjs-app --lines 50
 
 # 健康检查
 curl http://localhost:3000/api/health
@@ -296,7 +296,7 @@ nano scripts/deploy.sh
 ssh root@your-server "pm2 status"
 
 # 2. 检查应用日志
-ssh root@your-server "pm2 logs edu-app --lines 50"
+ssh root@your-server "pm2 logs nextjs-app --lines 50"
 
 # 3. 健康检查
 curl https://your-domain.com/api/health
@@ -316,13 +316,13 @@ curl https://your-domain.com/api/health
 pm2 status
 
 # 查看日志
-pm2 logs edu-app
+pm2 logs nextjs-app
 
 # 重启应用
-pm2 restart edu-app
+pm2 restart nextjs-app
 
 # 停止应用
-pm2 stop edu-app
+pm2 stop nextjs-app
 
 # 监控
 pm2 monit
@@ -350,7 +350,7 @@ ls -lh /var/backups/edu-mini-app/
 # 恢复指定备份
 sudo rm -rf /var/www/edu-mini-app/*
 sudo tar -xzf /var/backups/edu-mini-app/backup_YYYYMMDD_HHMMSS.tar.gz -C /var/www/edu-mini-app
-cd /var/www/edu-mini-app && pm2 restart edu-app
+cd /var/www/edu-mini-app && pm2 restart nextjs-app
 ```
 
 ---
@@ -382,7 +382,7 @@ pm2 link <secret_key> <public_key>
 
 | 问题 | 可能原因 | 解决方法 |
 |-----|---------|---------|
-| 502 Bad Gateway | Next.js 未启动 | `pm2 restart edu-app` |
+| 502 Bad Gateway | Next.js 未启动 | `pm2 restart nextjs-app` |
 | 证书错误 | Caddy 配置问题 | `caddy validate --config /etc/caddy/Caddyfile` |
 | 构建失败 | Node 版本不匹配 | 检查 `package.json` engines |
 | 数据库连接失败 | 环境变量未配置 | 检查 `.env.production` |

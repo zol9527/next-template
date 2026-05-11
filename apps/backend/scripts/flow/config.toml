@@ -4,7 +4,7 @@ host = "43.134.42.150"
 port = 22
 node_version = 25
 remote_dir = "/home/ubuntu/edu-mini-app"
-app_name = "edu-app"
+app_name = "nextjs-app"
 remote_tmp_zip = "/tmp/deploy.zip"
 env_deps = ["bun", "caddy", "pm2"]
 

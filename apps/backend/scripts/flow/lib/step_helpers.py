@@ -379,7 +379,7 @@ def _require_deploy_config() -> DeployConfig:
         port=_env("DEPLOY_PORT", "22"),
         remote_dir=remote_dir,
         node_version=_env("DEPLOY_NODE_VERSION", "25"),
-        app_name=_env("PM2_APP_NAME", "edu-app"),
+        app_name=_env("PM2_APP_NAME", "nextjs-app"),
         seed_mode=_env("SEED_MODE", "minimal"),
         zip_path=zip_path,
         remote_tmp_zip=_env("REMOTE_TMP_ZIP", "/tmp/deploy.zip"),
