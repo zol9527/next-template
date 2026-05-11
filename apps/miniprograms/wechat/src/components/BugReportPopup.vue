@@ -49,11 +49,18 @@
             <view class="remove-btn" @tap.stop="removeImage(index)">×</view>
           </view>
           <view
-            v-if="formData.images.length < 3"
+            v-if="formData.images.length < 3 && !uploading"
             class="upload-btn"
             @tap="handleUpload"
           >
             <text class="plus-icon">+</text>
+          </view>
+          <!-- 上传中提示 -->
+          <view
+            v-if="uploading && formData.images.length < 3"
+            class="upload-btn uploading"
+          >
+            <text class="uploading-text">上传中</text>
           </view>
         </view>
       </view>
@@ -63,7 +70,7 @@
         <button
           class="submit-btn"
           :loading="submitting"
-          :disabled="!isFormValid || submitting"
+          :disabled="!isFormValid || submitting || uploading"
           @tap="handleSubmit"
         >
           提交反馈
@@ -77,8 +84,10 @@
 import { ref, reactive, computed } from 'vue'
 import PopupSheet from '@/components/PopupSheet.vue'
 import { feedbackService, FeedbackType } from '@/services/feedback'
+import { uploadService } from '@/services/api/upload'
 import { showSuccess, showError, showLoading, hideLoading } from '@/utils/toast'
 import { getErrorMessage } from '@/utils/error-handler'
+import { logger } from '@/utils/logger'
 
 const props = defineProps<{
   modelValue: boolean
@@ -106,22 +115,44 @@ const formData = reactive({
 
 /** 提交状态 */
 const submitting = ref(false)
+/** 图片上传中状态 */
+const uploading = ref(false)
 
 /** 表单校验 */
 const isFormValid = computed(() => {
   return formData.content.trim().length > 0
 })
 
-/** 处理上传 */
+/**
+ * 处理图片选择 + 上传
+ *
+ * 流程：chooseImage → 逐张上传到服务器 → 替换本地路径为远程 URL
+ */
 const handleUpload = () => {
   uni.chooseImage({
     count: 3 - formData.images.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: (res) => {
-      // 实际项目中这里应该调用上传接口
-      // 现在直接模拟添加本地路径
-      formData.images.push(...res.tempFilePaths)
+    success: async (res) => {
+      uploading.value = true
+      showLoading('上传中...')
+
+      try {
+        // 逐张上传，任何一张失败都提示但继续尝试其余图片
+        for (const tempPath of res.tempFilePaths) {
+          try {
+            const result = await uploadService.uploadImage(tempPath)
+            // 上传成功，将远程 URL 添加到表单数据
+            formData.images.push(result.url)
+          } catch (uploadError) {
+            logger.warn('单张图片上传失败', uploadError as Record<string, unknown>)
+            showError('部分图片上传失败')
+          }
+        }
+      } finally {
+        hideLoading()
+        uploading.value = false
+      }
     }
   })
 }
@@ -296,6 +327,11 @@ const resetForm = () => {
 
 .plus-icon {
   font-size: 24px;
+  color: $color-text-muted;
+}
+
+.uploading-text {
+  font-size: 11px;
   color: $color-text-muted;
 }
 

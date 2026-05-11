@@ -136,7 +136,8 @@ export const ListCouponsResponseSchema = z
   .object({
     coupons: z.array(CouponSchema).openapi({ description: '优惠券列表' }),
     nextCursor: z.string().nullable().openapi({ description: '下一页游标' }),
-    totalCount: z.number().openapi({ description: '总记录数' }),
+    // totalCount 为可选字段：API 可能不返回（优惠券列表使用客户端分页，无需服务端 count）
+    totalCount: z.number().optional().openapi({ description: '总记录数' }),
   })
   .openapi({ description: '优惠券列表响应' })
 

@@ -96,7 +96,7 @@ export default function AdminFeedbackPage() {
   // 更新反馈状态的 Mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ feedbackId, status }: { feedbackId: string; status: FeedbackStatus }) => {
-      const res = await fetch(`/api/v1/admin/feedback/${feedbackId}/status`, {
+      const res = await fetch(`/api/v1/admin/feedback/${feedbackId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

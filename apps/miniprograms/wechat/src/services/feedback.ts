@@ -57,6 +57,24 @@ export interface SubmitFeedbackRequest {
 }
 
 /**
+ * 反馈回复接口（管理员回复）
+ */
+export interface FeedbackReply {
+  id: string;
+  feedbackId: string;
+  adminId: string;
+  content: string;
+  createdAt: string; // ISO 8601 格式
+}
+
+/**
+ * 反馈详情接口（含管理员回复列表）
+ */
+export interface FeedbackDetail extends Feedback {
+  replies: FeedbackReply[];
+}
+
+/**
  * 反馈列表响应接口
  */
 export interface FeedbackListResponse {
@@ -137,6 +155,23 @@ export const feedbackService = {
       return await httpClient.get<FeedbackListResponse>(FEEDBACK_API_PATH, params);
     } catch (error) {
       logger.error('获取反馈列表失败', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 获取反馈详情（含管理员回复列表）
+   *
+   * @param feedbackId - 反馈 ID（UUID）
+   * @returns Promise<FeedbackDetail> - 反馈详情（含回复）
+   */
+  async getFeedbackDetail(feedbackId: string): Promise<FeedbackDetail> {
+    logger.info('获取反馈详情', { feedbackId });
+
+    try {
+      return await httpClient.get<FeedbackDetail>(`${FEEDBACK_API_PATH}/${feedbackId}`);
+    } catch (error) {
+      logger.error('获取反馈详情失败', error);
       throw error;
     }
   },

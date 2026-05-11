@@ -96,6 +96,7 @@ const coreSidebarGroups: SidebarGroupConfig[] = [
     items: [
       { name: '站点配置', href: '/admin/site-config', icon: Globe, requiredAccess: { action: 'write', scope: 'site-config' } },
       { name: '公告管理', href: '/admin/announcements', icon: Bell, requiredAccess: { action: 'write', scope: 'site-config' } },
+      { name: '通知管理', href: '/admin/notifications', icon: Bell, requiredAccess: { action: 'write', scope: 'notifications' } },
       { name: '协议管理', href: '/admin/agreements', icon: FileText, requiredAccess: { action: 'write', scope: 'site-config' } },
       { name: '功能开关', href: '/admin/feature-flags', icon: Shield, requiredAccess: { action: 'read', scope: 'feature-flags' } },
       { name: 'AI 设置', href: '/admin/ai-settings', icon: Sparkles, requiredAccess: { action: 'read', scope: 'ai.settings' } },

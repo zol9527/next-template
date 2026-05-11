@@ -52,6 +52,7 @@ export const SCOPE_TREE = {
   },
   agreements: { description: '协议管理' },
   announcements: { description: '公告管理' },
+  notifications: { description: '通知管理' },
   blog: {
     description: '博客管理',
     children: {

@@ -21,12 +21,12 @@ import type { AdminNotification } from './admin-notification-columns'
 
 const formSchema = z.object({
   title: z.string().min(1, '通知标题不能为空'),
-  summary: z.string().optional().default(''),
+  summary: z.string(),
   content: z.string().min(1, '通知内容不能为空'),
-  icon: z.string().optional().default(''),
-  priority: z.number().int().min(0).default(0),
-  isActive: z.boolean().default(true),
-  isGlobal: z.boolean().default(true),
+  icon: z.string(),
+  priority: z.number().int().min(0),
+  isActive: z.boolean(),
+  isGlobal: z.boolean(),
 })
 
 interface AdminNotificationFormProps {

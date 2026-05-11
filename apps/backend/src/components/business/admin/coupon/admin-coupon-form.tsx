@@ -972,6 +972,8 @@ export function AdminCouponForm({
                                 <SelectItem key={hour} value={`${hour}:00`}>{`${hour}:00`}</SelectItem>
                               )
                             })}
+                            {/* 当天最后一刻，常用于结束时间 */}
+                            <SelectItem value="23:59">23:59</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

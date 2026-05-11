@@ -151,6 +151,20 @@
 						"navigationBarTitleText": "优惠券",
 						"navigationStyle": "custom"
 					}
+				},
+				{
+					"path": "feedback-history/index",
+					"style": {
+						"navigationBarTitleText": "我的反馈",
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "feedback-detail/index",
+					"style": {
+						"navigationBarTitleText": "反馈详情",
+						"navigationStyle": "custom"
+					}
 				}
 			]
 		},
