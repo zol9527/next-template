@@ -1,17 +1,24 @@
 import type { RepoContext } from '@/types/repo/repo-context'
 
+export type SiteAboutStatDto = {
+	value: string
+	label: string
+}
+
 /**
  * 站点配置 DTO
  */
 export type SiteConfigDto = {
 	id: string
 	siteName: string
+	siteSlogan: string | null
 	logoUrl: string | null
 	contactPhone: string | null
 	contactWechat: string | null
 	contactEmail: string | null
 	icpFiling: string | null
 	copyright: string | null
+	aboutStats: SiteAboutStatDto[] | null
 	createdAt: string
 	updatedAt: string
 }
@@ -73,12 +80,14 @@ export interface SiteConfigRepository {
 	 */
 	updateSiteConfig(ctx: RepoContext, params: {
 		siteName: string
+		siteSlogan?: string | null
 		logoUrl?: string | null
 		contactPhone?: string | null
 		contactWechat?: string | null
 		contactEmail?: string | null
 		icpFiling?: string | null
 		copyright?: string | null
+		aboutStats?: SiteAboutStatDto[] | null
 	}): Promise<SiteConfigDto>
 
 	/**
@@ -86,12 +95,14 @@ export interface SiteConfigRepository {
 	 */
 	initializeSiteConfig(ctx: RepoContext, params: {
 		siteName: string
+		siteSlogan?: string | null
 		logoUrl?: string | null
 		contactPhone?: string | null
 		contactWechat?: string | null
 		contactEmail?: string | null
 		icpFiling?: string | null
 		copyright?: string | null
+		aboutStats?: SiteAboutStatDto[] | null
 	}): Promise<SiteConfigDto>
 }
 

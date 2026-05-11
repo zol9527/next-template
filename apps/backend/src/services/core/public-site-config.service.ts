@@ -65,12 +65,14 @@ export function createPublicSiteConfigService(
 
 			const result: PublicSiteConfig = {
 				siteName: config.siteName,
+				siteSlogan: config.siteSlogan,
 				logoUrl: config.logoUrl,
 				contactPhone: config.contactPhone,
 				contactWechat: config.contactWechat,
 				contactEmail: config.contactEmail,
 				icpFiling: config.icpFiling,
 				copyright: config.copyright,
+				aboutStats: config.aboutStats,
 				updatedAt: config.updatedAt,
 			}
 
@@ -187,22 +189,26 @@ export function createPublicSiteConfigService(
 			const publicSiteConfig: PublicSiteConfig = siteConfig
 				? {
 					siteName: siteConfig.siteName,
+					siteSlogan: siteConfig.siteSlogan,
 					logoUrl: siteConfig.logoUrl,
 					contactPhone: siteConfig.contactPhone,
 					contactWechat: siteConfig.contactWechat,
 					contactEmail: siteConfig.contactEmail,
 					icpFiling: siteConfig.icpFiling,
 					copyright: siteConfig.copyright,
+					aboutStats: siteConfig.aboutStats,
 					updatedAt: siteConfig.updatedAt,
 				}
 				: {
 					siteName: '',
+					siteSlogan: null,
 					logoUrl: null,
 					contactPhone: null,
 					contactWechat: null,
 					contactEmail: null,
 					icpFiling: null,
 					copyright: null,
+					aboutStats: null,
 					updatedAt: new Date().toISOString(),
 				}
 

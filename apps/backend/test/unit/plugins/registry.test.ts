@@ -141,6 +141,7 @@ describe('getEnabledPlugins', () => {
 describe('refreshPluginCache', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(memoryCache.get).mockReturnValue(undefined)
   })
 
   it('loads statuses from service and caches them', async () => {

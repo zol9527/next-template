@@ -5,6 +5,11 @@ extendZodWithOpenApi(z)
 
 const MAX_LOGO_URL_LENGTH = 191
 
+const AboutStatSchema = z.object({
+  value: z.string().min(1).max(20).openapi({ description: '统计值，例如 200+' }),
+  label: z.string().min(1).max(20).openapi({ description: '统计标签，例如 精品课程' }),
+})
+
 // =============================================================================
 // Site Config DTOs
 // =============================================================================
@@ -16,12 +21,14 @@ export const SiteConfigSchema = z
   .object({
     id: z.string().openapi({ description: '配置 ID（单例模式使用固定 ID 或 UUID）' }),
     siteName: z.string().min(1).openapi({ description: '站点名称' }),
+    siteSlogan: z.string().nullable().optional().openapi({ description: '站点标语' }),
     logoUrl: z.string().url().nullable().optional().openapi({ description: 'Logo URL 或品牌图片地址' }),
     contactPhone: z.string().nullable().optional().openapi({ description: '客服联系电话' }),
     contactWechat: z.string().nullable().optional().openapi({ description: '客服微信号' }),
     contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
+    aboutStats: z.array(AboutStatSchema).nullable().optional().openapi({ description: '关于页统计卡片' }),
     createdAt: z.string().openapi({ description: '创建时间 ISO' }),
     updatedAt: z.string().openapi({ description: '更新时间 ISO' }),
   })
@@ -35,6 +42,7 @@ export type SiteConfig = z.infer<typeof SiteConfigSchema>
 export const UpdateSiteConfigRequestSchema = z
   .object({
     siteName: z.string().min(1).openapi({ description: '站点名称' }),
+    siteSlogan: z.string().nullable().optional().openapi({ description: '站点标语' }),
     logoUrl: z
       .string()
       .url()
@@ -47,6 +55,7 @@ export const UpdateSiteConfigRequestSchema = z
     contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
+    aboutStats: z.array(AboutStatSchema).max(3).nullable().optional().openapi({ description: '关于页统计卡片，最多 3 个' }),
   })
   .openapi({ description: '更新站点配置请求' })
 

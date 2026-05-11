@@ -20,6 +20,12 @@ interface SiteConfigFormProps {
   onSaved?: () => void
 }
 
+const createEmptyAboutStats = () => [
+  { value: '', label: '' },
+  { value: '', label: '' },
+  { value: '', label: '' },
+]
+
 function toPersistedLogoUrl(asset: AdminMediaAsset): string | null {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -154,12 +160,14 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
 
   // 表单状态
   const [siteName, setSiteName] = React.useState('')
+  const [siteSlogan, setSiteSlogan] = React.useState('')
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
   const [contactPhone, setContactPhone] = React.useState('')
   const [contactWechat, setContactWechat] = React.useState('')
   const [contactEmail, setContactEmail] = React.useState('')
   const [icpFiling, setIcpFiling] = React.useState('')
   const [copyright, setCopyright] = React.useState('')
+  const [aboutStats, setAboutStats] = React.useState(createEmptyAboutStats)
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [touched, setTouched] = React.useState<Record<string, boolean>>({})
 
@@ -170,12 +178,14 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
   React.useEffect(() => {
     if (siteConfig) {
       setSiteName(siteConfig.siteName)
+      setSiteSlogan(siteConfig.siteSlogan ?? '')
       setLogoUrl(siteConfig.logoUrl ?? null)
       setContactPhone(siteConfig.contactPhone ?? '')
       setContactWechat(siteConfig.contactWechat ?? '')
       setContactEmail(siteConfig.contactEmail ?? '')
       setIcpFiling(siteConfig.icpFiling ?? '')
       setCopyright(siteConfig.copyright ?? '')
+      setAboutStats(siteConfig.aboutStats?.length ? siteConfig.aboutStats : createEmptyAboutStats())
     }
   }, [siteConfig])
 
@@ -264,12 +274,16 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
 
     const payload: UpdateSiteConfigRequest = {
       siteName: siteName.trim(),
+      siteSlogan: siteSlogan.trim() || null,
       logoUrl,
       contactPhone: contactPhone.trim() || null,
       contactWechat: contactWechat.trim() || null,
       contactEmail: contactEmail.trim() || null,
       icpFiling: icpFiling.trim() || null,
       copyright: copyright.trim() || null,
+      aboutStats: aboutStats
+        .map((item) => ({ value: item.value.trim(), label: item.label.trim() }))
+        .filter((item) => item.value && item.label),
     }
 
     saveMutation.mutate(payload)
@@ -283,6 +297,12 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
   }
 
   const isSubmitting = saveMutation.isPending
+
+  const updateAboutStat = (index: number, key: 'value' | 'label', value: string) => {
+    setAboutStats(prev => prev.map((item, currentIndex) => (
+      currentIndex === index ? { ...item, [key]: value } : item
+    )))
+  }
 
   // 加载骨架屏
   if (isLoading) {
@@ -329,6 +349,17 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
                     'transition-all duration-200',
                     touched.siteName && errors.siteName && 'border-destructive focus:border-destructive focus:ring-destructive/10'
                   )}
+                />
+              </FormField>
+
+              {/* 平台标语 */}
+              <FormField label="平台标语">
+                <Input
+                  placeholder="例如：硕博达 · 知识赋能平台"
+                  value={siteSlogan}
+                  onChange={(e) => setSiteSlogan(e.target.value)}
+                  disabled={isSubmitting}
+                  className="h-12 bg-muted/5 border-border/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
                 />
               </FormField>
 
@@ -392,11 +423,43 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
               </FormField>
             </ConfigCard>
 
+            {/* 关于页展示卡片 */}
+            <ConfigCard
+              icon={<Sparkles className="h-5 w-5" />}
+              title="关于页展示"
+              delay={0.2}
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                {aboutStats.map((stat, index) => (
+                  <div key={index} className="space-y-3 rounded-lg border border-border/10 bg-muted/5 p-4">
+                    <FormField label={`统计值 ${index + 1}`}>
+                      <Input
+                        placeholder="例如：200+"
+                        value={stat.value}
+                        onChange={(e) => updateAboutStat(index, 'value', e.target.value)}
+                        disabled={isSubmitting}
+                        className="h-11 bg-background/60 border-border/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+                      />
+                    </FormField>
+                    <FormField label={`统计标签 ${index + 1}`}>
+                      <Input
+                        placeholder="例如：精品课程"
+                        value={stat.label}
+                        onChange={(e) => updateAboutStat(index, 'label', e.target.value)}
+                        disabled={isSubmitting}
+                        className="h-11 bg-background/60 border-border/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+                      />
+                    </FormField>
+                  </div>
+                ))}
+              </div>
+            </ConfigCard>
+
             {/* 联系方式卡片 */}
             <ConfigCard
               icon={<Phone className="h-5 w-5" />}
               title="联系方式"
-              delay={0.2}
+              delay={0.3}
             >
               {/* 客服电话 */}
               <FormField label="客服电话">
@@ -444,7 +507,7 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
             <ConfigCard
               icon={<Copyright className="h-5 w-5" />}
               title="备案与版权"
-              delay={0.3}
+              delay={0.4}
             >
               <FormField label="ICP备案信息">
                 <Input

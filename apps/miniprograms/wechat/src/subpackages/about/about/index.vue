@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { useSiteConfig } from '@/hooks/useSiteConfig'
+import { APP_VERSION } from '@/config/version'
 
-const { siteName, siteSlogan, loadSiteConfig } = useSiteConfig()
+const { siteName, siteSlogan, logoUrl, copyright, aboutStats, loadSiteConfig } = useSiteConfig()
 loadSiteConfig()
-
-const stats = [
-  { value: '200+', label: '精品课程' },
-  { value: '50+', label: '专业讲师' },
-  { value: '10W+', label: '学员信赖' }
-]
 
 const legalLinks = [
   { text: '用户协议', path: '/subpackages/agreements/detail?type=USER_AGREEMENT' },
@@ -30,16 +25,17 @@ const handleNavigate = (path?: string) => {
     <!-- Brand Section -->
     <view class="brand-section">
       <view class="logo-container">
-        <text class="logo-text">{{ siteName.charAt(0) }}</text>
+        <image v-if="logoUrl" :src="logoUrl" class="logo-image" mode="aspectFill" />
+        <text v-else class="logo-text">{{ siteName.charAt(0) }}</text>
       </view>
       <text class="brand-name">{{ siteName }}</text>
       <text class="brand-desc">{{ siteSlogan }}</text>
-      <text class="brand-version">v2.1.0</text>
+      <text class="brand-version">v{{ APP_VERSION }}</text>
     </view>
 
     <!-- Features Section -->
     <view class="features-section">
-      <view v-for="stat in stats" :key="stat.label" class="stat-card">
+      <view v-for="stat in aboutStats" :key="stat.label" class="stat-card">
         <text class="stat-value">{{ stat.value }}</text>
         <text class="stat-label">{{ stat.label }}</text>
       </view>
@@ -64,7 +60,7 @@ const handleNavigate = (path?: string) => {
 
     <!-- Copyright -->
     <view class="copyright">
-      <text class="copyright-text">© 2025 VANTAGE. All rights reserved.</text>
+      <text class="copyright-text">{{ copyright }}</text>
     </view>
   </view>
 </template>
@@ -102,6 +98,11 @@ const handleNavigate = (path?: string) => {
       font-size: 32px;
       font-weight: 800;
       font-family: $font-family-brand;
+    }
+
+    .logo-image {
+      width: 100%;
+      height: 100%;
     }
   }
 

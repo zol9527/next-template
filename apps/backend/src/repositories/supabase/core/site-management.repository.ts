@@ -7,6 +7,7 @@ import type {
 	AgreementDto,
 	AnnouncementType,
 	AgreementType,
+	SiteAboutStatDto,
 } from '@/repositories/interfaces/core/site-management.interface'
 import type { RepoContext } from '@/types/repo/repo-context'
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/client'
@@ -15,7 +16,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/client'
 // Type Helpers
 // =============================================================================
 
-const SITE_CONFIG_SELECT = 'id,site_name,logo_url,contact_phone,contact_wechat,icp_filing,copyright,created_at,updated_at'
+const SITE_CONFIG_SELECT = 'id,site_name,site_slogan,logo_url,contact_phone,contact_wechat,contact_email,icp_filing,copyright,about_stats,created_at,updated_at'
 const ANNOUNCEMENT_SELECT = 'id,title,content,type,is_active,priority,start_at,end_at,created_at,updated_at'
 const AGREEMENT_SELECT = 'id,type,title,content,version,is_active,effective_at,created_at,updated_at'
 
@@ -34,6 +35,22 @@ function getNumber(row: Record<string, unknown>, key: string): number | null {
 	return typeof value === 'number' ? value : null
 }
 
+function normalizeAboutStats(value: unknown): SiteAboutStatDto[] | null {
+	if (!Array.isArray(value)) return null
+
+	const stats = value
+		.map((item) => {
+			if (!item || typeof item !== 'object') return null
+			const stat = item as Record<string, unknown>
+			return typeof stat.value === 'string' && typeof stat.label === 'string'
+				? { value: stat.value, label: stat.label }
+				: null
+		})
+		.filter((item): item is SiteAboutStatDto => item !== null)
+
+	return stats.length > 0 ? stats : null
+}
+
 function isValidAnnouncementType(value: unknown): value is AnnouncementType {
 	return typeof value === 'string' && ['NOTICE', 'ACTIVITY', 'MAINTENANCE'].includes(value)
 }
@@ -49,12 +66,14 @@ function isValidAgreementType(value: unknown): value is AgreementType {
 function mapSiteConfig(row: Record<string, unknown>): SiteConfigDto {
 	const id = getString(row, 'id')
 	const siteName = getString(row, 'site_name')
+	const siteSlogan = getString(row, 'site_slogan')
 	const logoUrl = getString(row, 'logo_url')
 	const contactPhone = getString(row, 'contact_phone')
 	const contactWechat = getString(row, 'contact_wechat')
 	const contactEmail = getString(row, 'contact_email')
 	const icpFiling = getString(row, 'icp_filing')
 	const copyright = getString(row, 'copyright')
+	const aboutStats = normalizeAboutStats(row.about_stats)
 	const createdAt = getString(row, 'created_at')
 	const updatedAt = getString(row, 'updated_at')
 
@@ -65,12 +84,14 @@ function mapSiteConfig(row: Record<string, unknown>): SiteConfigDto {
 	return {
 		id,
 		siteName,
+		siteSlogan,
 		logoUrl,
 		contactPhone,
 		contactWechat,
 		contactEmail,
 		icpFiling,
 		copyright,
+		aboutStats,
 		createdAt,
 		updatedAt,
 	}
@@ -182,12 +203,14 @@ export function createSupabaseSiteConfigRepository(): SiteConfigRepository {
 
 			const updateData: Record<string, unknown> = {
 				site_name: params.siteName,
+				site_slogan: params.siteSlogan ?? null,
 				logo_url: params.logoUrl ?? null,
 				contact_phone: params.contactPhone ?? null,
 				contact_wechat: params.contactWechat ?? null,
 				contact_email: params.contactEmail ?? null,
 				icp_filing: params.icpFiling ?? null,
 				copyright: params.copyright ?? null,
+				about_stats: params.aboutStats ?? null,
 				updated_at: new Date().toISOString(),
 			}
 
@@ -222,12 +245,14 @@ export function createSupabaseSiteConfigRepository(): SiteConfigRepository {
 			const insertData: Record<string, unknown> = {
 				id: '00000000-0000-0000-0000-000000000001',
 				site_name: params.siteName,
+				site_slogan: params.siteSlogan ?? null,
 				logo_url: params.logoUrl ?? null,
 				contact_phone: params.contactPhone ?? null,
 				contact_wechat: params.contactWechat ?? null,
 				contact_email: params.contactEmail ?? null,
 				icp_filing: params.icpFiling ?? null,
 				copyright: params.copyright ?? null,
+				about_stats: params.aboutStats ?? null,
 			}
 
 			// 使用 upsert 确保只创建一次

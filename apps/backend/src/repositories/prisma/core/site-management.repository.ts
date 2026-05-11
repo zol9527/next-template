@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@/lib/prisma/generated/prisma'
 import type {
 	SiteConfigRepository,
 	AnnouncementRepository,
 	AgreementRepository,
 	SiteConfigDto,
+	SiteAboutStatDto,
 	AnnouncementDto,
 	AgreementDto,
 } from '@/repositories/interfaces/core/site-management.interface'
@@ -27,16 +29,36 @@ function sanitizeSiteConfigInput(params: {
 	contactEmail?: string | null
 	icpFiling?: string | null
 	copyright?: string | null
+	siteSlogan?: string | null
+	aboutStats?: SiteAboutStatDto[] | null
 }) {
 	return {
 		siteName: params.siteName ? escapeHtml(params.siteName.trim()) ?? '' : '',
+		siteSlogan: params.siteSlogan ? escapeHtml(params.siteSlogan.trim()) ?? null : null,
 		logoUrl: params.logoUrl,
 		contactPhone: params.contactPhone,
 		contactWechat: params.contactWechat ? escapeHtml(params.contactWechat.trim()) ?? null : null,
 		contactEmail: params.contactEmail ? escapeHtml(params.contactEmail.trim()) ?? null : null,
 		icpFiling: params.icpFiling,
 		copyright: params.copyright ? escapeHtml(params.copyright.trim()) ?? null : null,
+		aboutStats: sanitizeAboutStats(params.aboutStats),
 	}
+}
+
+function sanitizeAboutStats(stats: SiteAboutStatDto[] | null | undefined): SiteAboutStatDto[] | null {
+	if (!stats || stats.length === 0) return null
+
+	return stats
+		.slice(0, 3)
+		.map((item) => ({
+			value: escapeHtml(item.value.trim()) ?? '',
+			label: escapeHtml(item.label.trim()) ?? '',
+		}))
+		.filter((item) => item.value && item.label)
+}
+
+function toPrismaJson(value: SiteAboutStatDto[] | null): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+	return value ?? Prisma.JsonNull
 }
 
 function sanitizeAnnouncementInput(params: {
@@ -66,27 +88,47 @@ function sanitizeAgreementInput(params: {
 function mapSiteConfig(config: {
 	id: string
 	siteName: string
+	siteSlogan: string | null
 	logoUrl: string | null
 	contactPhone: string | null
 	contactWechat: string | null
 	contactEmail: string | null
 	icpFiling: string | null
 	copyright: string | null
+	aboutStats: unknown
 	createdAt: Date
 	updatedAt: Date
 }): SiteConfigDto {
 	return {
 		id: config.id,
 		siteName: config.siteName,
+		siteSlogan: config.siteSlogan,
 		logoUrl: config.logoUrl,
 		contactPhone: config.contactPhone,
 		contactWechat: config.contactWechat,
 		contactEmail: config.contactEmail,
 		icpFiling: config.icpFiling,
 		copyright: config.copyright,
+		aboutStats: normalizeAboutStats(config.aboutStats),
 		createdAt: config.createdAt.toISOString(),
 		updatedAt: config.updatedAt.toISOString(),
 	}
+}
+
+function normalizeAboutStats(value: unknown): SiteAboutStatDto[] | null {
+	if (!Array.isArray(value)) return null
+
+	const stats = value
+		.map((item) => {
+			if (!item || typeof item !== 'object') return null
+			const stat = item as Record<string, unknown>
+			return typeof stat.value === 'string' && typeof stat.label === 'string'
+				? { value: stat.value, label: stat.label }
+				: null
+		})
+		.filter((item): item is SiteAboutStatDto => item !== null)
+
+	return stats.length > 0 ? stats : null
 }
 
 function mapAnnouncement(announcement: {
@@ -185,22 +227,26 @@ export function createPrismaSiteConfigRepository(): SiteConfigRepository {
 				where: { id: 'site_config_singleton' }, // 单例模式固定 ID
 				update: {
 					siteName: sanitized.siteName,
+					siteSlogan: sanitized.siteSlogan,
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
 					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
+					aboutStats: toPrismaJson(sanitized.aboutStats),
 				},
 				create: {
 					id: 'site_config_singleton',
 					siteName: sanitized.siteName,
+					siteSlogan: sanitized.siteSlogan,
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
 					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
+					aboutStats: toPrismaJson(sanitized.aboutStats),
 				},
 			})
 			return mapSiteConfig(config)
@@ -219,12 +265,14 @@ export function createPrismaSiteConfigRepository(): SiteConfigRepository {
 				create: {
 					id: 'site_config_singleton',
 					siteName: sanitized.siteName,
+					siteSlogan: sanitized.siteSlogan,
 					logoUrl: sanitized.logoUrl,
 					contactPhone: sanitized.contactPhone,
 					contactWechat: sanitized.contactWechat,
 					contactEmail: sanitized.contactEmail,
 					icpFiling: sanitized.icpFiling,
 					copyright: sanitized.copyright,
+					aboutStats: toPrismaJson(sanitized.aboutStats),
 				},
 			})
 			return mapSiteConfig(config)

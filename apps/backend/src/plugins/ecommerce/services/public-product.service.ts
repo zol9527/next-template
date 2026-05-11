@@ -204,11 +204,15 @@ export function createPublicProductService(
         isFeatured: params?.featured,
       })
 
-      const productIds = page.items.map((p) => p.id)
+      const visibleItems = params?.featured === undefined
+        ? page.items
+        : page.items.filter((item) => item.isFeatured === params.featured)
+
+      const productIds = visibleItems.map((p) => p.id)
       const categoriesMap = await deps.products.listCategoriesForProducts(repoCtx, { productIds })
       const attachmentsMap = await deps.products.listAttachmentsForProducts(repoCtx, { productIds })
 
-      let items: Array<{ product: PublicProduct; coverAssetId: string | null; mediaAssetIds: string[] }> = page.items.map((p) => {
+      const items: Array<{ product: PublicProduct; coverAssetId: string | null; mediaAssetIds: string[] }> = visibleItems.map((p) => {
         const categoryIds = categoriesMap.get(p.id) ?? []
         const attachments = attachmentsMap.get(p.id) ?? []
         const { coverAssetId, mediaAssetIds } = mapAttachments({ attachments })
@@ -245,7 +249,7 @@ export function createPublicProductService(
       return {
         items: enrichedItems,
         nextCursor: page.nextCursor,
-        total: page.items.length,
+        total: visibleItems.length,
       }
     },
 

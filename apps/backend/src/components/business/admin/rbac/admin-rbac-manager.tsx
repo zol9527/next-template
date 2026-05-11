@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'

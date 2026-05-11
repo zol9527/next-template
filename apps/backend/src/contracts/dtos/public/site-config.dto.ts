@@ -13,12 +13,23 @@ extendZodWithOpenApi(z)
 export const PublicSiteConfigSchema = z
   .object({
     siteName: z.string().openapi({ description: '站点名称' }),
+    siteSlogan: z.string().nullable().optional().openapi({ description: '站点标语' }),
     logoUrl: z.string().url().nullable().optional().openapi({ description: 'Logo URL 或品牌图片地址' }),
     contactPhone: z.string().nullable().optional().openapi({ description: '客服联系电话' }),
     contactWechat: z.string().nullable().optional().openapi({ description: '客服微信号' }),
     contactEmail: z.string().nullable().optional().openapi({ description: '客服邮箱' }),
     icpFiling: z.string().nullable().optional().openapi({ description: 'ICP备案信息' }),
     copyright: z.string().nullable().optional().openapi({ description: '版权信息' }),
+    aboutStats: z
+      .array(
+        z.object({
+          value: z.string().openapi({ description: '统计值，例如 200+' }),
+          label: z.string().openapi({ description: '统计标签，例如 精品课程' }),
+        }),
+      )
+      .nullable()
+      .optional()
+      .openapi({ description: '关于页统计卡片' }),
     updatedAt: z.string().openapi({ description: '更新时间 ISO（用于版本控制）' }),
   })
   .openapi({ description: '公共站点配置' })

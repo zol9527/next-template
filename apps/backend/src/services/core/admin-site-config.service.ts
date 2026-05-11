@@ -56,12 +56,14 @@ export function createAdminSiteConfigService(
 			return {
 				id: config.id,
 				siteName: config.siteName,
+				siteSlogan: config.siteSlogan,
 				logoUrl: config.logoUrl,
 				contactPhone: config.contactPhone,
 				contactWechat: config.contactWechat,
 				contactEmail: config.contactEmail,
 				icpFiling: config.icpFiling,
 				copyright: config.copyright,
+				aboutStats: config.aboutStats,
 				createdAt: config.createdAt,
 				updatedAt: config.updatedAt,
 			}
@@ -72,12 +74,14 @@ export function createAdminSiteConfigService(
 		 */
 		async updateSiteConfig(params: {
 			siteName: string
+			siteSlogan?: string | null
 			logoUrl?: string | null
 			contactPhone?: string | null
 			contactWechat?: string | null
 			contactEmail?: string | null
 			icpFiling?: string | null
 			copyright?: string | null
+			aboutStats?: { value: string; label: string }[] | null
 		}): Promise<SiteConfig> {
 			const updated = await deps.siteConfig.updateSiteConfig(repoCtx, params)
 
@@ -91,12 +95,14 @@ export function createAdminSiteConfigService(
 			return {
 				id: updated.id,
 				siteName: updated.siteName,
+				siteSlogan: updated.siteSlogan,
 				logoUrl: updated.logoUrl,
 				contactPhone: updated.contactPhone,
 				contactWechat: updated.contactWechat,
 				contactEmail: updated.contactEmail,
 				icpFiling: updated.icpFiling,
 				copyright: updated.copyright,
+				aboutStats: updated.aboutStats,
 				createdAt: updated.createdAt,
 				updatedAt: updated.updatedAt,
 			}

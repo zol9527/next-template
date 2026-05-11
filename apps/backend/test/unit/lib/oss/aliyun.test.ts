@@ -578,7 +578,7 @@ describe('阿里云 OSS Provider 测试', () => {
 
       expect(page1.files.length).toBe(2)
       expect(page1.isTruncated).toBe(true)
-      expect(page1.nextContinuationToken).toBe('token-123')
+      expect(page1.nextContinuationToken).toBe('marker-123')
 
       // 第二页数据
       mockSend.mockResolvedValueOnce({
@@ -597,7 +597,7 @@ describe('阿里云 OSS Provider 测试', () => {
       const page2 = await provider.listFiles({
         prefix: 'uploads/page',
         maxKeys: 2,
-        continuationToken: 'token-123',
+        continuationToken: 'marker-123',
       })
 
       expect(page2.files.length).toBe(1)

@@ -139,12 +139,14 @@ model SystemSetting {
 model SiteConfig {
   id            String   @id @default(uuid())
   siteName      String   @map("site_name")
+  siteSlogan    String?  @map("site_slogan")
   logoUrl       String?  @map("logo_url")
   contactPhone  String?  @map("contact_phone")
   contactWechat String?  @map("contact_wechat")
   contactEmail  String?  @map("contact_email")
   icpFiling     String?  @map("icp_filing")
   copyright     String?  @map("copyright")
+  aboutStats    Json?    @map("about_stats")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
