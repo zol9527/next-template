@@ -56,6 +56,11 @@ import { faqService as _faqService } from './faq';
 export { faqService } from './faq';
 export type { FaqItem } from './faq';
 
+// 通知服务
+import { notificationService as _notificationService } from './notifications';
+export { notificationService } from './notifications';
+export type { NotificationItem, NotificationListResponse, UnreadCountResponse, NotificationType } from './notifications';
+
 /**
  * API 服务聚合对象 - 便于统一访问
  */
@@ -70,6 +75,7 @@ export const api = {
   banner: _bannerService,
   coupon: _couponService,
   faq: _faqService,
+  notification: _notificationService,
 };
 
 export default api;
