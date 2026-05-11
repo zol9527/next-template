@@ -1,0 +1,37 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和背景圆 -->
+  <circle cx="60" cy="60" r="56" fill="#E8F7F0"/>
+
+  <!-- 时钟表盘 -->
+  <circle cx="56" cy="54" r="26" fill="white" stroke="#009666" stroke-width="2.5"/>
+
+  <!-- 中心点 -->
+  <circle cx="56" cy="54" r="2.5" fill="#009666"/>
+
+  <!-- 时针 -->
+  <line x1="56" y1="54" x2="56" y2="38" stroke="#009666" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 分针 -->
+  <line x1="56" y1="54" x2="70" y2="48" stroke="#009666" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- 刻度标记 - 12点 -->
+  <line x1="56" y1="30" x2="56" y2="33.5" stroke="#009666" stroke-width="2" stroke-linecap="round"/>
+  <!-- 刻度标记 - 3点 -->
+  <line x1="80" y1="54" x2="76.5" y2="54" stroke="#009666" stroke-width="2" stroke-linecap="round"/>
+  <!-- 刻度标记 - 6点 -->
+  <line x1="56" y1="78" x2="56" y2="74.5" stroke="#009666" stroke-width="2" stroke-linecap="round"/>
+  <!-- 刻度标记 - 9点 -->
+  <line x1="32" y1="54" x2="35.5" y2="54" stroke="#009666" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- 环形箭头（代表"最近/时间循环"） -->
+  <path d="M84 78 A32 32 0 1 0 30 76" stroke="#6B8A94" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- 箭头头部 -->
+  <path d="M30 76 L26 69 L36 72 Z" fill="#6B8A94"/>
+
+  <!-- 小购物袋图标（右下角，代表"购买"） -->
+  <rect x="78" y="82" width="14" height="11" rx="2.5" fill="white" stroke="#009666" stroke-width="1.8"/>
+  <path d="M81 82 L81 79 A4 4 0 0 1 89 79 L89 82" stroke="#009666" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+  <!-- 装饰性星光点 -->
+  <circle cx="30" cy="28" r="2" fill="#009666" opacity="0.35"/>
+  <circle cx="92" cy="34" r="1.5" fill="#009666" opacity="0.25"/>
+</svg>

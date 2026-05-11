@@ -42,8 +42,8 @@
                   <image src="/static/icons/faq-arrow.svg" class="arrow-icon" mode="aspectFit" />
                 </view>
               </view>
-              <view class="faq-answer-container" :style="{ height: item.expanded ? item.answerHeight + 'px' : '0px' }">
-                <view :id="'answer-' + index" class="faq-answer">
+              <view class="faq-answer-container" :class="{ expanded: item.expanded }">
+                <view class="faq-answer">
                   <text class="answer-text">{{ item.answer }}</text>
                 </view>
               </view>
@@ -77,20 +77,30 @@
         </view>
       </view>
     </scroll-view>
+
+    <!-- 功能建议弹窗 -->
+    <FeatureSuggestionPopup v-model="showSuggestionPopup" />
+
+    <!-- 问题反馈弹窗 -->
+    <BugReportPopup v-model="showBugReportPopup" />
+
+    <!-- 联系客服弹窗：复用商城商品详情页同款联系方式弹窗 -->
+    <ContactSupportPopup v-model="showContactPopup" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
+import FeatureSuggestionPopup from '@/components/FeatureSuggestionPopup.vue'
+import BugReportPopup from '@/components/BugReportPopup.vue'
+import ContactSupportPopup from '@/components/ContactSupportPopup.vue'
 import { faqService } from '@/services/api/faq'
-import type { FaqItem } from '@/services/api/faq'
 import { logger } from '@/utils/logger'
 
 interface DisplayFaqItem {
   question: string
   answer: string
   expanded: boolean
-  answerHeight: number
 }
 
 /** 页面加载状态 */
@@ -99,6 +109,12 @@ const loading = ref(true)
 const faqList = ref<DisplayFaqItem[]>([])
 /** 是否加载失败 */
 const loadError = ref(false)
+/** 功能建议弹窗是否显示 */
+const showSuggestionPopup = ref(false)
+/** 问题反馈弹窗是否显示 */
+const showBugReportPopup = ref(false)
+/** 联系客服弹窗是否显示 */
+const showContactPopup = ref(false)
 
 /**
  * 从 API 加载 FAQ 数据并转换为展示格式
@@ -114,11 +130,7 @@ async function loadFaqData() {
       question: item.question,
       answer: item.answer,
       expanded: index === 0,
-      answerHeight: 0,
     }))
-
-    await nextTick()
-    calculateAnswerHeights()
   } catch (error) {
     logger.error('加载 FAQ 数据失败', error as Record<string, unknown>)
     loadError.value = true
@@ -128,27 +140,25 @@ async function loadFaqData() {
   }
 }
 
-/**
- * 计算每个回答区域的高度，用于展开/收起动画
- */
-function calculateAnswerHeights() {
-  faqList.value.forEach((_, index) => {
-    const query = uni.createSelectorQuery().in(null)
-    query.select(`#answer-${index}`).boundingClientRect((data) => {
-      if (data) {
-        faqList.value[index].answerHeight = (data as any).height
-      }
-    }).exec()
-  })
-}
-
 const toggleFaq = (index: number) => {
   faqList.value[index].expanded = !faqList.value[index].expanded;
 };
 
-const handleFeedback = (type: string) => {
-  // TODO: Task 25 Placeholder
-  uni.showToast({ title: '功能开发中...', icon: 'none' });
+/**
+ * 处理意见反馈入口点击
+ */
+const handleFeedback = (type: 'suggestion' | 'bug' | 'support') => {
+  if (type === 'suggestion') {
+    showSuggestionPopup.value = true
+    return
+  }
+
+  if (type === 'bug') {
+    showBugReportPopup.value = true
+    return
+  }
+
+  showContactPopup.value = true
 };
 
 onMounted(() => {
@@ -274,8 +284,14 @@ onMounted(() => {
   }
 
   .faq-answer-container {
-    transition: height 0.3s ease;
+    max-height: 0;
     overflow: hidden;
+    transition: max-height 0.3s ease;
+
+    &.expanded {
+      // 使用足够大的 max-height 避免依赖小程序端节点测量，保证 FAQ 回答内容可见。
+      max-height: 1200px;
+    }
   }
 
   .faq-answer {

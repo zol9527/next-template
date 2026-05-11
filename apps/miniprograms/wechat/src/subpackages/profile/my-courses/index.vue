@@ -73,10 +73,10 @@
         <!-- 4. 空状态 -->
         <empty-state
           v-else
-          icon="📚"
+          :icon="emptyConfig.icon"
           :title="emptyConfig.title"
           :description="emptyConfig.description"
-          action-text="去选课"
+          :action-text="emptyConfig.actionText"
           @action="handleGoShop"
         />
       </view>
@@ -143,17 +143,29 @@ const displayCourses = computed(() => {
   return []
 })
 
-// --- 空状态配置 ---
+// --- 空状态配置（每个 tab 独立图标 + 文案） ---
 const emptyConfig = computed(() => {
   if (currentTab.value === 'favorites') {
     return {
+      icon: '/static/icons/empty-favorites-courses.svg',
       title: '暂无收藏课程',
-      description: '喜欢的课程可以点击收藏，方便随时查看'
+      description: '喜欢的课程可以点击收藏，方便随时查看',
+      actionText: '去发现好课'
+    }
+  }
+  if (currentTab.value === 'recent') {
+    return {
+      icon: '/static/icons/empty-recent.svg',
+      title: '暂无最近购买',
+      description: '你最近购买的课程将在这里显示',
+      actionText: '去逛逛'
     }
   }
   return {
+    icon: '/static/icons/empty-courses.svg',
     title: '暂无已购课程',
-    description: '快去选购你心仪的课程开启学习吧'
+    description: '快去选购你心仪的课程开启学习吧',
+    actionText: '去选课'
   }
 })
 

@@ -578,9 +578,12 @@ export function createSupabaseCouponRedemptionRepository(): CouponRedemptionRepo
 
       logger.info({ action: 'list_redemptions', limit: safeLimit })
 
+      // 仅在明确请求时才获取 count（避免无筛选条件时的全表扫描）
+      const includeCount = params.includeCount ?? false
+
       let query = supabase
         .from('coupon_redemptions')
-        .select('*, coupon:coupons(*), user_coupon:user_coupons(*)', { count: 'exact' })
+        .select('*, coupon:coupons(*), user_coupon:user_coupons(*)', includeCount ? { count: 'exact' } : undefined)
         .order('redeemed_at', { ascending: false })
 
       if (params.couponId) query = query.eq('coupon_id', params.couponId)
@@ -611,7 +614,7 @@ export function createSupabaseCouponRedemptionRepository(): CouponRedemptionRepo
       return {
         items: redemptions.map(mapRedemption),
         nextCursor,
-        totalCount: count ?? 0,
+        totalCount: count ?? undefined,
       }
     },
 

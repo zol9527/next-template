@@ -66,10 +66,10 @@
       <!-- Empty State -->
       <EmptyState
         v-else-if="!loading"
-        icon="🎫"
-        title="暂无优惠券"
-        description="您可以关注官方活动领取更多优惠券"
-        action-text="去商城逛逛"
+        :icon="emptyConfig.icon"
+        :title="emptyConfig.title"
+        :description="emptyConfig.description"
+        :action-text="emptyConfig.actionText"
         @action="goToShop"
       />
 
@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { authService } from '@/services/api'
 import { couponService, type Coupon } from '@/services/api/coupons'
@@ -112,6 +112,33 @@ const ensureLoggedIn = () => {
 }
 
 // ====== Functions ======
+
+// --- 空状态配置（每个 tab 独立图标 + 文案） ---
+const emptyConfig = computed(() => {
+  if (currentTab.value === 'used') {
+    return {
+      icon: '/static/icons/empty-coupons-used.svg',
+      title: '暂无已使用的优惠券',
+      description: '使用过的优惠券会在这里记录',
+      actionText: ''
+    }
+  }
+  if (currentTab.value === 'expired') {
+    return {
+      icon: '/static/icons/empty-coupons-expired.svg',
+      title: '暂无过期优惠券',
+      description: '过期优惠券会在到期后自动归档到这里',
+      actionText: ''
+    }
+  }
+  return {
+    icon: '/static/icons/empty-coupons-available.svg',
+    title: '暂无可用优惠券',
+    description: '关注官方活动可以领取更多优惠券哦',
+    actionText: '去商城逛逛'
+  }
+})
+
 const fetchCoupons = async () => {
   loading.value = true
   try {

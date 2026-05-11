@@ -383,6 +383,7 @@ export function createAdminCouponService(
     async listRedemptions(query: ListRedemptionsQuery): Promise<{
       redemptions: CouponRedemption[]
       nextCursor: string | null
+      totalCount?: number
     }> {
       logger.info({ action: 'admin_coupon.list_redemptions', query })
 
@@ -394,9 +395,10 @@ export function createAdminCouponService(
         orderId: query.orderId,
         startDate: query.startDate ? new Date(query.startDate) : undefined,
         endDate: query.endDate ? new Date(query.endDate) : undefined,
+        includeCount: query.includeCount,
       })
 
-      return { redemptions: result.items, nextCursor: result.nextCursor }
+      return { redemptions: result.items, nextCursor: result.nextCursor, totalCount: result.totalCount }
     },
 
     // ==================== 私有辅助方法 ====================

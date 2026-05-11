@@ -1,0 +1,33 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和背景圆 -->
+  <circle cx="60" cy="60" r="56" fill="#E8F7F0"/>
+
+  <!-- 打开的书籍 - 左页 -->
+  <path d="M30 38 L57 44 L57 84 L30 78 Z" fill="white" stroke="#009666" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 打开的书籍 - 右页 -->
+  <path d="M90 38 L63 44 L63 84 L90 78 Z" fill="white" stroke="#009666" stroke-width="2" stroke-linejoin="round"/>
+
+  <!-- 书脊 -->
+  <line x1="60" y1="44" x2="60" y2="84" stroke="#009666" stroke-width="2"/>
+
+  <!-- 左页文字线条 -->
+  <line x1="36" y1="53" x2="51" y2="55.5" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="36" y1="59" x2="51" y2="61.5" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="36" y1="65" x2="48" y2="67" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="36" y1="71" x2="45" y2="72.5" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- 右页文字线条 -->
+  <line x1="69" y1="55.5" x2="84" y2="53" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="69" y1="61.5" x2="84" y2="59" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="69" y1="67" x2="81" y2="65" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="69" y1="72.5" x2="78" y2="71" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- 装饰性星光点 -->
+  <circle cx="90" cy="30" r="2.5" fill="#009666" opacity="0.4"/>
+  <circle cx="28" cy="32" r="1.8" fill="#009666" opacity="0.3"/>
+  <circle cx="95" cy="48" r="1.2" fill="#009666" opacity="0.25"/>
+  <circle cx="24" cy="50" r="1" fill="#009666" opacity="0.2"/>
+
+  <!-- 小星星装饰 -->
+  <path d="M88 24 L89.2 27.5 L93 28.5 L89.2 29.5 L88 33 L86.8 29.5 L83 28.5 L86.8 27.5 Z" fill="#009666" opacity="0.5"/>
+</svg>

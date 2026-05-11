@@ -561,3 +561,23 @@ html {
 .animate-glitch-before {
   animation: glitch var(--before-duration) infinite linear alternate-reverse;
 }
+
+/* ============================================
+   表单验证 Shake 动画 — 空缺字段提示
+   ============================================ */
+@keyframes form-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-4px); }
+  20% { transform: translateX(4px); }
+  30% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  50% { transform: translateX(-2px); }
+  60% { transform: translateX(2px); }
+  70% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+  90% { transform: translateX(0); }
+}
+
+.animate-form-shake {
+  animation: form-shake 0.5s ease-in-out;
+}

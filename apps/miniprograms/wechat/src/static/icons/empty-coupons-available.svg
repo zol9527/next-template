@@ -1,0 +1,31 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和背景圆 -->
+  <circle cx="60" cy="60" r="56" fill="#E8F7F0"/>
+
+  <!-- 优惠券主体 - 上半部分 -->
+  <path d="M28 40 L92 40 L92 68 C86 68 82 72 82 78 C82 84 86 88 92 88 L92 92 L28 92 L28 88 C34 88 38 84 38 78 C38 72 34 68 28 68 Z"
+        fill="white" stroke="#009666" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- 左侧虚线分割（优惠券锯齿效果） -->
+  <circle cx="28" cy="54" r="4" fill="#E8F7F0" stroke="#009666" stroke-width="1.5"/>
+  <circle cx="28" cy="78" r="4" fill="#E8F7F0" stroke="#009666" stroke-width="1.5"/>
+
+  <!-- 金额区域 -->
+  <text x="44" y="64" font-family="JetBrains Mono, system-ui" font-size="22" font-weight="800" fill="#009666">¥50</text>
+
+  <!-- 分割虚线 -->
+  <line x1="70" y1="46" x2="70" y2="63" stroke="#E2EBED" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+  <!-- 优惠券标题文字线条 -->
+  <line x1="76" y1="50" x2="88" y2="50" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="76" y1="56" x2="86" y2="56" stroke="#6B8A94" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- 底部有效期线条 -->
+  <line x1="36" y1="78" x2="66" y2="78" stroke="#6B8A94" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+  <line x1="36" y1="84" x2="54" y2="84" stroke="#6B8A94" stroke-width="1.2" stroke-linecap="round" opacity="0.2"/>
+
+  <!-- 装饰性星光 -->
+  <circle cx="90" cy="28" r="2" fill="#009666" opacity="0.35"/>
+  <path d="M34 24 L35.2 27.5 L39 28.5 L35.2 29.5 L34 33 L32.8 29.5 L29 28.5 L32.8 27.5 Z" fill="#009666" opacity="0.4"/>
+  <circle cx="96" cy="48" r="1.2" fill="#009666" opacity="0.2"/>
+</svg>

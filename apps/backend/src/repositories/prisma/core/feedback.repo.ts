@@ -62,11 +62,11 @@ function transformFeedback(row: {
   return {
     id: row.id,
     userId: row.userId,
-    type: row.type,
+    type: row.type.toLowerCase(),
     title: row.title,
     content: row.content,
     images: (row.images as string[]) ?? [],
-    status: row.status,
+    status: row.status.toLowerCase(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     replies: row.replies?.map(transformReply) ?? [],
@@ -105,7 +105,7 @@ export function createPrismaFeedbackRepository(): FeedbackRepository {
       const row = await prisma.feedback.create({
         data: {
           userId: params.userId,
-          type: params.type as FeedbackType,
+          type: params.type.toUpperCase() as FeedbackType,
           title: params.title,
           content: params.content,
           images: params.images ?? [],

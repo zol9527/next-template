@@ -707,6 +707,8 @@ export function createPrismaCouponRedemptionRepository(): CouponRedemptionReposi
       }
 
       // 性能优化：使用 select 只选择必要字段，避免加载大字段
+      // 当 includeCount 为 false（默认）时跳过 count() 查询，避免无筛选条件时的全表扫描
+      const includeCount = params.includeCount ?? false
       const [redemptions, totalCount] = await Promise.all([
         prisma.couponRedemption.findMany({
           where,
@@ -745,7 +747,10 @@ export function createPrismaCouponRedemptionRepository(): CouponRedemptionReposi
             },
           },
         }),
-        prisma.couponRedemption.count({ where }),
+        // 仅在明确请求时才执行 count 查询（避免无筛选条件时的全表扫描）
+        includeCount
+          ? prisma.couponRedemption.count({ where })
+          : Promise.resolve(undefined),
       ])
 
       let nextCursor: string | null = null

@@ -1,7 +1,7 @@
 <template>
   <view class="empty-state">
     <!-- 图标区 -->
-    <view v-if="icon" class="empty-state-icon">
+    <view v-if="icon" class="empty-state-icon" :class="{ 'empty-state-icon--illustration': isImageIcon }">
       <image v-if="isImageIcon" :src="icon" class="empty-state-icon-img" mode="aspectFit" />
       <text v-else class="empty-state-icon-text">{{ icon }}</text>
     </view>
@@ -111,11 +111,19 @@ const handleAction = () => {
   align-items: center;
   justify-content: center;
   margin-bottom: $spacing-20;
+
+  /* SVG 插图模式：更大尺寸，无背景容器 */
+  &--illustration {
+    width: 120px;
+    height: 120px;
+    background-color: transparent;
+    border-radius: 0;
+  }
 }
 
 .empty-state-icon-img {
-  width: 32px;
-  height: 32px;
+  width: 100%;
+  height: 100%;
 }
 
 .empty-state-icon-text {

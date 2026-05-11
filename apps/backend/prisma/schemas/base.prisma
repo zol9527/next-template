@@ -730,6 +730,7 @@ model NotificationRead {
   readAt         DateTime     @default(now()) @map("read_at")
 
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([notificationId, userId])
   @@index([userId, readAt])

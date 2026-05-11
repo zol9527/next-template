@@ -1,0 +1,32 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和背景圆 -->
+  <circle cx="60" cy="60" r="56" fill="#E8F7F0"/>
+
+  <!-- 爱心主体 -->
+  <path d="M60 84
+           C44 68 28 56 33 43
+           C38 33 49 31 56 38
+           L58.5 40.5 L60 42 L61.5 40.5 L64 38
+           C71 31 82 33 87 43
+           C92 56 76 68 60 84Z"
+        fill="white" stroke="#009666" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- 爱心内部装饰线 -->
+  <path d="M48 50 L54 50" stroke="#6B8A94" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+  <path d="M48 56 L58 56" stroke="#6B8A94" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- 右上角大星星装饰 -->
+  <path d="M86 26 L88 32 L94 34 L88 36 L86 42 L84 36 L78 34 L84 32 Z" fill="#009666" opacity="0.55"/>
+
+  <!-- 左上角小星星装饰 -->
+  <path d="M34 28 L35.2 31.5 L39 32.5 L35.2 33.5 L34 37 L32.8 33.5 L29 32.5 L32.8 31.5 Z" fill="#009666" opacity="0.4"/>
+
+  <!-- 右上角加号（暗示"添加收藏"） -->
+  <line x1="96" y1="46" x2="96" y2="54" stroke="#009666" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+  <line x1="92" y1="50" x2="100" y2="50" stroke="#009666" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+
+  <!-- 散落的装饰圆点 -->
+  <circle cx="24" cy="44" r="1.5" fill="#009666" opacity="0.25"/>
+  <circle cx="96" cy="62" r="1.2" fill="#009666" opacity="0.2"/>
+  <circle cx="30" cy="68" r="1" fill="#009666" opacity="0.2"/>
+</svg>

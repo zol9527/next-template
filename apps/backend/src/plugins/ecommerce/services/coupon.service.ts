@@ -732,7 +732,8 @@ export function createCouponService(
       orderId?: string
       startDate?: Date
       endDate?: Date
-    }): Promise<{ items: CouponRedemption[]; nextCursor: string | null }> {
+      includeCount?: boolean
+    }): Promise<{ items: CouponRedemption[]; nextCursor: string | null; totalCount?: number }> {
       logger.info({ action: 'list_redemptions', params })
 
       return await deps.redemptions.listRedemptions(repoCtx, {
@@ -743,6 +744,7 @@ export function createCouponService(
         orderId: params?.orderId,
         startDate: params?.startDate,
         endDate: params?.endDate,
+        includeCount: params?.includeCount,
       })
     },
   }

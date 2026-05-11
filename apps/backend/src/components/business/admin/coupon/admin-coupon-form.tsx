@@ -106,6 +106,9 @@ export function AdminCouponForm({
   // 错误状态
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
+  // 抖动动画字段追踪（验证失败时触发抖动动画，吸引注意力）
+  const [shakingFields, setShakingFields] = React.useState<Set<string>>(new Set())
+
   // 使用 useQuery 获取优惠券详情（仅编辑/查看模式）
   const { data: couponData, isLoading: loading } = useQuery<Coupon>({
     queryKey: ['admin', 'coupons', couponId],
@@ -225,6 +228,25 @@ export function AdminCouponForm({
       try {
         const errorObj = JSON.parse(error.message)
         setErrors(errorObj)
+
+        // 触发错误字段的抖动动画
+        const errorKeys = Object.keys(errorObj)
+        setShakingFields(new Set(errorKeys))
+        setTimeout(() => setShakingFields(new Set()), 600)
+
+        // 自动滚动到第一个有错误的字段
+        // 使用 errorKeys 顺序查找，确保只滚动到真正有错误的字段
+        requestAnimationFrame(() => {
+          for (const key of errorKeys) {
+            const errorEl = document.querySelector(`[data-error-field="${key}"]`) as HTMLElement
+            if (errorEl) {
+              // 在 ScrollArea 内使用 scrollIntoView，避免滚动整个页面
+              errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              break
+            }
+          }
+        })
+
         toast({ title: '校验失败', description: '请检查表单中标记为红色的字段', variant: 'destructive' })
       } catch {
         toast({ title: '保存失败', description: error.message, variant: 'destructive' })
@@ -277,7 +299,7 @@ export function AdminCouponForm({
     switch (couponType) {
       case 'discount':
         return (
-          <div className="space-y-2">
+          <div className="space-y-2" data-error-field="discountPercent">
             <Label className="text-sm font-semibold text-foreground/70">
               折扣百分比 <span className="text-destructive">*</span>
             </Label>
@@ -289,7 +311,8 @@ export function AdminCouponForm({
                 disabled={viewing}
                 className={cn(
                   'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all pr-8',
-                  errors.discountPercent ? 'border-destructive focus-visible:ring-destructive' : ''
+                  errors.discountPercent ? 'border-destructive focus-visible:ring-destructive' : '',
+                  shakingFields.has('discountPercent') ? 'animate-form-shake' : ''
                 )}
               />
               <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -301,7 +324,7 @@ export function AdminCouponForm({
 
       case 'fixed_amount':
         return (
-          <div className="space-y-2">
+          <div className="space-y-2" data-error-field="discountAmount">
             <Label className="text-sm font-semibold text-foreground/70">
               固定减免金额 <span className="text-destructive">*</span>
             </Label>
@@ -314,7 +337,8 @@ export function AdminCouponForm({
                 disabled={viewing}
                 className={cn(
                   'pl-8 h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                  errors.discountAmount ? 'border-destructive focus-visible:ring-destructive' : ''
+                  errors.discountAmount ? 'border-destructive focus-visible:ring-destructive' : '',
+                  shakingFields.has('discountAmount') ? 'animate-form-shake' : ''
                 )}
               />
             </div>
@@ -325,7 +349,7 @@ export function AdminCouponForm({
       case 'threshold':
         return (
           <>
-            <div className="space-y-2">
+            <div className="space-y-2" data-error-field="thresholdAmount">
               <Label className="text-sm font-semibold text-foreground/70">
                 满减门槛金额 <span className="text-destructive">*</span>
               </Label>
@@ -338,14 +362,15 @@ export function AdminCouponForm({
                   disabled={viewing}
                   className={cn(
                     'pl-8 h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                    errors.thresholdAmount ? 'border-destructive focus-visible:ring-destructive' : ''
+                    errors.thresholdAmount ? 'border-destructive focus-visible:ring-destructive' : '',
+                    shakingFields.has('thresholdAmount') ? 'animate-form-shake' : ''
                   )}
                 />
               </div>
               {errors.thresholdAmount && <p className="text-xs text-destructive">{errors.thresholdAmount}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-error-field="thresholdDiscount">
               <Label className="text-sm font-semibold text-foreground/70">
                 满减优惠金额 <span className="text-destructive">*</span>
               </Label>
@@ -358,7 +383,8 @@ export function AdminCouponForm({
                   disabled={viewing}
                   className={cn(
                     'pl-8 h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                    errors.thresholdDiscount ? 'border-destructive focus-visible:ring-destructive' : ''
+                    errors.thresholdDiscount ? 'border-destructive focus-visible:ring-destructive' : '',
+                    shakingFields.has('thresholdDiscount') ? 'animate-form-shake' : ''
                   )}
                 />
               </div>
@@ -369,7 +395,7 @@ export function AdminCouponForm({
 
       case 'gift':
         return (
-          <div className="space-y-2">
+          <div className="space-y-2" data-error-field="giftProductId">
             <Label className="text-sm font-semibold text-foreground/70">
               赠品商品 ID <span className="text-destructive">*</span>
             </Label>
@@ -380,7 +406,8 @@ export function AdminCouponForm({
               disabled={viewing}
               className={cn(
                 'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                errors.giftProductId ? 'border-destructive focus-visible:ring-destructive' : ''
+                errors.giftProductId ? 'border-destructive focus-visible:ring-destructive' : '',
+                shakingFields.has('giftProductId') ? 'animate-form-shake' : ''
               )}
             />
             <p className="text-xs text-muted-foreground">选择要赠送的商品 ID</p>
@@ -458,7 +485,7 @@ export function AdminCouponForm({
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2 md:col-span-2" data-error-field="name">
                       <Label className="text-sm font-semibold text-foreground/70">
                         优惠券名称 <span className="text-destructive">*</span>
                       </Label>
@@ -469,7 +496,8 @@ export function AdminCouponForm({
                         disabled={viewing}
                         className={cn(
                           'h-12 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                          errors.name ? 'border-destructive focus-visible:ring-destructive' : ''
+                          errors.name ? 'border-destructive focus-visible:ring-destructive' : '',
+                          shakingFields.has('name') ? 'animate-form-shake' : ''
                         )}
                       />
                       {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
@@ -624,7 +652,7 @@ export function AdminCouponForm({
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-error-field="validFrom">
                       <Label className="text-sm font-semibold text-foreground/70">
                         开始时间 <span className="text-destructive">*</span>
                       </Label>
@@ -635,13 +663,14 @@ export function AdminCouponForm({
                         disabled={viewing}
                         className={cn(
                           'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                          errors.validFrom ? 'border-destructive focus-visible:ring-destructive' : ''
+                          errors.validFrom ? 'border-destructive focus-visible:ring-destructive' : '',
+                          shakingFields.has('validFrom') ? 'animate-form-shake' : ''
                         )}
                       />
                       {errors.validFrom && <p className="text-xs text-destructive">{errors.validFrom}</p>}
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-error-field="validTo">
                       <Label className="text-sm font-semibold text-foreground/70">
                         结束时间 <span className="text-destructive">*</span>
                       </Label>
@@ -652,7 +681,8 @@ export function AdminCouponForm({
                         disabled={viewing}
                         className={cn(
                           'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                          errors.validTo ? 'border-destructive focus-visible:ring-destructive' : ''
+                          errors.validTo ? 'border-destructive focus-visible:ring-destructive' : '',
+                          shakingFields.has('validTo') ? 'animate-form-shake' : ''
                         )}
                       />
                       {errors.validTo && <p className="text-xs text-destructive">{errors.validTo}</p>}

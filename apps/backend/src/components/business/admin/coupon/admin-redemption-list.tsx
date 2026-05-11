@@ -127,9 +127,9 @@ export function AdminRedemptionList(props: AdminRedemptionListProps) {
       onPageSizeChange: (size: number) => setPageSize(size),
       pageSize,
       totalCount: data?.redemptions?.length ?? 0,
-      totalRecords: data?.redemptions?.length ?? 0,
+      totalRecords: data?.totalCount ?? data?.redemptions?.length ?? 0,
     }),
-    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, pageSize, data?.redemptions?.length]
+    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, pageSize, data?.redemptions?.length, data?.totalCount]
   )
 
   return (

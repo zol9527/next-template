@@ -69,7 +69,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 	return (
 		<ToastContext.Provider value={{ toast }}>
 			{children}
-			<div className="fixed right-4 top-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2">
+			{/* z-[100] 确保在 Dialog (z-50) 之上，右上角提示始终可见 */}
+			<div className="fixed right-4 top-4 z-[100] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2">
 				{items.map((item) => (
 					<div
 						key={item.id}

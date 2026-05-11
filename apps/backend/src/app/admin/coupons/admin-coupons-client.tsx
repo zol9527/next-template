@@ -26,7 +26,7 @@ import { Separator } from '@/components/ui/separator'
 import type { ApiResponse } from '@/contracts/api-response.schema'
 import type { Coupon } from '@/plugins/ecommerce/contracts/coupons.dto'
 import type { ListCouponsResponse } from '@/plugins/ecommerce/contracts/admin-coupons.dto'
-import { ListCouponsResponseSchema } from '@/plugins/ecommerce/contracts/admin-coupons.dto'
+import { ListCouponsResponseSchema, ListRedemptionsResponseSchema } from '@/plugins/ecommerce/contracts/admin-coupons.dto'
 import { cn } from '@/lib/utils'
 import { AdminPageLayout } from '@/components/ui/admin-page-layout'
 import { AdminPageHeader } from '@/components/ui/admin-page-header'
@@ -156,6 +156,21 @@ export function AdminCouponsClient() {
             value="redemptions"
             className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground motion-safe:transition-all motion-safe:duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             aria-label="查看优惠券核销记录"
+            onMouseEnter={() => {
+              // 鼠标悬停时预加载核销记录数据，减少点击后的等待时间
+              queryClient.prefetchQuery({
+                queryKey: ['admin', 'redemptions', { filters: '', pageSize: 20, cursor: null }],
+                queryFn: async () => {
+                  const res = await fetch('/api/v1/admin/coupons/redemptions?limit=20', { credentials: 'include' })
+                  const json = (await res.json()) as ApiResponse<unknown>
+                  if (!json.success) throw new Error(json.error.message)
+                  const parsed = ListRedemptionsResponseSchema.safeParse(json.data)
+                  if (!parsed.success) throw new Error('响应数据格式不符合预期')
+                  return parsed.data
+                },
+                staleTime: 30_000,
+              })
+            }}
           >
             <CheckCircle className="h-4 w-4 mr-2" aria-hidden="true" />
             核销记录

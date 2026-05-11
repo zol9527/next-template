@@ -195,6 +195,7 @@ export const ListRedemptionsQuerySchema = z
     orderId: z.string().uuid().optional().openapi({ description: '按订单筛选' }),
     startDate: z.string().optional().openapi({ description: '开始日期 ISO' }),
     endDate: z.string().optional().openapi({ description: '结束日期 ISO' }),
+    includeCount: z.coerce.boolean().optional().default(false).openapi({ description: '是否返回总记录数（默认 false，跳过全表 count 提升性能）' }),
   })
   .openapi({ description: '核销记录列表查询参数' })
 
@@ -204,7 +205,7 @@ export const ListRedemptionsResponseSchema = z
   .object({
     redemptions: z.array(CouponRedemptionSchema).openapi({ description: '核销记录列表' }),
     nextCursor: z.string().nullable().openapi({ description: '下一页游标' }),
-    totalCount: z.number().openapi({ description: '总记录数' }),
+    totalCount: z.number().optional().openapi({ description: '总记录数（仅在 includeCount=true 时返回）' }),
   })
   .openapi({ description: '核销记录列表响应' })
 

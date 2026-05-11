@@ -345,7 +345,9 @@ export interface CouponRedemptionRepository {
     orderId?: string
     startDate?: Date
     endDate?: Date
-  }): Promise<{ items: CouponRedemption[]; nextCursor: string | null; totalCount: number }>
+    /** 是否返回 totalCount，默认 false（无筛选条件时跳过全表 count 以提升性能） */
+    includeCount?: boolean
+  }): Promise<{ items: CouponRedemption[]; nextCursor: string | null; totalCount?: number }>
 
   /**
    * Description: 创建核销记录
