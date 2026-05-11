@@ -221,21 +221,34 @@ function injectModelFields(
   let result = baseContent;
 
   for (const [modelName, fields] of modelInjections) {
-    const placeholder = `// {{PLUGIN_MODEL_INJECTIONS:${modelName}}}`;
+    // 匹配可能带有前导空格的占位注释，捕获前导空白以便正确替换
+    const placeholderPattern = new RegExp(
+      `^( *)// \\{\\{PLUGIN_MODEL_INJECTIONS:${modelName}\\}\\}`,
+      "m"
+    );
 
-    if (!result.includes(placeholder)) {
+    const match = result.match(placeholderPattern);
+    if (!match) {
+      const placeholder = `// {{PLUGIN_MODEL_INJECTIONS:${modelName}}}`;
       console.warn(
         `⚠️  base.prisma 中未找到 ${placeholder} 占位注释，跳过 ${modelName} 字段注入`
       );
       continue;
     }
 
+    // 使用与原占位注释相同的前导缩进（通常是 2 空格）
+    const baseIndent = match[1];
     const indentedFields = fields
       .split("\n")
-      .map((line) => (line.trim() ? `  ${line.trim()}` : ""))
+      .map((line) => (line.trim() ? `${baseIndent}${line.trim()}` : ""))
       .join("\n");
 
-    result = result.replace(placeholder, `${indentedFields}\n\n  ${placeholder}`);
+    // 替换整行（含前导空白），避免前导空白与注入缩进叠加
+    const fullPlaceholder = `${baseIndent}// {{PLUGIN_MODEL_INJECTIONS:${modelName}}}`;
+    result = result.replace(
+      fullPlaceholder,
+      `${indentedFields}\n\n${baseIndent}// {{PLUGIN_MODEL_INJECTIONS:${modelName}}}`
+    );
     console.log(`✅ 已注入 ${modelName} 的插件字段 (${fields.split("\n").length} 行)`);
   }
 
