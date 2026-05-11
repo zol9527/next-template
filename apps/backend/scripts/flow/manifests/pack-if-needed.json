@@ -1,4 +1,0 @@
-{
-  "name": "按需打包",
-  "steps": ["pack-if-needed"]
-}
