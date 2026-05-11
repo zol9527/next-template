@@ -32,8 +32,13 @@
     >
       <!-- 空状态 -->
       <view v-if="!loading && notifications.length === 0" class="empty-state">
-        <text class="empty-icon">🔔</text>
+        <image
+          src="/static/icons/empty-notification.svg"
+          class="empty-icon"
+          mode="aspectFit"
+        />
         <text class="empty-text">暂无通知</text>
+        <text class="empty-sub">有新消息时会在这里提醒你</text>
       </view>
 
       <!-- 通知列表项 -->
@@ -78,7 +83,7 @@
 import { ref, onMounted } from 'vue'
 import { notificationService } from '@/services/api/notifications'
 import type { NotificationItem, NotificationType } from '@/services/api/notifications'
-import { useAuth } from '@/composables/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 
 // ======================== 认证状态 ========================
 
@@ -88,10 +93,7 @@ const auth = useAuth()
 
 const tabs = [
   { label: '全部', value: '' },
-  { label: '课程', value: 'COURSE' },
   { label: '系统', value: 'SYSTEM' },
-  { label: '活动', value: 'ACTIVITY' },
-  { label: '订单', value: 'ORDER' },
 ]
 
 const activeTab = ref('')
@@ -192,12 +194,9 @@ async function onMarkAllRead() {
 // ======================== 工具函数 ========================
 
 /** 获取通知类型图标 */
-function getTypeIcon(type: NotificationType): string {
-  const icons: Record<NotificationType, string> = {
-    COURSE: '📚',
+function getTypeIcon(type: string): string {
+  const icons: Record<string, string> = {
     SYSTEM: '🔔',
-    ACTIVITY: '🎁',
-    ORDER: '📦',
   }
   return icons[type] || '🔔'
 }
@@ -294,12 +293,21 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
+  width: 240rpx;
+  height: 240rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.6;
 }
 
 .empty-text {
-  font-size: 28rpx;
+  font-size: 30rpx;
+  color: #6B8A94;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+}
+
+.empty-sub {
+  font-size: 24rpx;
   color: #94A8B0;
 }
 
@@ -342,10 +350,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.icon-course { background-color: #E8F7F0; }
 .icon-system { background-color: #F0F5F4; }
-.icon-activity { background-color: #FEF3C7; }
-.icon-order { background-color: #E0F2FE; }
 
 .type-icon {
   font-size: 36rpx;

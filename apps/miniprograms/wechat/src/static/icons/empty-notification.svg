@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <!-- 背景圆 -->
+  <circle cx="60" cy="54" r="40" fill="#F0F5F4"/>
+  
+  <!-- 铃铛主体 -->
+  <path d="M60 22C60 22 48 22 48 36V50L42 58V62H78V58L72 50V36C72 22 60 22 60 22Z" 
+        stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- 铃铛底部弧线 -->
+  <path d="M52 62C52 62 52 70 60 70C68 70 68 62 68 62" 
+        stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- 铃铛顶部小圆点 -->
+  <circle cx="60" cy="18" r="3" fill="#6B8A94"/>
+  
+  <!-- 铃铛内部横线 -->
+  <line x1="44" y1="58" x2="76" y2="58" stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- 装饰：左侧小星 -->
+  <circle cx="32" cy="34" r="2.5" fill="#B8D4DB" opacity="0.6"/>
+  <circle cx="88" cy="38" r="2" fill="#B8D4DB" opacity="0.5"/>
+  <circle cx="30" cy="62" r="1.5" fill="#B8D4DB" opacity="0.4"/>
+  
+  <!-- 装饰：右侧小点 -->
+  <circle cx="85" cy="56" r="2.5" fill="#B8D4DB" opacity="0.6"/>
+  
+  <!-- 底部文字装饰线 -->
+  <line x1="42" y1="84" x2="78" y2="84" stroke="#D4E3E8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="50" y1="92" x2="70" y2="92" stroke="#E2EBED" stroke-width="2" stroke-linecap="round"/>
+</svg>

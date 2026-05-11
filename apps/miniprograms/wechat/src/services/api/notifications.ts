@@ -15,7 +15,7 @@ import { logger } from '../../utils/logger'
 // ======================== 类型定义 ========================
 
 /** 通知类型 */
-export type NotificationType = 'SYSTEM' | 'COURSE' | 'ACTIVITY' | 'ORDER'
+export type NotificationType = 'SYSTEM'
 
 /** 单条通知 */
 export interface NotificationItem {

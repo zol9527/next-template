@@ -13,8 +13,8 @@ export const NotificationListQuerySchema = z.object({
   cursor: z.string().nullable().optional(),
   /** 每页数量，默认 20，最大 50 */
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
-  /** 通知类型筛选（可选） */
-  type: z.enum(['SYSTEM', 'COURSE', 'ACTIVITY', 'ORDER']).optional(),
+  /** 通知类型筛选（可选，目前仅支持 SYSTEM） */
+  type: z.enum(['SYSTEM']).optional(),
 })
 
 /** 标记已读路径参数 */
@@ -27,7 +27,7 @@ export const NotificationReadParamsSchema = z.object({
 /** 单条通知的响应结构 */
 export const NotificationItemSchema = z.object({
   id: z.string(),
-  type: z.enum(['SYSTEM', 'COURSE', 'ACTIVITY', 'ORDER']),
+  type: z.enum(['SYSTEM', 'COURSE', 'ACTIVITY', 'ORDER']).describe('通知类型'),
   title: z.string(),
   summary: z.string().nullable(),
   icon: z.string().nullable(),
