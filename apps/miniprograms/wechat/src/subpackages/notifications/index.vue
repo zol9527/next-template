@@ -30,49 +30,52 @@
       :refresher-triggered="isRefreshing"
       @refresherrefresh="onRefresh"
     >
-      <!-- 空状态 -->
-      <view v-if="!loading && notifications.length === 0" class="empty-state">
-        <image
-          src="/static/icons/empty-notification.svg"
-          class="empty-icon"
-          mode="aspectFit"
-        />
-        <text class="empty-text">暂无通知</text>
-        <text class="empty-sub">有新消息时会在这里提醒你</text>
-      </view>
-
-      <!-- 通知列表项 -->
-      <view
-        v-for="item in notifications"
-        :key="item.id"
-        class="notification-card"
-        :class="{ unread: !item.isRead }"
-        @tap="onNotificationTap(item)"
-      >
-        <!-- 未读指示点 -->
-        <view v-if="!item.isRead" class="unread-dot" />
-
-        <!-- 类型图标 -->
-        <view class="icon-wrapper" :class="`icon-${item.type.toLowerCase()}`">
+      <!-- 内部容器：承载 padding，避免 scroll-view padding 导致溢出 -->
+      <view class="list-inner">
+        <!-- 空状态 -->
+        <view v-if="!loading && notifications.length === 0" class="empty-state">
           <image
-            :src="getTypeIcon(item.type)"
-            class="type-icon"
+            src="/static/icons/empty-notification.svg"
+            class="empty-icon"
             mode="aspectFit"
           />
+          <text class="empty-text">暂无通知</text>
+          <text class="empty-sub">有新消息时会在这里提醒你</text>
         </view>
 
-        <!-- 内容 -->
-        <view class="notification-content">
-          <text class="notification-title">{{ item.title }}</text>
-          <text v-if="item.summary" class="notification-summary">{{ item.summary }}</text>
-          <text class="notification-time">{{ formatTime(item.createdAt) }}</text>
-        </view>
-      </view>
+        <!-- 通知列表项 -->
+        <view
+          v-for="item in notifications"
+          :key="item.id"
+          class="notification-card"
+          :class="{ unread: !item.isRead }"
+          @tap="onNotificationTap(item)"
+        >
+          <!-- 未读指示点 -->
+          <view v-if="!item.isRead" class="unread-dot" />
 
-      <!-- 加载状态 -->
-      <view class="loading-footer">
-        <text v-if="loadingMore" class="loading-text">加载中...</text>
-        <text v-else-if="!hasMore && notifications.length > 0" class="loading-text">没有更多了</text>
+          <!-- 类型图标 -->
+          <view class="icon-wrapper" :class="`icon-${item.type.toLowerCase()}`">
+            <image
+              :src="getTypeIcon(item.type)"
+              class="type-icon"
+              mode="aspectFit"
+            />
+          </view>
+
+          <!-- 内容 -->
+          <view class="notification-content">
+            <text class="notification-title">{{ item.title }}</text>
+            <text v-if="item.summary" class="notification-summary">{{ item.summary }}</text>
+            <text class="notification-time">{{ formatTime(item.createdAt) }}</text>
+          </view>
+        </view>
+
+        <!-- 加载状态 -->
+        <view class="loading-footer">
+          <text v-if="loadingMore" class="loading-text">加载中...</text>
+          <text v-else-if="!hasMore && notifications.length > 0" class="loading-text">没有更多了</text>
+        </view>
       </view>
     </scroll-view>
 
@@ -288,9 +291,11 @@ onMounted(() => {
 /* 通知列表 */
 .notification-list {
   flex: 1;
+}
+
+/* 内部容器承载 padding，避免 scroll-view padding 导致右侧溢出 */
+.list-inner {
   padding: 24rpx 32rpx;
-  box-sizing: border-box;
-  width: 100%;
 }
 
 /* 空状态 */
@@ -384,6 +389,7 @@ onMounted(() => {
   font-weight: 600;
   color: #1A2E35;
   line-height: 40rpx;
+  word-break: break-all;
 }
 
 .notification-summary {
