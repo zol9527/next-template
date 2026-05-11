@@ -8,7 +8,7 @@
  * - cursor 基于 createdAt 降序分页
  */
 
-import type { NotificationRepository, NotificationRow, PaginatedResult } from '@/repositories/interfaces/core/notification.interface'
+import type { NotificationRepository, NotificationRow, NotificationDetailRow, PaginatedResult } from '@/repositories/interfaces/core/notification.interface'
 import type { RepoContext } from '@/types/repo/repo-context'
 import { prisma } from '@/lib/prisma'
 
@@ -195,6 +195,42 @@ export function createPrismaNotificationRepository(): NotificationRepository {
         select: { id: true, type: true },
       })
       return row
+    },
+
+    async findDetailById(ctx, params) {
+      const { notificationId, userId } = params
+
+      const row = await prisma.notification.findUnique({
+        where: { id: notificationId },
+        include: {
+          reads: {
+            where: { userId },
+            select: { readAt: true },
+          },
+        },
+      })
+
+      if (!row) return null
+
+      // 验证用户有权查看：全局通知或定向给该用户
+      if (!row.isGlobal && row.targetUser !== userId) return null
+
+      return {
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        content: row.content,
+        summary: row.summary,
+        icon: row.icon,
+        linkType: row.linkType,
+        linkId: row.linkId,
+        isGlobal: row.isGlobal,
+        targetUser: row.targetUser,
+        priority: row.priority,
+        isActive: row.isActive,
+        createdAt: row.createdAt.toISOString(),
+        readAt: row.reads.length > 0 ? row.reads[0].readAt.toISOString() : null,
+      } satisfies NotificationDetailRow
     },
   }
 }

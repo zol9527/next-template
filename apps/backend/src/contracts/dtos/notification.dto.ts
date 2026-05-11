@@ -22,6 +22,21 @@ export const NotificationReadParamsSchema = z.object({
   id: z.string().uuid(),
 })
 
+/** 通知详情响应 */
+export const NotificationDetailResponseSchema = z.object({
+  id: z.string(),
+  type: z.enum(['SYSTEM', 'COURSE', 'ACTIVITY', 'ORDER']),
+  title: z.string(),
+  content: z.string(),
+  summary: z.string().nullable(),
+  icon: z.string().nullable(),
+  linkType: z.string().nullable(),
+  linkId: z.string().nullable(),
+  isRead: z.boolean(),
+  priority: z.number(),
+  createdAt: z.string(),
+})
+
 // ======================== 响应类型 ========================
 
 /** 单条通知的响应结构 */
@@ -56,3 +71,4 @@ export type NotificationReadParams = z.infer<typeof NotificationReadParamsSchema
 export type NotificationItem = z.infer<typeof NotificationItemSchema>
 export type NotificationListResponse = z.infer<typeof NotificationListResponseSchema>
 export type UnreadCountResponse = z.infer<typeof UnreadCountResponseSchema>
+export type NotificationDetailResponse = z.infer<typeof NotificationDetailResponseSchema>

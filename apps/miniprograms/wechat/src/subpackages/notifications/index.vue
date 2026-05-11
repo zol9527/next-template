@@ -168,7 +168,7 @@ function switchTab(value: string) {
 
 // ======================== 交互 ========================
 
-/** 点击通知：标记已读 + 跳转 */
+/** 点击通知：标记已读 + 跳转详情 */
 async function onNotificationTap(item: NotificationItem) {
   // 标记已读
   if (!item.isRead) {
@@ -180,7 +180,10 @@ async function onNotificationTap(item: NotificationItem) {
     }
   }
 
-  // TODO: 根据 linkType/linkId 跳转到对应页面
+  // 跳转到通知详情页
+  uni.navigateTo({
+    url: `/subpackages/notifications/detail?id=${item.id}`,
+  })
 }
 
 /** 全部标记已读 */

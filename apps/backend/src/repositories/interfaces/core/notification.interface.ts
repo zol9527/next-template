@@ -45,6 +45,27 @@ export interface NotificationRepository {
   /** 标记所有通知为已读（为每条未读通知创建 read 记录） */
   markAllAsRead(ctx: RepoContext, params: { userId: string }): Promise<number>
 
-  /** 根据 ID 查找通知 */
+  /** 根据 ID 查找通知（仅验证存在性） */
   findById(ctx: RepoContext, params: { notificationId: string }): Promise<{ id: string; type: string } | null>
+
+  /** 根据 ID 获取通知完整详情（含 content） */
+  findDetailById(ctx: RepoContext, params: { notificationId: string; userId: string }): Promise<NotificationDetailRow | null>
+}
+
+/** 通知详情完整行 */
+export type NotificationDetailRow = {
+  id: string
+  type: string
+  title: string
+  content: string
+  summary: string | null
+  icon: string | null
+  linkType: string | null
+  linkId: string | null
+  isGlobal: boolean
+  targetUser: string | null
+  priority: number
+  isActive: boolean
+  createdAt: string
+  readAt: string | null
 }

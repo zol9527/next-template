@@ -10,7 +10,7 @@
 import type { NotificationRepository } from '@/repositories/interfaces/core/notification.interface'
 import type { ServiceContext } from '@/types/service/service-context'
 import type { RepoContext } from '@/types/repo/repo-context'
-import type { NotificationListQuery, NotificationItem, UnreadCountResponse } from '@/contracts/dtos/notification.dto'
+import type { NotificationListQuery, NotificationItem, UnreadCountResponse, NotificationDetailResponse } from '@/contracts/dtos/notification.dto'
 
 export function createNotificationService(
   deps: {
@@ -93,6 +93,32 @@ export function createNotificationService(
       }
 
       await deps.notification.markAsRead(repoCtx, { notificationId, userId })
+    },
+
+    /**
+     * 获取通知详情
+     *
+     * 返回完整内容（含 content 字段），验证用户可见性。
+     */
+    async getNotificationDetail(userId: string, notificationId: string): Promise<NotificationDetailResponse | null> {
+      logger.info({ userId, notificationId }, 'Getting notification detail')
+
+      const row = await deps.notification.findDetailById(repoCtx, { notificationId, userId })
+      if (!row) return null
+
+      return {
+        id: row.id,
+        type: row.type as NotificationDetailResponse['type'],
+        title: row.title,
+        content: row.content,
+        summary: row.summary,
+        icon: row.icon,
+        linkType: row.linkType,
+        linkId: row.linkId,
+        isRead: row.readAt !== null,
+        priority: row.priority,
+        createdAt: row.createdAt,
+      }
     },
 
     /**

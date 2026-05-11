@@ -280,6 +280,13 @@
 						"navigationStyle": "custom",
 						"enablePullDownRefresh": true
 					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "通知详情",
+						"navigationStyle": "custom"
+					}
 				}
 			]
 		}

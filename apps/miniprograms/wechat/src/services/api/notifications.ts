@@ -30,6 +30,21 @@ export interface NotificationItem {
   createdAt: string
 }
 
+/** 通知详情（含完整 content） */
+export interface NotificationDetail {
+  id: string
+  type: NotificationType
+  title: string
+  content: string
+  summary: string | null
+  icon: string | null
+  linkType: string | null
+  linkId: string | null
+  isRead: boolean
+  priority: number
+  createdAt: string
+}
+
 /** 通知列表响应 */
 export interface NotificationListResponse {
   items: NotificationItem[]
@@ -71,6 +86,18 @@ export const notificationService = {
     const result = await httpClient.get<NotificationListResponse>(
       '/user/notifications',
       queryParams
+    )
+    return result
+  },
+
+  /**
+   * 获取通知详情（含完整 content）
+   */
+  async getDetail(notificationId: string): Promise<NotificationDetail> {
+    logger.info('获取通知详情', { notificationId })
+
+    const result = await httpClient.get<NotificationDetail>(
+      `/user/notifications/${notificationId}`
     )
     return result
   },
