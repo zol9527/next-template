@@ -50,6 +50,7 @@ model User {
   userCheckinStats      UserCheckinStats?
   favorites             Favorite[]
   feedbacks             Feedback[]
+  notificationReads    NotificationRead[]
 
   // ── 插件 relation 字段占位（由合并脚本注入） ──
   // {{PLUGIN_MODEL_INJECTIONS:User}}
@@ -681,4 +682,57 @@ enum FeedbackStatus {
   PROCESSING
   RESOLVED
   CLOSED
+}
+
+// ============================================================================
+// 通知系统
+// ============================================================================
+
+/// 通知类型
+enum NotificationType {
+  SYSTEM     // 系统通知（账号安全、会员权益等）
+  COURSE     // 课程通知（更新、打卡等）
+  ACTIVITY   // 活动通知（优惠、限时活动等）
+  ORDER      // 订单通知（支付成功、发货等）
+}
+
+/// 通知主体 — 由后端系统/管理员创建
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType @default(SYSTEM)
+  title       String                            // 通知标题
+  content     String           @db.Text          // 通知正文
+  summary     String?                           // 摘要（用于列表预览）
+  icon        String?                           // 图标标识（前端渲染用）
+  linkType    String?                           // 关联类型: course / order / product / none
+  linkId      String?                           // 关联 ID
+  isGlobal    Boolean          @default(false)   // 是否全局广播（所有用户可见）
+  targetUser  String?                           // 指定用户 ID（非全局时必填）
+  priority    Int              @default(0)       // 优先级（越高越靠前）
+  isActive    Boolean          @default(true)    // 是否启用
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  reads       NotificationRead[]
+
+  @@index([type])
+  @@index([isGlobal, createdAt])
+  @@index([targetUser, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/// 通知阅读状态 — 跟踪每个用户的已读
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String       @map("notification_id")
+  userId         String       @map("user_id")
+  readAt         DateTime     @default(now()) @map("read_at")
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+  @@index([userId])
+  @@map("notification_reads")
 }
