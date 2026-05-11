@@ -254,6 +254,20 @@
 					}
 				}
 			]
+		},
+		{
+			"root": "subpackages/notifications",
+			"name": "notifications",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "通知中心",
+						"navigationStyle": "custom",
+						"enablePullDownRefresh": true
+					}
+				}
+			]
 		}
 	],
 	"preloadRule": {
@@ -271,7 +285,7 @@
 		},
 		"pages/index/index": {
 			"network": "all",
-			"packages": ["search"]
+			"packages": ["search", "notifications"]
 		}
 	},
 	"globalStyle": {
