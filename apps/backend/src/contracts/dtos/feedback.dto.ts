@@ -17,6 +17,20 @@ export const FeedbackStatusEnum = z
 
 export type FeedbackStatus = z.infer<typeof FeedbackStatusEnum>
 
+// 反馈关联用户摘要 Schema（管理端展示使用）
+export const FeedbackUserSummarySchema = z
+  .object({
+    id: z.string().uuid().openapi({ description: '用户 ID' }),
+    username: z.string().nullable().openapi({ description: '用户名' }),
+    nickname: z.string().nullable().openapi({ description: '用户昵称/姓名' }),
+    phone: z.string().nullable().openapi({ description: '手机号' }),
+    avatarUrl: z.string().nullable().openapi({ description: '头像 URL' }),
+    sourcePlatform: z.string().openapi({ description: '来源平台' }),
+  })
+  .openapi({ description: '反馈关联用户摘要' })
+
+export type FeedbackUserSummary = z.infer<typeof FeedbackUserSummarySchema>
+
 // 提交反馈请求 Schema
 export const SubmitFeedbackRequestSchema = z
   .object({
@@ -41,6 +55,7 @@ export const FeedbackSchema = z
     status: FeedbackStatusEnum.openapi({ description: '反馈状态' }),
     createdAt: z.string().openapi({ description: '创建时间（ISO 8601）' }),
     updatedAt: z.string().openapi({ description: '更新时间（ISO 8601）' }),
+    user: FeedbackUserSummarySchema.optional().openapi({ description: '关联用户摘要（管理端返回）' }),
   })
   .openapi({ description: '反馈项' })
 

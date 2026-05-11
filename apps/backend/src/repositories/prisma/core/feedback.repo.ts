@@ -58,7 +58,17 @@ function transformFeedback(row: {
     content: string
     createdAt: Date
   }>
+  user?: {
+    id: string
+    username: string | null
+    nickname: string | null
+    phone: string | null
+    avatarUrl: string | null
+    wechatAccounts?: { id: string } | null
+  }
 }) {
+  const sourcePlatform = row.user?.wechatAccounts ? '微信小程序' : '后台'
+
   return {
     id: row.id,
     userId: row.userId,
@@ -69,6 +79,16 @@ function transformFeedback(row: {
     status: row.status.toLowerCase(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    user: row.user
+      ? {
+          id: row.user.id,
+          username: row.user.username,
+          nickname: row.user.nickname,
+          phone: row.user.phone,
+          avatarUrl: row.user.avatarUrl,
+          sourcePlatform,
+        }
+      : undefined,
     replies: row.replies?.map(transformReply) ?? [],
   }
 }
@@ -125,6 +145,16 @@ export function createPrismaFeedbackRepository(): FeedbackRepository {
       const row = await prisma.feedback.findUnique({
         where: { id: params.id },
         include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              nickname: true,
+              phone: true,
+              avatarUrl: true,
+              wechatAccounts: { select: { id: true } },
+            },
+          },
           replies: { orderBy: { createdAt: 'asc' } },
         },
       })
@@ -206,17 +236,42 @@ export function createPrismaFeedbackRepository(): FeedbackRepository {
         cursor?: string | null
         limit: number
         status?: string | null
+        keyword?: string | null
       }
     ) {
-      ctx.logger.debug({ limit: params.limit, status: params.status }, 'Listing all feedback (admin)')
+      ctx.logger.debug(
+        { limit: params.limit, status: params.status, keyword: params.keyword },
+        'Listing all feedback (admin)'
+      )
 
       const safeLimit = Math.min(Math.max(params.limit, 1), 50)
+      const keyword = params.keyword?.trim()
 
       // Prisma 枚举值大写
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: Record<string, any> = {}
       if (params.status) {
         where.status = params.status.toUpperCase()
+      }
+      if (keyword) {
+        where.OR = [
+          { id: { contains: keyword } },
+          { userId: { contains: keyword } },
+          { title: { contains: keyword } },
+          { content: { contains: keyword } },
+          {
+            user: {
+              is: {
+                OR: [
+                  { id: { contains: keyword } },
+                  { username: { contains: keyword } },
+                  { nickname: { contains: keyword } },
+                  { phone: { contains: keyword } },
+                ],
+              },
+            },
+          },
+        ]
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -234,8 +289,11 @@ export function createPrismaFeedbackRepository(): FeedbackRepository {
           user: {
             select: {
               id: true,
+              username: true,
               nickname: true,
+              phone: true,
               avatarUrl: true,
+              wechatAccounts: { select: { id: true } },
             },
           },
         },
@@ -250,11 +308,7 @@ export function createPrismaFeedbackRepository(): FeedbackRepository {
           const feedback = transformFeedback(row)
           return {
             ...feedback,
-            user: {
-              id: row.user.id,
-              nickname: row.user.nickname,
-              avatarUrl: row.user.avatarUrl,
-            },
+            user: feedback.user!,
           }
         }),
         nextCursor: hasMore ? data[data.length - 1].createdAt.toISOString() : null,

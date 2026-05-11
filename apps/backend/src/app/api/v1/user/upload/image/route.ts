@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import type { NextRequest } from 'next/server'
 
-import { env } from '@/config/env.mjs'
+import { BACKEND_ROOT_DIR, env } from '@/config/env.mjs'
 import { ok } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
@@ -68,8 +68,10 @@ export const POST = withV1Route({
     const datePrefix = new Date().toISOString().slice(0, 10)
     const storageKey = `uploads/feedback/${datePrefix}/${crypto.randomUUID()}${ext}`
 
-    // 解析目标文件路径
-    const absoluteBaseDir = path.resolve(process.cwd(), env.LOCAL_UPLOAD_DIR)
+    // 解析目标文件路径：必须与 public/files 读取路由共用后端根目录。
+    // 如果使用 process.cwd()，从 monorepo 根目录启动时会写入根 uploads，
+    // 但公开读取路由会去 apps/backend/uploads 查找，导致后台图片 404。
+    const absoluteBaseDir = path.resolve(BACKEND_ROOT_DIR, env.LOCAL_UPLOAD_DIR)
     const relativeKey = storageKey.startsWith('uploads/') ? storageKey.slice('uploads/'.length) : storageKey
     const destinationPath = path.resolve(absoluteBaseDir, relativeKey)
 

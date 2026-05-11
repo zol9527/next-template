@@ -17,6 +17,13 @@ export const AdminFeedbackListQuerySchema = z
       .default(20)
       .openapi({ description: '每页数量（默认 20，最大 50）' }),
     status: FeedbackStatusEnum.optional().openapi({ description: '反馈状态筛选（可选）' }),
+    keyword: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .optional()
+      .openapi({ description: '搜索关键词，可匹配反馈标题、内容、用户 ID、姓名、手机号' }),
   })
   .openapi({ description: '管理员反馈列表查询参数' })
 

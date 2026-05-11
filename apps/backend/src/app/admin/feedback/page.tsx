@@ -12,6 +12,7 @@ import {
   AlertCircle,
   MoreHorizontal,
   ExternalLink,
+  Smartphone,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -52,7 +53,6 @@ export default function AdminFeedbackPage() {
   const [search, set_search] = React.useState('')
   const [status_filter, set_status_filter] = React.useState<string>('all')
 
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
   const [prevCursors, setPrevCursors] = React.useState<string[]>([])
   const [currentCursor, setCurrentCursor] = React.useState<string | null>(null)
   const [pageSize, setPageSize] = React.useState(20)
@@ -67,7 +67,6 @@ export default function AdminFeedbackPage() {
         limit: pageSize.toString(),
       })
       if (currentCursor) params.append('cursor', currentCursor)
-      // 虽然 API 可能暂不支持 keyword 搜索，但为了 UI 交互先行保留逻辑
       if (debounced_search) params.append('keyword', debounced_search)
       if (status_filter !== 'all') params.append('status', status_filter)
 
@@ -118,18 +117,27 @@ export default function AdminFeedbackPage() {
     }
   })
 
-  // 同步分页游标
-  React.useEffect(() => {
-    if (data?.nextCursor !== undefined) {
-      setNextCursor(data.nextCursor)
-    }
-  }, [data])
+  const nextCursor = data?.nextCursor ?? null
 
-  // 过滤条件改变时重置分页
-  React.useEffect(() => {
+  const resetPagination = React.useCallback(() => {
     setPrevCursors([])
     setCurrentCursor(null)
-  }, [debounced_search, status_filter, pageSize])
+  }, [])
+
+  const handleSearchChange = React.useCallback((value: string) => {
+    set_search(value)
+    resetPagination()
+  }, [resetPagination])
+
+  const handleStatusFilterChange = React.useCallback((value: string) => {
+    set_status_filter(value)
+    resetPagination()
+  }, [resetPagination])
+
+  const handlePageSizeChange = React.useCallback((value: number) => {
+    setPageSize(value)
+    resetPagination()
+  }, [resetPagination])
 
   const handleNextPage = React.useCallback(() => {
     if (nextCursor && !isLoading) {
@@ -166,6 +174,35 @@ export default function AdminFeedbackPage() {
           </span>
         </div>
       ),
+    },
+    {
+      accessorKey: 'user',
+      header: '提交用户',
+      cell: ({ row }) => {
+        const user = row.original.user
+        const displayName = user?.nickname || user?.username || '未设置姓名'
+        const contact = user?.phone || '暂无手机号'
+
+        return (
+          <div className="flex min-w-[180px] flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="max-w-[120px] truncate text-sm font-medium text-foreground">
+                {displayName}
+              </span>
+              <Badge variant="outline" className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-[10px] font-medium text-emerald-600">
+                <Smartphone className="h-3 w-3" />
+                {user?.sourcePlatform || '未知来源'}
+              </Badge>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {contact}
+            </span>
+            <span className="max-w-[180px] truncate text-[10px] text-muted-foreground/60">
+              ID: {row.original.userId}
+            </span>
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'type',
@@ -258,12 +295,12 @@ export default function AdminFeedbackPage() {
       isLoading,
       onNextPage: handleNextPage,
       onPrevPage: handlePrevPage,
-      onPageSizeChange: setPageSize,
+      onPageSizeChange: handlePageSizeChange,
       pageSize,
       totalCount: data?.items?.length ?? 0,
       totalRecords: 0, // 假设 API 返回总数，此处先设为 0
     }),
-    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, pageSize, data?.items?.length]
+    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, handlePageSizeChange, pageSize, data?.items?.length]
   )
 
   return (
@@ -283,9 +320,9 @@ export default function AdminFeedbackPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
             <Input
               type="text"
-              placeholder="搜索反馈内容..."
+              placeholder="搜索标题、内容、用户 ID、姓名或手机号..."
               value={search}
-              onChange={(e) => set_search(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10 h-10 bg-muted/5 border-none shadow-none"
             />
           </div>
@@ -301,7 +338,7 @@ export default function AdminFeedbackPage() {
               ].map((s) => (
                 <button
                   key={s.value}
-                  onClick={() => set_status_filter(s.value)}
+                  onClick={() => handleStatusFilterChange(s.value)}
                   className={cn(
                     "px-4 py-1.5 rounded-md text-xs font-semibold transition-all",
                     status_filter === s.value 

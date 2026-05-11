@@ -60,7 +60,6 @@ export default function AdminUsersPage() {
   const [search, set_search] = React.useState('')
   const [status_filter, set_status_filter] = React.useState('all')
 
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
   const [prevCursors, setPrevCursors] = React.useState<string[]>([])
   const [currentCursor, setCurrentCursor] = React.useState<string | null>(null)
   const [pageSize, setPageSize] = React.useState(10)
@@ -212,30 +211,41 @@ export default function AdminUsersPage() {
     }
   })
 
-  React.useEffect(() => {
-    if (data?.nextCursor !== undefined) {
-      setNextCursor(data.nextCursor)
-    }
-  }, [data])
+  const nextCursor = data?.nextCursor ?? null
 
-  React.useEffect(() => {
+  const resetPagination = React.useCallback(() => {
     setPrevCursors([])
     setCurrentCursor(null)
-  }, [debounced_search, status_filter, pageSize])
+  }, [])
+
+  const handleSearchChange = React.useCallback((value: string) => {
+    set_search(value)
+    resetPagination()
+  }, [resetPagination])
+
+  const handleStatusFilterChange = React.useCallback((value: string) => {
+    set_status_filter(value)
+    resetPagination()
+  }, [resetPagination])
+
+  const handlePageSizeChange = React.useCallback((value: number) => {
+    setPageSize(value)
+    resetPagination()
+  }, [resetPagination])
 
   const handleNextPage = React.useCallback(() => {
     if (nextCursor && !isLoading) {
-      setPrevCursors((prev) => [...prev, nextCursor])
+      setPrevCursors((prev) => [...prev, currentCursor ?? ''])
       setCurrentCursor(nextCursor)
     }
-  }, [nextCursor, isLoading])
+  }, [nextCursor, isLoading, currentCursor])
 
   const handlePrevPage = React.useCallback(() => {
     if (prevCursors.length > 0 && !isLoading) {
-      const newPrevCursors = prevCursors.slice(0, -1)
-      const prevCursor = newPrevCursors.length > 0 ? newPrevCursors[newPrevCursors.length - 1] : null
+      const newPrevCursors = [...prevCursors]
+      const prevCursor = newPrevCursors.pop() ?? null
       setPrevCursors(newPrevCursors)
-      setCurrentCursor(prevCursor)
+      setCurrentCursor(prevCursor || null)
     }
   }, [prevCursors, isLoading])
 
@@ -276,12 +286,12 @@ export default function AdminUsersPage() {
       isLoading,
       onNextPage: handleNextPage,
       onPrevPage: handlePrevPage,
-      onPageSizeChange: setPageSize,
+      onPageSizeChange: handlePageSizeChange,
       pageSize,
       totalCount: data?.users?.length ?? 0,
       totalRecords: data?.total ?? 0,
     }),
-    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, pageSize, data?.users?.length, data?.total]
+    [nextCursor, prevCursors, isLoading, handleNextPage, handlePrevPage, handlePageSizeChange, pageSize, data?.users?.length, data?.total]
   )
 
   return (
@@ -303,9 +313,9 @@ export default function AdminUsersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
               <Input
                 type="text"
-                placeholder="搜索用户..."
+                placeholder="搜索用户 ID、姓名、手机或邮箱..."
                 value={search}
-                onChange={(e) => set_search(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10 h-10 bg-muted/5 border-none shadow-none"
               />
             </div>
@@ -319,7 +329,7 @@ export default function AdminUsersPage() {
                 ].map((s) => (
                   <button
                     key={s.value}
-                    onClick={() => set_status_filter(s.value)}
+                    onClick={() => handleStatusFilterChange(s.value)}
                     className={cn(
                       "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
                       status_filter === s.value ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground/60 hover:text-foreground"
@@ -436,7 +446,9 @@ function RolesModal({ user, open, onOpenChange }: { user: User | null; open: boo
 
   React.useEffect(() => {
     if (user_roles_data) {
-      set_selected_role_ids(user_roles_data.roles.map((r: Role) => r.id))
+      queueMicrotask(() => {
+        set_selected_role_ids(user_roles_data.roles.map((r: Role) => r.id))
+      })
     }
   }, [user_roles_data])
 
@@ -641,4 +653,3 @@ function RolesModal({ user, open, onOpenChange }: { user: User | null; open: boo
     </Dialog>
   )
 }
-

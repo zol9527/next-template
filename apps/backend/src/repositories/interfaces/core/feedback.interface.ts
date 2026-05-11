@@ -1,5 +1,14 @@
 import type { RepoContext } from '@/types/repo/repo-context'
 
+export type FeedbackUserSummary = {
+  id: string
+  username: string | null
+  nickname: string | null
+  phone: string | null
+  avatarUrl: string | null
+  sourcePlatform: string
+}
+
 export interface FeedbackRepository {
   /** 创建反馈 */
   create(ctx: RepoContext, params: {
@@ -33,6 +42,7 @@ export interface FeedbackRepository {
     status: string
     createdAt: string
     updatedAt: string
+    user?: FeedbackUserSummary
     replies: Array<{
       id: string
       feedbackId: string
@@ -48,6 +58,7 @@ export interface FeedbackRepository {
     cursor?: string | null
     limit: number
     status?: string | null
+    keyword?: string | null
   }): Promise<{
     items: Array<{
       id: string
@@ -91,7 +102,7 @@ export interface FeedbackRepository {
       createdAt: string
       updatedAt: string
       // 包含用户基本信息
-      user: { id: string; nickname: string | null; avatarUrl: string | null }
+      user: FeedbackUserSummary
     }>
     nextCursor: string | null
     hasMore: boolean

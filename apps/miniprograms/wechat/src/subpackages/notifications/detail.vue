@@ -16,32 +16,34 @@
 
     <!-- 通知内容 -->
     <scroll-view v-else-if="detail" scroll-y class="detail-content">
-      <!-- 头部信息 -->
-      <view class="detail-header">
-        <!-- 类型图标 -->
-        <view class="icon-wrapper">
-          <image
-            src="/static/icons/ntf-system.svg"
-            class="type-icon"
-            mode="aspectFit"
-          />
-        </view>
+      <view class="detail-inner">
+        <!-- 头部信息 -->
+        <view class="detail-header">
+          <!-- 类型图标 -->
+          <view class="icon-wrapper">
+            <image
+              src="/static/icons/ntf-system.svg"
+              class="type-icon"
+              mode="aspectFit"
+            />
+          </view>
 
-        <view class="header-info">
-          <text class="detail-title">{{ detail.title }}</text>
-          <view class="meta-row">
-            <text class="meta-tag">{{ typeLabel }}</text>
-            <text class="meta-time">{{ formatTime(detail.createdAt) }}</text>
+          <view class="header-info">
+            <text class="detail-title">{{ detail.title }}</text>
+            <view class="meta-row">
+              <text class="meta-tag">{{ typeLabel }}</text>
+              <text class="meta-time">{{ formatTime(detail.createdAt) }}</text>
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 分割线 -->
-      <view class="divider" />
+        <!-- 分割线 -->
+        <view class="divider" />
 
-      <!-- 正文内容 -->
-      <view class="detail-body">
-        <text class="body-text" selectable>{{ detail.content }}</text>
+        <!-- 正文内容 -->
+        <view class="detail-body">
+          <text class="body-text" selectable>{{ detail.content }}</text>
+        </view>
       </view>
     </scroll-view>
   </view>
@@ -145,6 +147,13 @@ onMounted(() => {
 /* 详情内容 */
 .detail-content {
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.detail-inner {
+  width: 100%;
+  box-sizing: border-box;
   padding: 32rpx;
 }
 
@@ -214,13 +223,21 @@ onMounted(() => {
 
 /* 正文 */
 .detail-body {
+  width: 100%;
+  box-sizing: border-box;
   padding-bottom: 80rpx;
 }
 
 .body-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   font-size: 30rpx;
   color: #3A5058;
   line-height: 52rpx;
   letter-spacing: 0.5rpx;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 </style>

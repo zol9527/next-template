@@ -106,7 +106,9 @@ export function createPrismaUserRepository(): UserRepository {
       if (params.status) where.status = params.status
       if (params.keyword) {
         where.OR = [
+          { id: { contains: params.keyword } },
           { username: { contains: params.keyword } },
+          { nickname: { contains: params.keyword } },
           { email: { contains: params.keyword } },
           { phone: { contains: params.keyword } },
         ]
@@ -139,7 +141,9 @@ export function createPrismaUserRepository(): UserRepository {
       if (params.status) where.status = params.status
       if (params.keyword) {
         where.OR = [
+          { id: { contains: params.keyword } },
           { username: { contains: params.keyword } },
+          { nickname: { contains: params.keyword } },
           { email: { contains: params.keyword } },
           { phone: { contains: params.keyword } },
         ]

@@ -86,6 +86,7 @@ export function createAdminFeedbackService(
       cursor?: string | null
       limit: number
       status?: string | null
+      keyword?: string | null
     }) {
       logger.info({ query }, '管理员查询全部反馈列表')
 

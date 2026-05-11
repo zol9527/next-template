@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -18,6 +18,8 @@ import {
   Loader2,
   ExternalLink,
   History,
+  Phone,
+  Smartphone,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -26,7 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +36,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
-import type { FeedbackDetail, FeedbackStatus, FeedbackReply } from '@/contracts/dtos/feedback.dto'
+import type { FeedbackDetail, FeedbackStatus } from '@/contracts/dtos/feedback.dto'
 import type { UpdateFeedbackStatusRequest, CreateReplyRequest } from '@/contracts/dtos/admin-feedback.dto'
 
 const getStatusConfig = (status: FeedbackStatus) => {
@@ -70,7 +71,6 @@ const getTypeLabel = (type: string) => {
 
 export default function AdminFeedbackDetailPage() {
   const { id } = useParams()
-  const router = useRouter()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [replyContent, setReplyContent] = React.useState('')
@@ -176,6 +176,9 @@ export default function AdminFeedbackDetailPage() {
 
   const statusConfig = getStatusConfig(feedback.status)
   const allowedTransitions = getAllowedTransitions(feedback.status)
+  const feedbackUser = feedback.user
+  const feedbackUserName = feedbackUser?.nickname || feedbackUser?.username || '未设置姓名'
+  const feedbackUserPhone = feedbackUser?.phone || '暂无手机号'
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
@@ -362,12 +365,27 @@ export default function AdminFeedbackDetailPage() {
                   <User className="h-3.5 w-3.5" />
                   提交用户
                 </p>
-                <div className="flex items-center gap-3 mt-2 p-3 bg-background border border-border/20 rounded-xl">
+                <div className="flex items-start gap-3 mt-2 p-3 bg-background border border-border/20 rounded-xl">
                   <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-[10px] font-bold">
-                    USER
+                    {feedbackUser?.avatarUrl ? (
+                      <img src={feedbackUser.avatarUrl} alt="" className="h-full w-full rounded-lg object-cover" />
+                    ) : (
+                      'USER'
+                    )}
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold truncate">{feedback.userId}</span>
+                  <div className="flex flex-col min-w-0 gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold truncate">{feedbackUserName}</span>
+                      <Badge variant="outline" className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-[10px] font-medium text-emerald-600">
+                        <Smartphone className="h-3 w-3" />
+                        {feedbackUser?.sourcePlatform || '未知来源'}
+                      </Badge>
+                    </div>
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {feedbackUserPhone}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/70 truncate">{feedback.userId}</span>
                     <Link 
                       href={`/admin/users?keyword=${feedback.userId}`}
                       className="text-[10px] text-primary hover:underline flex items-center gap-1 mt-0.5"

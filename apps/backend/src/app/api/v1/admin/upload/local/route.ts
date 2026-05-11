@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { NextRequest } from 'next/server'
 
 import type { Action, Scope } from '@/config/access'
-import { env } from '@/config/env.mjs'
+import { BACKEND_ROOT_DIR, env } from '@/config/env.mjs'
 import { ok } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
@@ -38,8 +38,9 @@ export const POST = withV1Route({
       finalKey = `uploads/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${ext}`
     }
 
-    // 解析目标文件路径（与 local storage provider 路径逻辑一致）
-    const absoluteBaseDir = path.resolve(process.cwd(), env.LOCAL_UPLOAD_DIR)
+    // 解析目标文件路径（与 local storage provider / public files 路径逻辑一致）。
+    // 这里固定基于后端根目录，避免 monorepo 根目录启动时把文件写到错误的 uploads。
+    const absoluteBaseDir = path.resolve(BACKEND_ROOT_DIR, env.LOCAL_UPLOAD_DIR)
     const relativeKey = finalKey.startsWith('uploads/') ? finalKey.slice('uploads/'.length) : finalKey
     const destinationPath = path.resolve(absoluteBaseDir, relativeKey)
 
