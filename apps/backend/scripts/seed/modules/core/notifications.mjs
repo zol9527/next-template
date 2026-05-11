@@ -58,7 +58,7 @@ const TEST_NOTIFICATIONS = [
   },
 ]
 
-export async function seedNotifications(db, logger) {
+export default async function seedNotifications(db, logger) {
   const results = []
 
   for (const notification of TEST_NOTIFICATIONS) {

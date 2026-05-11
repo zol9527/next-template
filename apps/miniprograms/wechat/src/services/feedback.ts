@@ -9,7 +9,8 @@
  */
 
 import { logger } from '../utils/logger';
-import { httpClient } from '../core/http-client';
+import { httpClient, RequestError } from '../core/http-client';
+import { createErrorFromResponse } from '../utils/error-handler';
 
 /**
  * 反馈类型枚举
@@ -109,6 +110,10 @@ export const feedbackService = {
       logger.info('提交反馈成功', { feedbackId: feedback.id });
       return { success: true };
     } catch (error) {
+      // 将 HTTP 层的 RequestError 转换为应用层错误，保留后端返回的具体错误消息
+      if (error instanceof RequestError && error.response) {
+        throw createErrorFromResponse(error.response.statusCode, error.response.data);
+      }
       logger.error('提交反馈失败', error);
       throw error;
     }

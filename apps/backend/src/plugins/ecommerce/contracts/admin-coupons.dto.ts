@@ -30,17 +30,34 @@ export const CreateCouponRequestSchema = z
     // 使用限制
     minOrderAmount: z.string().optional().openapi({ description: '最低订单金额（decimal 字符串）' }),
     maxDiscountAmount: z.string().optional().openapi({ description: '最大折扣金额（decimal 字符串）' }),
-    perUserLimit: z.number().int().optional().openapi({ description: '每用户限领数量，null 表示不限制' }),
-    usageLimit: z.number().int().optional().openapi({ description: '总使用次数限制，null 表示不限制' }),
+    // 注意：前端表单的"留空表示不限制"会发送 null，需要 nullable() 才能通过校验
+    perUserLimit: z.number().int().nullable().optional().openapi({ description: '每用户限领数量，null 表示不限制' }),
+    usageLimit: z.number().int().nullable().optional().openapi({ description: '总使用次数限制，null 表示不限制' }),
 
     // 适用范围
     applicableProductIds: z.array(z.string().uuid()).optional().openapi({ description: '适用商品 ID 列表，空数组表示全场通用' }),
     applicableCategoryIds: z.array(z.string().uuid()).optional().openapi({ description: '适用分类 ID 列表，空数组表示全部分类' }),
 
-    // 有效期
-    validFrom: z.string().openapi({ description: '有效期开始时间 ISO' }),
-    validTo: z.string().openapi({ description: '有效期结束时间 ISO' }),
+    // 有效期 — 必须是非空的有效日期字符串
+    validFrom: z.string().min(1, '请选择开始时间').refine(
+      (val) => !isNaN(Date.parse(val)),
+      { message: '开始时间格式无效' }
+    ).openapi({ description: '有效期开始时间 ISO' }),
+    validTo: z.string().min(1, '请选择结束时间').refine(
+      (val) => !isNaN(Date.parse(val)),
+      { message: '结束时间格式无效' }
+    ).openapi({ description: '有效期结束时间 ISO' }),
   })
+  .refine(
+    (data) => {
+      // 交叉验证：结束时间必须晚于开始时间
+      if (data.validFrom && data.validTo) {
+        return new Date(data.validTo).getTime() > new Date(data.validFrom).getTime()
+      }
+      return true
+    },
+    { message: '结束时间必须晚于开始时间', path: ['validTo'] }
+  )
   .openapi({ description: '创建优惠券请求' })
 
 export type CreateCouponRequest = z.infer<typeof CreateCouponRequestSchema>

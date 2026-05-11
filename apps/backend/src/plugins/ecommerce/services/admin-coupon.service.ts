@@ -123,6 +123,19 @@ export function createAdminCouponService(
       // 验证折扣字段与类型匹配
       this.validateDiscountFields(params.type, params)
 
+      // 防御性验证：确保日期可解析（即使 Zod 已校验，service 层也应做防御）
+      const validFromDate = new Date(params.validFrom)
+      const validToDate = new Date(params.validTo)
+      if (isNaN(validFromDate.getTime())) {
+        throw makeBadRequestError('开始时间格式无效')
+      }
+      if (isNaN(validToDate.getTime())) {
+        throw makeBadRequestError('结束时间格式无效')
+      }
+      if (validToDate.getTime() <= validFromDate.getTime()) {
+        throw makeBadRequestError('结束时间必须晚于开始时间')
+      }
+
       const coupon = await deps.couponService.createCoupon({
         name: params.name,
         description: params.description ?? null,
@@ -139,8 +152,8 @@ export function createAdminCouponService(
         usageLimit: params.usageLimit ?? null,
         applicableProductIds: params.applicableProductIds ?? [],
         applicableCategoryIds: params.applicableCategoryIds ?? [],
-        validFrom: new Date(params.validFrom),
-        validTo: new Date(params.validTo),
+        validFrom: validFromDate,
+        validTo: validToDate,
         createdBy,
       })
 

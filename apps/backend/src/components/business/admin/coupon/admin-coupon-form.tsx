@@ -28,6 +28,13 @@ import {
   Percent,
   Trash2,
   CheckCircle2,
+  AlertCircle,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Sparkles,
+  Timer,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
@@ -294,6 +301,93 @@ export function AdminCouponForm({
   // 计算提交状态
   const isSubmitting = saveMutation.isPending || deleteMutation.isPending
 
+  // ==================== 新增的 UI 辅助状态与函数 ====================
+
+  // 使用限制区域的展开/收起状态（新建时默认收起，编辑/查看时默认展开）
+  const [usageLimitsExpanded, setUsageLimitsExpanded] = React.useState(editing || viewing)
+
+  // 字段名中文映射（用于错误提示）
+  const fieldNameMap: Record<string, string> = {
+    name: '优惠券名称',
+    type: '优惠券类型',
+    discountPercent: '折扣百分比',
+    discountAmount: '固定减免金额',
+    thresholdAmount: '满减门槛金额',
+    thresholdDiscount: '满减优惠金额',
+    giftProductId: '赠品商品 ID',
+    validFrom: '开始时间',
+    validTo: '结束时间',
+    minOrderAmount: '最低订单金额',
+    maxDiscountAmount: '最大折扣金额',
+    perUserLimit: '每人限用次数',
+    usageLimit: '总使用次数限制',
+  }
+
+  // 格式化日期时间为本地 datetime-local 字符串
+  const formatDateTimeLocal = (date: Date, time: string = '00:00'): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}T${time}`
+  }
+
+  // 快速设置有效期
+  const applyDatePreset = (preset: 'today' | 'week' | 'month' | 'forever') => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    let from = ''
+    let to = ''
+
+    switch (preset) {
+      case 'today':
+        from = formatDateTimeLocal(today, '00:00')
+        to = formatDateTimeLocal(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), '23:59')
+        break
+      case 'week':
+        from = formatDateTimeLocal(today, '00:00')
+        to = formatDateTimeLocal(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), '23:59')
+        break
+      case 'month':
+        from = formatDateTimeLocal(today, '00:00')
+        to = formatDateTimeLocal(new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()), '23:59')
+        break
+      case 'forever':
+        from = formatDateTimeLocal(today, '00:00')
+        to = formatDateTimeLocal(new Date(today.getFullYear() + 10, today.getMonth(), today.getDate()), '23:59')
+        break
+    }
+
+    setValidFrom(from)
+    setValidTo(to)
+  }
+
+  // 快速应用优惠券预设
+  const applyCouponPreset = (preset: 'discount85' | 'threshold10020' | 'gift') => {
+    switch (preset) {
+      case 'discount85':
+        setCouponType('discount')
+        setDiscountPercent('85')
+        break
+      case 'threshold10020':
+        setCouponType('threshold')
+        setThresholdAmount('100')
+        setThresholdDiscount('20')
+        break
+      case 'gift':
+        setCouponType('gift')
+        setGiftProductId('')
+        break
+    }
+  }
+
+  // 人类可读的日期格式
+  const formatDateReadable = (datetime: string): string => {
+    if (!datetime) return '未设置'
+    const [date, time] = datetime.split('T')
+    const [year, month, day] = date.split('-')
+    return `${year}年${month}月${day}日 ${time || '00:00'}`
+  }
+
   // 渲染类型相关字段
   const renderTypeSpecificFields = () => {
     switch (couponType) {
@@ -475,16 +569,72 @@ export function AdminCouponForm({
         {/* 内容部分 */}
         <ScrollArea className="flex-1 min-h-0 bg-transparent">
           <div className="p-8">
-            <form onSubmit={onSubmit} className="space-y-8">
-              {/* 基本信息 */}
-              <Card>
-                <CardHeader className="border-b">
+            <form onSubmit={onSubmit} className="space-y-6">
+              {/* 全局错误提示横幅 */}
+              {Object.keys(errors).length > 0 && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-start gap-3 animate-in slide-in-from-top-2 fade-in duration-300">
+                  <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-destructive">表单校验失败，请修正以下问题：</p>
+                    <ul className="mt-2 space-y-1">
+                      {Object.entries(errors).map(([field, message]) => (
+                        <li key={field} className="text-sm text-destructive/80 flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-destructive/60 shrink-0 mt-1.5" />
+                          <span>
+                            <span className="font-medium">{fieldNameMap[field] || field}：</span>
+                            {message}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* 快速预设（仅新建模式） */}
+              {!viewing && mode === 'create' && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground font-medium mr-1">快速预设：</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyCouponPreset('discount85')}
+                    className="h-8 gap-1.5 text-xs border-primary/20 hover:bg-primary/5 hover:border-primary/40 transition-colors"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-primary" /> 85折优惠
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyCouponPreset('threshold10020')}
+                    className="h-8 gap-1.5 text-xs border-primary/20 hover:bg-primary/5 hover:border-primary/40 transition-colors"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> 满100减20
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyCouponPreset('gift')}
+                    className="h-8 gap-1.5 text-xs border-primary/20 hover:bg-primary/5 hover:border-primary/40 transition-colors"
+                  >
+                    <Gift className="h-3.5 w-3.5 text-primary" /> 新品赠送
+                  </Button>
+                </div>
+              )}
+
+              {/* 基本信息与折扣设置 */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/20">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Tag className="h-5 w-5 text-primary" /> 基本信息
+                    <Tag className="h-5 w-5 text-primary" /> 基本信息与折扣设置
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="p-6 space-y-6">
+                  {/* 基本信息 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2 md:col-span-2" data-error-field="name">
                       <Label className="text-sm font-semibold text-foreground/70">
                         优惠券名称 <span className="text-destructive">*</span>
@@ -495,7 +645,7 @@ export function AdminCouponForm({
                         onChange={(e) => setName(e.target.value)}
                         disabled={viewing}
                         className={cn(
-                          'h-12 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
+                          'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
                           errors.name ? 'border-destructive focus-visible:ring-destructive' : '',
                           shakingFields.has('name') ? 'animate-form-shake' : ''
                         )}
@@ -510,11 +660,11 @@ export function AdminCouponForm({
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         disabled={viewing}
-                        className="h-12"
+                        className="h-11"
                       />
                     </div>
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2" data-error-field="type">
                       <Label className="text-sm font-semibold text-foreground/70">
                         优惠券类型 <span className="text-destructive">*</span>
                       </Label>
@@ -523,7 +673,7 @@ export function AdminCouponForm({
                         onValueChange={(value) => setCouponType(value as CouponType)}
                         disabled={editing || viewing}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className={cn('h-11', errors.type ? 'border-destructive' : '')}>
                           <SelectValue placeholder="选择优惠券类型" />
                         </SelectTrigger>
                         <SelectContent>
@@ -533,6 +683,7 @@ export function AdminCouponForm({
                           <SelectItem value="gift">赠品券</SelectItem>
                         </SelectContent>
                       </Select>
+                      {errors.type && <p className="text-xs text-destructive">{errors.type}</p>}
                     </div>
 
                     {editing && (
@@ -543,7 +694,7 @@ export function AdminCouponForm({
                           onValueChange={(value) => setStatus(value as CouponStatus)}
                           disabled={viewing}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-11">
                             <SelectValue placeholder="选择状态" />
                           </SelectTrigger>
                           <SelectContent>
@@ -556,117 +707,229 @@ export function AdminCouponForm({
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
 
-              {/* 类型特定信息 */}
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    {couponType === 'discount' && <Percent className="h-5 w-5 text-primary" />}
-                    {couponType === 'fixed_amount' && <DollarSign className="h-5 w-5 text-primary" />}
-                    {couponType === 'threshold' && <Gift className="h-5 w-5 text-primary" />}
-                    {couponType === 'gift' && <Gift className="h-5 w-5 text-primary" />}
-                    折扣设置
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {renderTypeSpecificFields()}
-                  </div>
-                </CardContent>
-              </Card>
+                  {/* 分隔线 */}
+                  <div className="border-t" />
 
-              {/* 使用限制 */}
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" /> 使用限制
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-foreground/70">最低订单金额</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">¥</span>
-                        <Input
-                          placeholder="例如：50.00"
-                          value={minOrderAmount}
-                          onChange={(e) => setMinOrderAmount(e.target.value)}
-                          disabled={viewing}
-                          className="pl-8 h-11"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">订单金额达到此门槛才可使用</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-foreground/70">最大折扣金额</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">¥</span>
-                        <Input
-                          placeholder="例如：100.00"
-                          value={maxDiscountAmount}
-                          onChange={(e) => setMaxDiscountAmount(e.target.value)}
-                          disabled={viewing}
-                          className="pl-8 h-11"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">折扣金额的上限（防止过度优惠）</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-foreground/70">每人限用次数</Label>
-                      <Input
-                        type="number"
-                        placeholder="留空表示不限制"
-                        value={perUserLimit === null ? '' : perUserLimit}
-                        onChange={(e) => setPerUserLimit(e.target.value === '' ? null : Number(e.target.value))}
-                        disabled={viewing}
-                        className="h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-foreground/70">总使用次数限制</Label>
-                      <Input
-                        type="number"
-                        placeholder="留空表示不限制"
-                        value={usageLimit === null ? '' : usageLimit}
-                        onChange={(e) => setUsageLimit(e.target.value === '' ? null : Number(e.target.value))}
-                        disabled={viewing}
-                        className="h-11"
-                      />
+                  {/* 折扣设置 */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground/70 mb-4 flex items-center gap-2">
+                      {couponType === 'discount' && <Percent className="h-4 w-4 text-primary" />}
+                      {couponType === 'fixed_amount' && <DollarSign className="h-4 w-4 text-primary" />}
+                      {couponType === 'threshold' && <Tag className="h-4 w-4 text-primary" />}
+                      {couponType === 'gift' && <Gift className="h-4 w-4 text-primary" />}
+                      {couponType === 'discount' && '折扣比例设置'}
+                      {couponType === 'fixed_amount' && '固定金额减免设置'}
+                      {couponType === 'threshold' && '满减规则设置'}
+                      {couponType === 'gift' && '赠品设置'}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {renderTypeSpecificFields()}
                     </div>
                   </div>
                 </CardContent>
+              </Card>
+
+              {/* 使用限制（可折叠） */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/20">
+                  <CardTitle
+                    className="text-lg font-semibold flex items-center justify-between cursor-pointer select-none"
+                    onClick={() => !viewing && setUsageLimitsExpanded(!usageLimitsExpanded)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" /> 使用限制
+                    </div>
+                    {!viewing && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-muted"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setUsageLimitsExpanded(!usageLimitsExpanded)
+                        }}
+                      >
+                        {usageLimitsExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                {usageLimitsExpanded && (
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-foreground/70">最低订单金额</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">¥</span>
+                          <Input
+                            placeholder="例如：50.00"
+                            value={minOrderAmount}
+                            onChange={(e) => setMinOrderAmount(e.target.value)}
+                            disabled={viewing}
+                            className="pl-8 h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">订单金额达到此门槛才可使用</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-foreground/70">最大折扣金额</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">¥</span>
+                          <Input
+                            placeholder="例如：100.00"
+                            value={maxDiscountAmount}
+                            onChange={(e) => setMaxDiscountAmount(e.target.value)}
+                            disabled={viewing}
+                            className="pl-8 h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">折扣金额的上限（防止过度优惠）</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-foreground/70">每人限用次数</Label>
+                        <Input
+                          type="number"
+                          placeholder="留空表示不限制"
+                          value={perUserLimit === null ? '' : perUserLimit}
+                          onChange={(e) => setPerUserLimit(e.target.value === '' ? null : Number(e.target.value))}
+                          disabled={viewing}
+                          className="h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-foreground/70">总使用次数限制</Label>
+                        <Input
+                          type="number"
+                          placeholder="留空表示不限制"
+                          value={usageLimit === null ? '' : usageLimit}
+                          onChange={(e) => setUsageLimit(e.target.value === '' ? null : Number(e.target.value))}
+                          disabled={viewing}
+                          className="h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
 
               {/* 有效期 */}
-              <Card>
-                <CardHeader className="border-b">
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/20">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-primary" /> 有效期
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="p-6 space-y-6">
+                  {/* 快速设置 */}
+                  {!viewing && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-muted-foreground font-medium mr-1">快速设置：</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyDatePreset('today')}
+                        className="h-8 text-xs gap-1.5 border-border/20 hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        <Timer className="h-3.5 w-3.5" /> 今天开始
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyDatePreset('week')}
+                        className="h-8 text-xs gap-1.5 border-border/20 hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        <Calendar className="h-3.5 w-3.5" /> 1周内
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyDatePreset('month')}
+                        className="h-8 text-xs gap-1.5 border-border/20 hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        <Calendar className="h-3.5 w-3.5" /> 1个月内
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyDatePreset('forever')}
+                        className="h-8 text-xs gap-1.5 border-border/20 hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        <Clock className="h-3.5 w-3.5" /> 永久有效
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* 日期预览 */}
+                  {(validFrom || validTo) && (
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary shrink-0" />
+                      <p className="text-sm text-primary/80 font-medium">
+                        {validFrom && validTo
+                          ? `${formatDateReadable(validFrom)} 至 ${formatDateReadable(validTo)}`
+                          : validFrom
+                          ? `自 ${formatDateReadable(validFrom)} 开始`
+                          : `至 ${formatDateReadable(validTo)} 结束`}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 日期时间输入 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2" data-error-field="validFrom">
                       <Label className="text-sm font-semibold text-foreground/70">
                         开始时间 <span className="text-destructive">*</span>
                       </Label>
-                      <Input
-                        type="datetime-local"
-                        value={validFrom}
-                        onChange={(e) => setValidFrom(e.target.value)}
-                        disabled={viewing}
-                        className={cn(
-                          'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                          errors.validFrom ? 'border-destructive focus-visible:ring-destructive' : '',
-                          shakingFields.has('validFrom') ? 'animate-form-shake' : ''
-                        )}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={validFrom ? validFrom.split('T')[0] : ''}
+                          onChange={(e) => {
+                            const date = e.target.value
+                            const time = validFrom ? validFrom.split('T')[1] || '00:00' : '00:00'
+                            setValidFrom(date ? `${date}T${time}` : '')
+                          }}
+                          disabled={viewing}
+                          className={cn(
+                            'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all flex-1',
+                            errors.validFrom ? 'border-destructive focus-visible:ring-destructive' : '',
+                            shakingFields.has('validFrom') ? 'animate-form-shake' : ''
+                          )}
+                        />
+                        <Select
+                          value={validFrom ? validFrom.split('T')[1] || '00:00' : '00:00'}
+                          onValueChange={(time) => {
+                            const date = validFrom ? validFrom.split('T')[0] : ''
+                            setValidFrom(date ? `${date}T${time}` : '')
+                          }}
+                          disabled={viewing}
+                        >
+                          <SelectTrigger className={cn('h-11 w-[110px]', errors.validFrom ? 'border-destructive' : '')}>
+                            <Clock className="h-4 w-4 text-muted-foreground mr-1" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => {
+                              const hour = String(i).padStart(2, '0')
+                              return (
+                                <SelectItem key={hour} value={`${hour}:00`}>{`${hour}:00`}</SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {errors.validFrom && <p className="text-xs text-destructive">{errors.validFrom}</p>}
                     </div>
 
@@ -674,17 +937,44 @@ export function AdminCouponForm({
                       <Label className="text-sm font-semibold text-foreground/70">
                         结束时间 <span className="text-destructive">*</span>
                       </Label>
-                      <Input
-                        type="datetime-local"
-                        value={validTo}
-                        onChange={(e) => setValidTo(e.target.value)}
-                        disabled={viewing}
-                        className={cn(
-                          'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all',
-                          errors.validTo ? 'border-destructive focus-visible:ring-destructive' : '',
-                          shakingFields.has('validTo') ? 'animate-form-shake' : ''
-                        )}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={validTo ? validTo.split('T')[0] : ''}
+                          onChange={(e) => {
+                            const date = e.target.value
+                            const time = validTo ? validTo.split('T')[1] || '23:59' : '23:59'
+                            setValidTo(date ? `${date}T${time}` : '')
+                          }}
+                          disabled={viewing}
+                          className={cn(
+                            'h-11 bg-muted/5 border-border/10 focus:border-primary/50 transition-all flex-1',
+                            errors.validTo ? 'border-destructive focus-visible:ring-destructive' : '',
+                            shakingFields.has('validTo') ? 'animate-form-shake' : ''
+                          )}
+                        />
+                        <Select
+                          value={validTo ? validTo.split('T')[1] || '23:59' : '23:59'}
+                          onValueChange={(time) => {
+                            const date = validTo ? validTo.split('T')[0] : ''
+                            setValidTo(date ? `${date}T${time}` : '')
+                          }}
+                          disabled={viewing}
+                        >
+                          <SelectTrigger className={cn('h-11 w-[110px]', errors.validTo ? 'border-destructive' : '')}>
+                            <Clock className="h-4 w-4 text-muted-foreground mr-1" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => {
+                              const hour = String(i).padStart(2, '0')
+                              return (
+                                <SelectItem key={hour} value={`${hour}:00`}>{`${hour}:00`}</SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {errors.validTo && <p className="text-xs text-destructive">{errors.validTo}</p>}
                     </div>
                   </div>

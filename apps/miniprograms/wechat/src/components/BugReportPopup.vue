@@ -78,6 +78,7 @@ import { ref, reactive, computed } from 'vue'
 import PopupSheet from '@/components/PopupSheet.vue'
 import { feedbackService, FeedbackType } from '@/services/feedback'
 import { showSuccess, showError, showLoading, hideLoading } from '@/utils/toast'
+import { getErrorMessage } from '@/utils/error-handler'
 
 const props = defineProps<{
   modelValue: boolean
@@ -158,7 +159,7 @@ const handleSubmit = async () => {
       emit('success')
     }
   } catch (error) {
-    showError('提交失败，请重试')
+    showError(getErrorMessage(error))
   } finally {
     submitting.value = false
   }

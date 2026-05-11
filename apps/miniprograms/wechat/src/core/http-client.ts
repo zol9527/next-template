@@ -310,6 +310,12 @@ export class HttpClient {
           error: lastError.message,
         });
 
+        // 只有可重试的错误（5xx 服务端错误、网络故障）才进行重试
+        // 4xx 客户端错误（如 400 参数校验、401 认证失败、429 频率限制）不应重试
+        if (!lastError.isRetryable) {
+          break;
+        }
+
         if (attempt < retry) {
           await this.delay(this.retryDelay * (attempt + 1));
         }
