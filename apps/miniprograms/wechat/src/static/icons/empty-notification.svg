@@ -1,30 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
-  <!-- 背景圆 -->
-  <circle cx="60" cy="54" r="40" fill="#F0F5F4"/>
-  
-  <!-- 铃铛主体 -->
-  <path d="M60 22C60 22 48 22 48 36V50L42 58V62H78V58L72 50V36C72 22 60 22 60 22Z" 
-        stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和背景圆 -->
+  <circle cx="60" cy="60" r="56" fill="#E8F7F0"/>
+
+  <!-- 铃铛主体 — 圆润造型 -->
+  <path d="M60 24C52.268 24 46 30.268 46 38V48L40 56V60H80V56L74 48V38C74 30.268 67.732 24 60 24Z"
+        stroke="#4DB892" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- 铃铛内填充（半透明） -->
+  <path d="M48 56H72L68 48V38C68 33.582 64.418 30 60 30C55.582 30 52 33.582 52 38V48L48 56Z"
+        fill="#B8E6D4" opacity="0.5"/>
+
   <!-- 铃铛底部弧线 -->
-  <path d="M52 62C52 62 52 70 60 70C68 70 68 62 68 62" 
-        stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  
-  <!-- 铃铛顶部小圆点 -->
-  <circle cx="60" cy="18" r="3" fill="#6B8A94"/>
-  
-  <!-- 铃铛内部横线 -->
-  <line x1="44" y1="58" x2="76" y2="58" stroke="#6B8A94" stroke-width="2.5" stroke-linecap="round"/>
-  
-  <!-- 装饰：左侧小星 -->
-  <circle cx="32" cy="34" r="2.5" fill="#B8D4DB" opacity="0.6"/>
-  <circle cx="88" cy="38" r="2" fill="#B8D4DB" opacity="0.5"/>
-  <circle cx="30" cy="62" r="1.5" fill="#B8D4DB" opacity="0.4"/>
-  
-  <!-- 装饰：右侧小点 -->
-  <circle cx="85" cy="56" r="2.5" fill="#B8D4DB" opacity="0.6"/>
-  
+  <path d="M53 60C53 60 53 67 60 67C67 67 67 60 67 60"
+        stroke="#4DB892" stroke-width="2.5" stroke-linecap="round" stroke="round" fill="none"/>
+
+  <!-- 铃铛顶部悬挂点 -->
+  <circle cx="60" cy="20" r="3.5" fill="#4DB892"/>
+
+  <!-- 铃铛内部振动线（表示通知） -->
+  <path d="M70 38C70 38 74 34 74 28" stroke="#B8E6D4" stroke-width="2" stroke-linecap="round" fill="none"/>
+
+  <!-- 左侧小星星装饰 -->
+  <path d="M28 38L29.5 34L31 38L35 39.5L31 41L29.5 45L28 41L24 39.5Z" fill="#B8E6D4" opacity="0.6"/>
+
+  <!-- 右侧小圆点装饰 -->
+  <circle cx="90" cy="42" r="3" fill="#B8E6D4" opacity="0.5"/>
+  <circle cx="86" cy="60" r="2" fill="#B8E6D4" opacity="0.4"/>
+
   <!-- 底部文字装饰线 -->
-  <line x1="42" y1="84" x2="78" y2="84" stroke="#D4E3E8" stroke-width="2" stroke-linecap="round"/>
-  <line x1="50" y1="92" x2="70" y2="92" stroke="#E2EBED" stroke-width="2" stroke-linecap="round"/>
+  <line x1="42" y1="80" x2="78" y2="80" stroke="#C8E8DC" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="50" y1="88" x2="70" y2="88" stroke="#D8F0E6" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- 底部感叹号（强调通知含义） -->
+  <circle cx="82" cy="28" r="8" fill="#4DB892"/>
+  <line x1="82" y1="24" x2="82" y2="30" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="82" cy="33" r="1.2" fill="white"/>
 </svg>

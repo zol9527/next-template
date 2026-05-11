@@ -1,0 +1,16 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 铃铛 -->
+  <path d="M18 7C13.582 7 10 10.582 10 15V19L7 23V25H29V23L26 19V15C26 10.582 22.418 7 18 7Z"
+        stroke="#4DB892" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 内填充 -->
+  <path d="M12 23H24L22 19V15C22 12.239 20.209 10 18 10C15.791 10 14 12.239 14 15V19L12 23Z"
+        fill="#E8F7F0" opacity="0.8"/>
+  <!-- 底部弧 -->
+  <path d="M15 25C15 25 15 29 18 29C21 29 21 25 21 25"
+        stroke="#4DB892" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <!-- 悬挂点 -->
+  <circle cx="18" cy="5.5" r="2" fill="#4DB892"/>
+  <!-- 右上角红点 -->
+  <circle cx="26" cy="9" r="4.5" fill="#FF6B6B"/>
+  <text x="26" y="11.5" font-size="7" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">!</text>
+</svg>

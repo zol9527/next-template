@@ -54,7 +54,11 @@
 
         <!-- 类型图标 -->
         <view class="icon-wrapper" :class="`icon-${item.type.toLowerCase()}`">
-          <text class="type-icon">{{ getTypeIcon(item.type) }}</text>
+          <image
+            :src="getTypeIcon(item.type)"
+            class="type-icon"
+            mode="aspectFit"
+          />
         </view>
 
         <!-- 内容 -->
@@ -193,12 +197,12 @@ async function onMarkAllRead() {
 
 // ======================== 工具函数 ========================
 
-/** 获取通知类型图标 */
+/** 获取通知类型图标路径 */
 function getTypeIcon(type: string): string {
   const icons: Record<string, string> = {
-    SYSTEM: '🔔',
+    SYSTEM: '/static/icons/ntf-system.svg',
   }
-  return icons[type] || '🔔'
+  return icons[type] || '/static/icons/ntf-system.svg'
 }
 
 /** 格式化时间 */
@@ -282,6 +286,8 @@ onMounted(() => {
 .notification-list {
   flex: 1;
   padding: 24rpx 32rpx;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* 空状态 */
@@ -316,12 +322,14 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   padding: 28rpx;
-  gap: 24rpx;
+  gap: 20rpx;
   background-color: #FFFFFF;
   border-radius: 24rpx;
   border: 2rpx solid #E2EBED;
   margin-bottom: 20rpx;
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .notification-card.unread {
@@ -348,12 +356,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.icon-system { background-color: #F0F5F4; }
+.icon-system { background-color: #E8F7F0; }
 
 .type-icon {
-  font-size: 36rpx;
+  width: 48rpx;
+  height: 48rpx;
 }
 
 /* 通知内容 */
@@ -363,7 +373,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 8rpx;
   min-width: 0;
-  padding-right: 20rpx;
+  overflow: hidden;
 }
 
 .notification-title {
