@@ -44,6 +44,7 @@ function flattenScopeTree() {
     miniprogram: { description: '小程序管理', children: { carousels: { description: '轮播图管理' }, 'shop-config': { description: '商城设置管理' }, 'home-config': { description: '首页 Banner 配置管理' }, faq: { description: '常见问题管理' } } },
     agreements: { description: '协议管理' },
     announcements: { description: '公告管理' },
+    notifications: { description: '通知管理' },
     blog: { description: '博客管理', children: { articles: { description: '博客文章管理' }, categories: { description: '博客分类管理' }, tags: { description: '博客标签管理' }, analytics: { description: '博客阅读数据' } } },
     rbac: { description: '权限管理' },
     mfa: { description: 'MFA 策略管理（全局）' },
