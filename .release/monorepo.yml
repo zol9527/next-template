@@ -37,6 +37,7 @@ release:
     - "^hotfix/.+$"
     - "^codex/.+$"
   auto_stage: true
+  commit_title: "🚀 release: {tag}"
   create_pr: false
   push: false
   base_branch: release

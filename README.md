@@ -136,6 +136,10 @@ make release RELEASE=wechat RELEASE_ONLY=preflight,prepare
 make release-commit RELEASE=backend RELEASE_TO_STEP=commit
 ```
 
+发布提交标题由各发布单元配置里的 `release.commit_title` 控制，默认使用
+`🚀 release: {tag}`。这里 `{tag}` 会带上各自的 `version.tag_prefix`，例如
+`backend/v0.2.2`、`wechat/v1.0.1`。
+
 发布时 `.release/_shared/hooks/hook-version.py` 会把 `release-cli` 解析出的版本同步到
 对应发布单元的 `package.json`。微信小程序还会同步页面运行时读取的
 `apps/miniprograms/wechat/src/config/version.ts`。
