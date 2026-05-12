@@ -5,14 +5,17 @@
 #   - 反向代理到 Next.js 应用
 #   - 静态文件缓存
 #   - 安全头部配置
-#   - 日志记录
+#
+# 日志策略:
+#   应用层日志由 Pino 管理（结构化 JSON，按日期/大小滚动），Caddy 不重复记录。
+#   如需排查反向代理层问题，可临时添加 log {} 块。
 #
 # 部署位置: /etc/caddy/Caddyfile (或通过 caddy import 管理)
 #
 # 使用方式:
 #   1. 将此文件内容复制到服务器的 Caddyfile
 #   2. 或使用: caddy add-package --github caddy-dns/cloudflare (如需 DNS 验证)
-#   3. 重载: sudo systemctl reload caddy
+#   3. 重载: make caddy-reload ENV=production
 
 # ============== 生产环境配置 ==============
 # 将 www.shuoboda.cn 替换为你的真实域名
@@ -25,21 +28,6 @@ http://www.shuoboda.cn {
 https://www.shuoboda.cn {
         # HTTPS 响应压缩
         encode zstd gzip
-
-        # 日志配置 (JSON 格式，便于 SIEM 分析)
-        log {
-                # 默认生产路径: /var/log/caddy/nextjs-app-access.log
-                # 日志保留: 14 天 (336h)
-                # 本地验证可通过环境变量覆盖:
-                # CADDY_ACCESS_LOG_PATH=/absolute/path/to/log caddy validate --config deploy/Caddyfile
-                output file {$CADDY_ACCESS_LOG_PATH:/var/log/caddy/nextjs-app-access.log} {
-                        roll_size 100mb
-                        roll_keep 10
-                        roll_keep_for 336h
-                }
-                format json
-                level INFO
-        }
 
         # 安全头部
         header {

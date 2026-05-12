@@ -1,0 +1,66 @@
+# Caddy 开发环境配置
+#
+# 域名: www.zolzeeezziiii.xyz
+#
+# 使用方式:
+#   make caddy-start ENV=development
+#   make caddy-reload ENV=development
+
+# HTTP -> HTTPS 重定向
+http://www.zolzeeezziiii.xyz {
+	redir https://www.zolzeeezziiii.xyz{uri} 308
+}
+
+https://www.zolzeeezziiii.xyz {
+	# HTTPS 响应压缩
+	encode zstd gzip
+
+	# 安全头部
+	header {
+		-Server
+	}
+
+	# Next.js 静态资源缓存
+	handle /_next/static/* {
+		reverse_proxy localhost:3000
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	handle /static/* {
+		reverse_proxy localhost:3000
+		header Cache-Control "public, max-age=86400"
+	}
+
+	handle /images/* {
+		reverse_proxy localhost:3000
+		header Cache-Control "public, max-age=86400"
+	}
+
+	# favicon 等根目录资源
+	@root_assets path /favicon.ico /robots.txt /sitemap.xml
+	handle @root_assets {
+		reverse_proxy localhost:3000
+		header Cache-Control "public, max-age=86400"
+	}
+
+	# API 路由 (无缓存)
+	handle /api/* {
+		reverse_proxy localhost:3000
+		header Cache-Control "no-store"
+	}
+
+	# Next.js 页面请求
+	handle {
+		reverse_proxy localhost:3000 {
+			# WebSocket 支持
+			header_up Upgrade {>Upgrade}
+			header_up Connection {>Connection}
+
+			# 超时配置
+			transport http {
+				dial_timeout 30s
+				response_header_timeout 60s
+			}
+		}
+	}
+}

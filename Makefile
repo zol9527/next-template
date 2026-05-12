@@ -5,6 +5,7 @@
   pack pack-backend pack-wechat pack-monorepo \
   release release-backend release-wechat release-monorepo \
   deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
+  caddy-start caddy-stop caddy-reload caddy-restart caddy-status caddy-validate \
   backend-shell wechat-shell
 
 .DEFAULT_GOAL := help
@@ -21,6 +22,13 @@ RELEASE_VALUE := $(if $(VERSION),$(VERSION),$(TYPE))
 ENV ?= production
 PM2_APP_NAME := nextjs-app
 BACKEND_ECOSYSTEM := $(BACKEND_DIR)/ecosystem.config.cjs
+
+# Caddy 配置
+# 根据环境选择 Caddyfile: production → Caddyfile, development → Caddyfile.development
+CADDY_DIR := $(BACKEND_DIR)/deploy
+CADDYFILE := $(CADDY_DIR)/Caddyfile$(if $(filter development,$(ENV)),.development,)
+# Caddy 配置文件在远程服务器上的路径
+CADDY_REMOTE_PATH ?= /etc/caddy/Caddyfile
 
 help:
 	@echo "📦 Monorepo 命令"
@@ -82,6 +90,18 @@ help:
 	@echo "    make deploy ENV=production"
 	@echo "    make deploy ENV=development"
 	@echo "    make pm2-restart ENV=development"
+	@echo ""
+	@echo "  Caddy 反向代理:"
+	@echo "    caddy-start          启动 Caddy（上传配置 + 启动服务）"
+	@echo "    caddy-stop           停止 Caddy"
+	@echo "    caddy-reload         上传配置 + 重载 Caddy（零停机）"
+	@echo "    caddy-restart        重启 Caddy"
+	@echo "    caddy-status         查看 Caddy 运行状态"
+	@echo "    caddy-validate       本地验证 Caddyfile 语法"
+	@echo ""
+	@echo "  Caddy 示例:"
+	@echo "    make caddy-start ENV=development    # 测试环境"
+	@echo "    make caddy-reload ENV=production    # 正式环境"
 
 install:
 	bun install
@@ -195,3 +215,41 @@ pm2-logs:
 pm2-delete:
 	@echo "🗑  删除 PM2 进程..."
 	@pm2 delete $(PM2_APP_NAME)
+
+# ==================== Caddy 反向代理命令 ====================
+# 通过 ENV=staging / ENV=production 选择不同的 Caddyfile
+# Caddyfile 文件位置:
+#   production  → apps/backend/deploy/Caddyfile
+#   development → apps/backend/deploy/Caddyfile.development
+
+# 本地验证 Caddyfile 语法（不需要服务器）
+caddy-validate:
+	@echo "🔍 验证 Caddyfile ($(ENV) 环境)..."
+	@caddy validate --config $(CADDYFILE) --adapter caddyfile
+
+# 启动 Caddy（前台运行，适用于调试；生产环境推荐用 systemd）
+caddy-start:
+	@echo "🚀 启动 Caddy ($(ENV) 环境)..."
+	@sudo caddy start --config $(CADDYFILE) --adapter caddyfile
+
+# 停止 Caddy
+caddy-stop:
+	@echo "⏹  停止 Caddy..."
+	@sudo caddy stop
+
+# 重载 Caddy 配置（零停机，推荐日常更新使用）
+caddy-reload:
+	@echo "♻️  重载 Caddy ($(ENV) 环境)..."
+	@sudo caddy reload --config $(CADDYFILE) --adapter caddyfile
+
+# 重启 Caddy（先停再启，有短暂不可用）
+caddy-restart:
+	@echo "🔄 重启 Caddy ($(ENV) 环境)..."
+	@sudo caddy stop || true
+	@sudo caddy start --config $(CADDYFILE) --adapter caddyfile
+
+# 查看 Caddy 运行状态
+caddy-status:
+	@caddy version 2>/dev/null || echo "❌ Caddy 未安装"
+	@echo ""
+	@sudo systemctl is-active caddy 2>/dev/null || echo "systemd 服务状态未知（可能未使用 systemd 管理）"
