@@ -53,8 +53,11 @@ packager:
   output_dir: dist
   name: wechat-miniprogram-{version}
   respect_gitignore: true
+  build:
+    enabled: true
+    script: _shared/hooks/hook-pack.py
   include:
-    - "*"
+    - dist/build/mp-weixin
   exclude:
     - .git
     - .github

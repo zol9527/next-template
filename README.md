@@ -140,6 +140,10 @@ make release-commit RELEASE=backend RELEASE_TO_STEP=commit
 `🚀 release: {tag}`。这里 `{tag}` 会带上各自的 `version.tag_prefix`，例如
 `backend/v0.2.2`、`wechat/v1.0.1`。
 
+`packager.build.enabled` 控制打包前是否先构建。backend 和 wechat 发布单元会先执行
+`.release/_shared/hooks/hook-pack.py` 中对应的构建命令，再压缩产物；monorepo 发布单元
+保持 `enabled: false`，用于只压缩并分享整个模板 workspace。
+
 发布时 `.release/_shared/hooks/hook-version.py` 会把 `release-cli` 解析出的版本同步到
 对应发布单元的 `package.json`。微信小程序还会同步页面运行时读取的
 `apps/miniprograms/wechat/src/config/version.ts`。

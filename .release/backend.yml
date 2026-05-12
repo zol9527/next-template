@@ -51,6 +51,9 @@ packager:
   output_dir: dist
   name: backend-{version}
   respect_gitignore: true
+  build:
+    enabled: true
+    script: _shared/hooks/hook-pack.py
   include:
     - "*"
   exclude:

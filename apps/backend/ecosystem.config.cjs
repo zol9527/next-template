@@ -89,28 +89,5 @@ module.exports = {
         NODE_ENV: 'production',
       },
     },
-  ],
-
-  // ========== PM2 远程部署配置（可选，用于 pm2 deploy）==========
-  // 使用前需要替换 user / host / repo 为实际值
-  deploy: {
-    production: {
-      user: 'deploy',
-      host: 'your-server.com',
-      ref: 'origin/main',
-      repo: 'git@github.com:your-org/next-template.git',
-      path: '/var/www/nextjs-app',
-      'post-deploy':
-        'bun install && bun run --filter @repo/backend build && pm2 reload ecosystem.config.cjs --env production',
-    },
-    development: {
-      user: 'deploy',
-      host: 'dev.your-server.com',
-      ref: 'origin/develop',
-      repo: 'git@github.com:your-org/next-template.git',
-      path: '/var/www/nextjs-app-dev',
-      'post-deploy':
-        'bun install && bun run --filter @repo/backend build && pm2 reload ecosystem.config.cjs --env development',
-    },
-  },
+  ]
 }

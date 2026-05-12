@@ -51,6 +51,9 @@ packager:
   output_dir: dist
   name: next-template-monorepo-{version}
   respect_gitignore: true
+  build:
+    enabled: false
+    script: _shared/hooks/hook-pack.py
   include:
     - "*"
   exclude:
