@@ -81,6 +81,7 @@ next-env.d.ts
 **/opencode/
 
 # AI agent related files
+**/.superpowers/
 **/.openviking/
 **/.sisyphus/
 ov.conf
