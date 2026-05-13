@@ -15,7 +15,7 @@ model Product {
   name             String
   slug             String?
   summary          String?
-  description      String?
+  description      String?                 @db.LongText
   productKind      String                   @map("product_kind")
   status           String                   @default("draft")
   price            Decimal
