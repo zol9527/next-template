@@ -2,7 +2,7 @@
   seed-minimal seed-development seed-full seed-help \
   setup-db reset-db reset-db-empty db-push fix-prisma \
   release release-patch release-minor release-major release-version \
-  deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
+  deploy upgrade pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
   caddy-start caddy-stop caddy-reload caddy-restart caddy-status caddy-validate
 
 .DEFAULT_GOAL := help
@@ -50,6 +50,7 @@ help:
 	@echo "    make release RELEASE_CREATE_PR=1 RELEASE_PUSH=1"
 	@echo ""
 	@echo "  PM2 部署:"
+	@echo "    upgrade             停止 + 清理 + 解压升级包（自动找 /tmp 下最新的 backend-*.zip）"
 	@echo "    deploy              构建 + 启动 PM2（默认 ENV=production）"
 	@echo "    pm2-start           启动 PM2 进程（不构建）"
 	@echo "    pm2-stop            停止 PM2 进程"
@@ -197,6 +198,47 @@ fix-prisma:
 	@echo "🔨 重新安装 Prisma..."
 	@bun install prisma @prisma/client --force
 	@echo "✅ Prisma 修复完成！"
+
+# ============================================
+# 服务器端升级（停止 → 清理 → 解压）
+# ============================================
+# 用法:
+#   1. 本地: make pack-backend
+#   2. 上传: scp dist/backend-0.1.14.zip prod:~/backend/
+#   3. 服务器: cd ~/backend && make upgrade && make install && make pm2-start
+#
+# 自动查找当前目录下最新的 backend-*.zip，也可手动指定:
+#   make upgrade ZIP=backend-0.1.14.zip
+
+ZIP ?=
+
+upgrade:
+	@ZIP_FILE="$(ZIP)"; \
+	if [ -z "$$ZIP_FILE" ]; then \
+		ZIP_FILE=$$(ls -t backend-*.zip 2>/dev/null | head -1); \
+	fi; \
+	if [ -z "$$ZIP_FILE" ]; then \
+		echo "❌ 找不到升级包: backend-*.zip"; \
+		echo "   上传后重试，或手动指定: make upgrade ZIP=backend-x.x.x.zip"; \
+		exit 1; \
+	fi; \
+	echo "📦 升级包: $$ZIP_FILE"; \
+	echo "▶ 停止 PM2..."; \
+	pm2 stop nextjs-app 2>/dev/null || true; \
+	echo "▶ 清理旧代码（保留 .env.production / node_modules / uploads / logs / .bunfig.toml）..."; \
+	find . -maxdepth 1 \
+		! -name "." \
+		! -name ".env.production" \
+		! -name "node_modules" \
+		! -name "uploads" \
+		! -name "logs" \
+		! -name ".bunfig.toml" \
+		! -name "$$ZIP_FILE" \
+		-exec rm -rf {} +; \
+	echo "▶ 解压..."; \
+	unzip -q "$$ZIP_FILE" -d .; \
+	rm -f "$$ZIP_FILE"; \
+	echo "✅ 升级包已就位，接下来运行: make install && make pm2-start"
 
 # ============================================
 # PM2 部署命令
