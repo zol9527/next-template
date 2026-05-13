@@ -40,12 +40,7 @@ import {
   Folder,
   Loader2
 } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { Textarea } from '@/components/ui/textarea'
@@ -56,6 +51,7 @@ import {
   AdminUpdateProductRequestSchema,
   type AdminProduct,
   type AdminProductKind,
+  type AdminProductStatus,
 } from '@/plugins/ecommerce/contracts/admin-products.dto'
 import { RichTextEditor } from '../rich-text-editor'
 import { MaterialPicker } from '../media/material-picker'
@@ -614,6 +610,7 @@ export function AdminProductForm({
       const payload = {
         name,
         kind,
+        ...(!editing ? { status: 'published' as AdminProductStatus } : {}),
         summary: summary.trim() === '' ? null : summary,
         description: description.trim() === '' ? null : description,
         priceAmount,
@@ -853,19 +850,14 @@ export function AdminProductForm({
   }, [])
 
   return (
-    <Dialog open onOpenChange={(v) => !v && onCancel()}>
+    <Dialog modal={false} open onOpenChange={(v) => !v && onCancel()}>
       <DialogContent
         showCloseButton={false}
         showOverlay={false}
         className="max-w-[98vw] w-full xl:max-w-400 h-[90vh] flex flex-col overflow-hidden p-5 !duration-0 !data-[state=open]:animate-none !data-[state=closed]:animate-none"
-        onPointerDownOutside={(e) => {
-          // 如果点击的是下拉菜单内容或另一个弹窗内容（在 Portal 中），阻止 Dialog 关闭
-          const target = e.target as HTMLElement
-          if (target.closest('[data-dropdown-content]') || target.closest('[data-dialog-content]')) {
-            e.preventDefault()
-            return
-          }
-        }}
+        // modal={false} 下点击外部会触发关闭，这里阻止所有外部交互引起的关闭
+        // 表单关闭只能通过"取消"按钮或保存回调
+        onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e: KeyboardEvent) => e.preventDefault()}
       >
         {/* 编辑、查看表格标题部分 */}
@@ -1148,13 +1140,15 @@ export function AdminProductForm({
                       <div className="flex flex-col gap-2">
                         <Label className="text-sm font-semibold text-foreground/70">所属类目</Label>
 
-                        {/* 类目选择下拉菜单 */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <div className={cn(
-                              "flex items-center justify-between px-4 h-11 rounded-xl bg-muted/10 border border-border/30 cursor-pointer hover:bg-muted/15 transition-all w-full",
-                              viewing && "cursor-default hover:bg-muted/10"
-                            )}>
+                        {/* 类目选择 Popover */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <div
+                              className={cn(
+                                "flex items-center justify-between px-4 h-11 rounded-xl bg-muted/10 border border-border/30 cursor-pointer hover:bg-muted/15 transition-all w-full",
+                                viewing && "cursor-default hover:bg-muted/10"
+                              )}
+                            >
 
                               {/* 显示已选类目 */}
                               <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
@@ -1183,13 +1177,12 @@ export function AdminProductForm({
                               </div>
                               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                             </div>
-                          </DropdownMenuTrigger>
-                          {/* 如果不是查看模式，显示下拉菜单内容 */}
+                          </PopoverTrigger>
+                          {/* 如果不是查看模式，显示 Popover 内容 */}
                           {!viewing && (
-                            <DropdownMenuContent 
+                            <PopoverContent 
                               className="min-w-[320px] p-0 overflow-hidden shadow-2xl z-100" 
-                              align="left"
-                              matchTriggerWidth={true}
+                              align="start"
                             >
                               {/* 搜索输入框 */}
                               <div className="p-2 border-b border-border/10 bg-muted/5">
@@ -1234,16 +1227,15 @@ export function AdminProductForm({
                                   {categories
                                     .filter(c => !categorySearchTerm || c.name.toLowerCase().includes(categorySearchTerm.toLowerCase()))
                                     .map((c) => (
-                                      <DropdownMenuItem 
-                                        key={c.id} 
-                                        onSelect={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                          e.preventDefault() // 防止点击后关闭，方便多选
+                                      <div 
+                                        key={c.id}
+                                        onClick={() => {
                                           const next = categoryIds.includes(c.id)
                                             ? categoryIds.filter(id => id !== c.id)
                                             : [...categoryIds, c.id]
                                           setCategoryIds(next)
                                         }}
-                                        className="flex items-center gap-3 py-2.5 px-3 cursor-pointer focus:bg-muted/20"
+                                        className="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-muted/20 rounded-md transition-colors"
                                       >
                                         <div className={cn(
                                           "h-4 w-4 rounded border flex items-center justify-center transition-colors",
@@ -1255,14 +1247,13 @@ export function AdminProductForm({
                                         </div>
                                         <Folder className="h-4 w-4 text-primary/60" />
                                         <span className="flex-1 text-left text-sm">{c.name}</span>
-                                      </DropdownMenuItem>
+                                      </div>
                                     ))}
-                                  
+                                
                                   {categorySearchTerm.trim() && !categories.some(c => c.name.toLowerCase() === categorySearchTerm.toLowerCase()) && (
-                                    <DropdownMenuItem 
-                                      className="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-primary/10 text-primary transition-colors border-t border-border/5 mt-1 focus:bg-primary/10"
-                                      onSelect={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                        e.preventDefault()
+                                    <div
+                                      className="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-primary/10 text-primary transition-colors border-t border-border/5 mt-1 rounded-md"
+                                      onClick={() => {
                                         handleCreateCategory(categorySearchTerm)
                                       }}
                                     >
@@ -1274,7 +1265,7 @@ export function AdminProductForm({
                                       <span className="flex-1 text-left text-sm font-medium">
                                         创建并选择 &quot;{categorySearchTerm}&quot;
                                       </span>
-                                    </DropdownMenuItem>
+                                    </div>
                                   )}
 
                                   {categorySearchTerm && categories.filter(c => !c.name.toLowerCase().includes(categorySearchTerm.toLowerCase())).length === categories.length && !createCategoryMutation.isPending && (
@@ -1284,9 +1275,9 @@ export function AdminProductForm({
                                   )}
                                 </div>
                               </ScrollArea>
-                            </DropdownMenuContent>
+                            </PopoverContent>
                           )}
-                        </DropdownMenu>
+                        </Popover>
                       </div>
                     </div>
 

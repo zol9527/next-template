@@ -114,6 +114,7 @@ export const AdminCreateProductRequestSchema = z
     name: z.string().min(1).openapi({ description: '商品名称' }),
     slug: z.string().min(1).nullable().optional().openapi({ description: 'URL 友好标识（可选）' }),
     kind: AdminProductKindSchema.openapi({ description: '商品类型' }),
+    status: AdminProductStatusSchema.optional().openapi({ description: '创建后的商品状态（默认草稿）' }),
     summary: z.string().nullable().optional().openapi({ description: '短简介' }),
     description: z.string().nullable().optional().openapi({ description: '详情文本' }),
     priceAmount: PriceAmountSchema.openapi({ description: '基础售价金额（decimal 字符串）' }),

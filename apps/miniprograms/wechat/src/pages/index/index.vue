@@ -1,5 +1,37 @@
 <template>
-  <view class="home-page">
+  <!-- ========== 全屏加载骨架屏：数据未就绪时展示，避免默认值闪烁 ========== -->
+  <view v-if="!pageReady" class="page-skeleton">
+    <!-- 顶部导航占位 -->
+    <view class="sk-nav">
+      <view class="sk-nav-title" />
+    </view>
+    <!-- 搜索栏占位 -->
+    <view class="sk-search" />
+    <!-- Banner 占位 -->
+    <view class="sk-banner" />
+    <!-- 快捷入口占位（两行） -->
+    <view class="sk-grid">
+      <view v-for="i in 8" :key="'sg-'+i" class="sk-grid-item">
+        <view class="sk-grid-icon" />
+        <view class="sk-grid-label" />
+      </view>
+    </view>
+    <!-- 探索内容占位 -->
+    <view class="sk-section-title" />
+    <view class="sk-explore">
+      <view v-for="i in 3" :key="'se-'+i" class="sk-explore-card" />
+    </view>
+    <!-- 签到卡片占位 -->
+    <view class="sk-checkin" />
+    <!-- 热门推荐占位 -->
+    <view class="sk-section-title" />
+    <view class="sk-hot-cards">
+      <view v-for="i in 2" :key="'sh-'+i" class="sk-hot-card" />
+    </view>
+  </view>
+
+  <!-- ========== 实际页面内容：全部数据加载完成后才渲染 ========== -->
+  <view v-else class="home-page">
     <!-- ========== Header — 使用 NavBar 组件，自动避开胶囊按钮 ========== -->
     <NavBar :show-back="false" background="#FFFFFF">
       <template #left>
@@ -322,6 +354,11 @@ export default {
     const auth = useAuth()
     const products = useProducts()
 
+    // ====== 全页加载状态：控制骨架屏 ↔ 实际内容的切换 ======
+    // pageReady 为 false 时显示全屏骨架屏，为 true 时渲染真实数据
+    // 避免用户在 API 数据返回前看到硬编码的默认值（Banner 文字、签到数据等）
+    const pageReady = ref(false)
+
     const activeCategory = ref(0)
     const categories = ref<string[]>(['全部', '热门推荐'])
 
@@ -383,7 +420,7 @@ export default {
     const DEFAULT_HOME_BANNER_CONFIG: HomeBannerConfig = {
       enabled: true,
       tagText: '限时免费',
-      title: '零基础入门\n数据分析实战课',
+      title: '零基础入门\n养老护理员',
       subtitle: '前 100 名报名免费',
       linkType: 'none',
       linkUrl: null,
@@ -662,16 +699,25 @@ export default {
         userId: auth.userId.value,
       })
 
-      // 第一步：并行加载不依赖 useProducts 的数据
-      await Promise.all([
-        loadCategories(),
-        loadSiteConfig(),
-        loadCheckinStatus(),
-        loadHomeBannerConfig(),
-      ])
+      try {
+        // 第一步：并行加载不依赖 useProducts 的数据
+        await Promise.all([
+          loadCategories(),
+          loadSiteConfig(),
+          loadCheckinStatus(),
+          loadHomeBannerConfig(),
+        ])
 
-      // 第二步：加载热门推荐商品（仅 isFeatured 标记的商品，加载后填充 allProducts）
-      await loadAllProducts()
+        // 第二步：加载热门推荐商品（仅 isFeatured 标记的商品，加载后填充 allProducts）
+        await loadAllProducts()
+      } catch (error) {
+        // 即使部分数据加载失败，也标记页面就绪，避免用户永远卡在骨架屏
+        // 具体的错误已在各 load 函数内部处理（toast 提示、错误状态展示等）
+        logger.warn('首页部分数据加载失败，仍标记页面就绪', { error: String(error) })
+      } finally {
+        // 所有数据请求完成（无论成功/失败），切换到实际内容渲染
+        pageReady.value = true
+      }
     })
 
     /**
@@ -817,6 +863,7 @@ export default {
     }
 
     return {
+      pageReady,
       auth,
       products,
       activeCategory,
@@ -1705,5 +1752,133 @@ export default {
 /* ========== TabBar 占位 ========== */
 .tabbar-placeholder {
   height: 156rpx;
+}
+
+/* ========== 全屏骨架屏（数据加载等待态） ========== */
+/* 模拟首页各区块的骨架占位，遵循微信小程序设计规范：
+   - 使用统一的 #E8EFED 灰绿色脉冲动画
+   - 区块间距与真实页面一致，过渡自然
+   - 不显示任何真实数据文字，纯视觉占位
+*/
+.page-skeleton {
+  min-height: 100vh;
+  background-color: #F5F7F6;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+
+/* 导航栏占位 */
+.sk-nav {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 40rpx;
+  background-color: #FFFFFF;
+}
+
+.sk-nav-title {
+  width: 160rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 搜索栏占位 */
+.sk-search {
+  margin: 24rpx 40rpx;
+  height: 72rpx;
+  border-radius: 36rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* Banner 占位 */
+.sk-banner {
+  margin: 0 40rpx 32rpx;
+  height: 260rpx;
+  border-radius: 32rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 快捷入口占位 */
+.sk-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16rpx 32rpx;
+  gap: 24rpx 0;
+}
+
+.sk-grid-item {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.sk-grid-icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.sk-grid-label {
+  width: 64rpx;
+  height: 24rpx;
+  border-radius: 6rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 区块标题占位 */
+.sk-section-title {
+  margin: 32rpx 40rpx 24rpx;
+  width: 140rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 探索内容占位 */
+.sk-explore {
+  display: flex;
+  gap: 20rpx;
+  padding: 0 40rpx;
+}
+
+.sk-explore-card {
+  flex: 1;
+  height: 180rpx;
+  border-radius: 24rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 签到卡片占位 */
+.sk-checkin {
+  margin: 32rpx 40rpx;
+  height: 180rpx;
+  border-radius: 32rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 热门推荐占位 */
+.sk-hot-cards {
+  display: flex;
+  gap: 20rpx;
+  padding: 0 40rpx;
+}
+
+.sk-hot-card {
+  flex: 1;
+  height: 240rpx;
+  border-radius: 24rpx;
+  background-color: #E8EFED;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 </style>

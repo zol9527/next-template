@@ -59,11 +59,47 @@ https://www.shuoboda.cn {
                 header Cache-Control "public, max-age=86400"
         }
 
-        # API 路由 (无缓存)
-        handle /api/* {
-                reverse_proxy localhost:3000
-                header Cache-Control "no-store"
-        }
+	# ──────────────────────────────────────────────────────────
+	# 本地存储的公开文件（图片/视频等）
+	# 代理到 Node.js 但不覆盖缓存头，由应用层 Route Handler 控制。
+	# 必须在 /api/* 之前匹配，否则 no-store 会覆盖 immutable。
+	# ──────────────────────────────────────────────────────────
+	handle /api/v1/public/files/* {
+		reverse_proxy localhost:3000
+		header {
+			# 纵深防御：即使应用层遗漏，Caddy 层也阻止 MIME 嗅探
+			X-Content-Type-Options nosniff
+			-Server
+		}
+	}
+
+	# ──────────────────────────────────────────────────────────
+	# 💡 最高性能方案：让 Caddy 直接提供 uploads 目录的静态文件
+	#
+	# 如果使用 local 存储模式，可以在服务器上配置 Caddy 直接
+	# 提供 uploads 目录，完全绕过 Node.js。
+	#
+	# 步骤：
+	# 1. 设置 LOCAL_UPLOAD_HOST=https://your-domain.com/static-files
+	# 2. 在 Caddyfile 中添加以下 handle（放在 /api/* 之前）：
+	#
+	# handle /static-files/* {
+	# 	root * /path/to/apps/backend/uploads
+	# 	rewrite strip /static-files
+	# 	file_server {
+	# 		precompressed br gzip
+	# 		etag
+	# 	}
+	# 	header Cache-Control "public, max-age=31536000, immutable"
+	# }
+	# ──────────────────────────────────────────────────────────
+
+	# API 路由 (无缓存)
+	# 注意：不包含 /api/v1/public/files/*（已在上方单独处理）
+	handle /api/* {
+		reverse_proxy localhost:3000
+		header Cache-Control "no-store"
+	}
 
         # Next.js 页面请求
         handle {

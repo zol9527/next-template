@@ -103,7 +103,10 @@ export const env = createEnv({
     // OSS 提供者配置
     OSS_PROVIDER: z.enum(['aliyun_oss', 'tencent_cos', 'local']).default('local'),
     LOCAL_UPLOAD_HOST: z.string().url().optional(),
-    LOCAL_UPLOAD_DIR: z.string().min(1).default('uploads'),
+    LOCAL_UPLOAD_DIR: z.string().min(1).refine(
+      (val) => val !== '.' && val !== '..' && !val.startsWith('../') && !val.startsWith('/'),
+      { message: 'LOCAL_UPLOAD_DIR 不能是 . 或 .. 或父级/绝对路径' }
+    ).default('uploads'),
 
     // 用户证件存储配置
     USER_DOCUMENTS_STORAGE_DIR: z.string().min(1).default('uploads/user-documents'),

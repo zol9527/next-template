@@ -58,6 +58,7 @@ export const POST = withV1Route({
     const created = await service.createProduct({
       name: body!.name,
       kind: body!.kind,
+      status: body!.status,
       summary: body!.summary,
       description: body!.description,
       priceAmount: body!.priceAmount,

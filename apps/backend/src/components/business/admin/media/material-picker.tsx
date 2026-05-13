@@ -214,7 +214,7 @@ export function MaterialPicker({
         className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl"
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement
-          if (target.closest('[data-dropdown-content]') || target.closest('[data-dialog-content]')) {
+          if (target.closest('[data-dropdown-content]') || target.closest('[role="dialog"]')) {
             e.preventDefault()
             return
           }

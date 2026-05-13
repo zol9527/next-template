@@ -41,7 +41,7 @@ type PublicConfigResponse = {
 }
 
 const DEFAULT_SITE_CONFIG = {
-  siteName: '平台',
+  siteName: '硕博达融培中心',
   siteSlogan: '知识赋能平台',
   logoUrl: '',
   aboutStats: [

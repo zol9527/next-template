@@ -347,6 +347,11 @@ function shouldCaptureHttpDetails(pathname: string): boolean {
     return false
   }
 
+  // 文件下载路由：流式响应，clone().text() 会将整个文件读入内存做日志，必须跳过
+  if (pathname.startsWith('/api/v1/public/files/')) {
+    return false
+  }
+
   return true
 }
 
