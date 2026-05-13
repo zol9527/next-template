@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Inter } from "next/font/google";
+import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Inter, Outfit, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { ClientProvider } from "@/components/context/client-providers";
 import { Suspense } from "react";
@@ -64,6 +64,21 @@ const inter = Inter({
   display: "swap",
 });
 
+// Bookish Landing 字体：Outfit（标题）+ DM Sans（正文）
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
   title: "Generic Admin",
   description: "",
@@ -78,7 +93,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* use antialiased to improve font rendering */}
       <body
-        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${inter.variable} antialiased`}
+        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${inter.variable} ${outfit.variable} ${dmSans.variable} antialiased`}
       >
         <ClientProvider>
           <Suspense fallback={null}>{children}</Suspense>

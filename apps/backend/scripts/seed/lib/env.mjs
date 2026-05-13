@@ -16,6 +16,9 @@ const BACKEND_ROOT = join(__dirname, '..', '..', '..')
 
 export function loadEnv() {
   const nodeEnv = process.env.NODE_ENV || 'development'
+  // 按优先级尝试加载：
+  //   1. .env.{NODE_ENV}  — 当前环境对应的 .env（必须明确 NODE_ENV）
+  //   2. .env              — 通用兜底
   const envFiles = [`.env.${nodeEnv}`, '.env']
 
   for (const file of envFiles) {
@@ -29,7 +32,11 @@ export function loadEnv() {
     }
   }
 
-  console.warn('⚠️  No env file found, using process.env only')
+  throw new Error(
+    `❌ No env file found for NODE_ENV="${nodeEnv}". ` +
+    `Expected .env.${nodeEnv} or .env in ${BACKEND_ROOT}. ` +
+    `Set NODE_ENV correctly (e.g. NODE_ENV=production) before running seed.`
+  )
 }
 
 /**

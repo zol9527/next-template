@@ -83,6 +83,31 @@
   --color-landing-gold: #FFD700;
   --color-landing-heart: #FF6B35;
 
+  /* ============================================
+     Bookish Landing — 暖灰色调教育平台主题
+     情绪: 书卷气、沉稳可信
+     ============================================ */
+  --bl-bg: #F5F3EE;              /* 页面背景（暖灰/灰泥） */
+  --bl-surface: #FFFFFF;         /* 卡片/面板背景 */
+  --bl-surface-alt: #F7F7F4;     /* 次要面板背景 */
+  --bl-fg: #26251E;              /* 主要文字（墨色） */
+  --bl-fg-secondary: #6B6960;    /* 辅助文字 */
+  --bl-fg-muted: #9C9A91;        /* 标签、提示文字 */
+  --bl-border: rgba(38,37,30,0.08);     /* 默认边框 */
+  --bl-border-medium: rgba(38,37,30,0.15); /* 中等强调边框 */
+  --bl-accent: #F54E00;          /* 主色（品牌橙） */
+  --bl-accent-hover: #D94400;    /* 主色悬停 */
+  --bl-accent-subtle: rgba(245,78,0,0.08); /* 主色浅底 */
+  --bl-teal: #1F8A65;            /* 辅助色（青绿） */
+  --bl-teal-subtle: rgba(31,138,101,0.1);
+  --bl-gold: #C08532;            /* 辅助色（金棕） */
+  --bl-gold-subtle: rgba(192,133,50,0.1);
+  --bl-rose: #CF2D56;            /* 辅助色（玫红） */
+  --bl-rose-subtle: rgba(207,45,86,0.08);
+  --bl-brown: #8B6F47;           /* 辅助色（棕色） */
+  --bl-peach: #DFA88F;           /* 辅助色（桃色） */
+  --bl-dark: #26251E;            /* 深色区块背景 */
+
   /* TipTap Prose — 保持不变 */
   --prose-code-background: #F1F5F9;
   --prose-font-size-h1: 2.25em;
@@ -223,6 +248,28 @@
   --color-landing-border: #2A2A4A;
   --color-landing-success: #06D6A0;
   --color-landing-gold: #FFD700;
+
+  /* Bookish Landing 主题令牌 */
+  --color-bl-bg: var(--bl-bg);
+  --color-bl-surface: var(--bl-surface);
+  --color-bl-fg: var(--bl-fg);
+  --color-bl-fg-secondary: var(--bl-fg-secondary);
+  --color-bl-fg-muted: var(--bl-fg-muted);
+  --color-bl-accent: var(--bl-accent);
+  --color-bl-accent-subtle: var(--bl-accent-subtle);
+  --color-bl-teal: var(--bl-teal);
+  --color-bl-teal-subtle: var(--bl-teal-subtle);
+  --color-bl-gold: var(--bl-gold);
+  --color-bl-gold-subtle: var(--bl-gold-subtle);
+  --color-bl-rose: var(--bl-rose);
+  --color-bl-rose-subtle: var(--bl-rose-subtle);
+  --color-bl-brown: var(--bl-brown);
+  --color-bl-peach: var(--bl-peach);
+  --color-bl-dark: var(--bl-dark);
+
+  /* Bookish Landing 字体族 */
+  --font-bl-display: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-bl-body: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 
   /* 圆角 — Stitch 规范 */
   --radius-sm: 0.125rem;
