@@ -158,35 +158,43 @@ export function AdminSiteConfigForm({ onSaved }: SiteConfigFormProps) {
   const { toast } = useToast()
   const { siteConfig, isLoading, setSiteConfig } = useSiteConfigContext()
 
-  // 表单状态
-  const [siteName, setSiteName] = React.useState('')
-  const [siteSlogan, setSiteSlogan] = React.useState('')
-  const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
-  const [contactPhone, setContactPhone] = React.useState('')
-  const [contactWechat, setContactWechat] = React.useState('')
-  const [contactEmail, setContactEmail] = React.useState('')
-  const [icpFiling, setIcpFiling] = React.useState('')
-  const [copyright, setCopyright] = React.useState('')
-  const [aboutStats, setAboutStats] = React.useState(createEmptyAboutStats)
+  // 表单状态 —— 使用 lazy initializer 从缓存数据初始化，避免 useEffect 异步填充导致的空白闪烁
+  const [siteName, setSiteName] = React.useState(() => siteConfig?.siteName ?? '')
+  const [siteSlogan, setSiteSlogan] = React.useState(() => siteConfig?.siteSlogan ?? '')
+  const [logoUrl, setLogoUrl] = React.useState<string | null>(() => siteConfig?.logoUrl ?? null)
+  const [contactPhone, setContactPhone] = React.useState(() => siteConfig?.contactPhone ?? '')
+  const [contactWechat, setContactWechat] = React.useState(() => siteConfig?.contactWechat ?? '')
+  const [contactEmail, setContactEmail] = React.useState(() => siteConfig?.contactEmail ?? '')
+  const [icpFiling, setIcpFiling] = React.useState(() => siteConfig?.icpFiling ?? '')
+  const [copyright, setCopyright] = React.useState(() => siteConfig?.copyright ?? '')
+  const [aboutStats, setAboutStats] = React.useState(() =>
+    siteConfig?.aboutStats?.length ? siteConfig.aboutStats : createEmptyAboutStats()
+  )
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [touched, setTouched] = React.useState<Record<string, boolean>>({})
 
   // 素材选择器状态
   const [isPickerOpen, setIsPickerOpen] = React.useState(false)
 
-  // 初始化表单数据
+  // 记录上次同步时的 siteConfig 引用，仅当引用变化时才重新同步
+  const prevSiteConfigRef = React.useRef(siteConfig)
+
+  // 当 siteConfig 更新时（如 refetch 或 setSiteConfig），同步到表单状态
   React.useEffect(() => {
-    if (siteConfig) {
-      setSiteName(siteConfig.siteName)
-      setSiteSlogan(siteConfig.siteSlogan ?? '')
-      setLogoUrl(siteConfig.logoUrl ?? null)
-      setContactPhone(siteConfig.contactPhone ?? '')
-      setContactWechat(siteConfig.contactWechat ?? '')
-      setContactEmail(siteConfig.contactEmail ?? '')
-      setIcpFiling(siteConfig.icpFiling ?? '')
-      setCopyright(siteConfig.copyright ?? '')
-      setAboutStats(siteConfig.aboutStats?.length ? siteConfig.aboutStats : createEmptyAboutStats())
-    }
+    if (!siteConfig) return
+    // 跳过引用未变化的触发（如本地 state 变化导致的 re-render）
+    if (prevSiteConfigRef.current === siteConfig) return
+    prevSiteConfigRef.current = siteConfig
+
+    setSiteName(siteConfig.siteName)
+    setSiteSlogan(siteConfig.siteSlogan ?? '')
+    setLogoUrl(siteConfig.logoUrl ?? null)
+    setContactPhone(siteConfig.contactPhone ?? '')
+    setContactWechat(siteConfig.contactWechat ?? '')
+    setContactEmail(siteConfig.contactEmail ?? '')
+    setIcpFiling(siteConfig.icpFiling ?? '')
+    setCopyright(siteConfig.copyright ?? '')
+    setAboutStats(siteConfig.aboutStats?.length ? siteConfig.aboutStats : createEmptyAboutStats())
   }, [siteConfig])
 
   // 实时验证

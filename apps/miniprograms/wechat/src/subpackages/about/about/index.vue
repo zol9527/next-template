@@ -103,6 +103,7 @@ const handleNavigate = (path?: string) => {
     .logo-image {
       width: 100%;
       height: 100%;
+      border-radius: 18px;
     }
   }
 
