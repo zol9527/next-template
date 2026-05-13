@@ -859,9 +859,12 @@ export function AdminProductForm({
         showOverlay={false}
         className="max-w-[98vw] w-full xl:max-w-400 h-[90vh] flex flex-col overflow-hidden p-5 !duration-0 !data-[state=open]:animate-none !data-[state=closed]:animate-none"
         onPointerDownOutside={(e) => {
-          // 如果点击的是下拉菜单内容或另一个弹窗内容（在 Portal 中），不阻止默认行为，也不关闭当前弹窗
+          // 如果点击的是下拉菜单内容或另一个弹窗内容（在 Portal 中），阻止 Dialog 关闭
           const target = e.target as HTMLElement
-          if (target.closest('[data-dropdown-content]') || target.closest('[data-dialog-content]')) return
+          if (target.closest('[data-dropdown-content]') || target.closest('[data-dialog-content]')) {
+            e.preventDefault()
+            return
+          }
         }}
         onEscapeKeyDown={(e: KeyboardEvent) => e.preventDefault()}
       >

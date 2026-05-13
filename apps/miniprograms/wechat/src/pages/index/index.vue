@@ -911,31 +911,30 @@ export default {
 
 /* ========== Search Bar ========== */
 .search-section {
-  background-color: #FFFFFF;
-  padding: 0 40rpx 24rpx;
+  background-color: $color-surface;
+  padding: 0 20px 12px;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  background-color: #F5F7F6;
-  border: 3rpx solid #E2EBED;
-  border-radius: 40rpx;
-  padding: 20rpx 32rpx;
+  gap: $spacing-8;
+  background-color: $color-background;
+  border: 1.5px solid $color-border;
+  border-radius: $radius-20;
+  padding: 10px 16px;
 
   .search-icon-img {
-    width: 30rpx;
-    height: 30rpx;
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
   }
 }
 
 .search-placeholder {
-  font-family: 'PingFang SC', system-ui, sans-serif;
-  font-size: 28rpx;
-  color: #6B8A94;
-  line-height: 40rpx;
+  font-family: $font-family-title;
+  font-size: 13px;
+  color: $color-text-muted;
 }
 
 .search-hover {
