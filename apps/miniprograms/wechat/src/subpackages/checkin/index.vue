@@ -33,11 +33,11 @@
       <!-- 月份导航 -->
       <view class="calendar-header">
         <view class="month-nav" hover-class="month-nav-hover" @tap="prevMonth">
-          <text class="month-nav-arrow">&lt;</text>
+          <text class="month-nav-arrow">‹</text>
         </view>
         <text class="month-title">{{ calendarTitle }}</text>
         <view class="month-nav" hover-class="month-nav-hover" @tap="nextMonth">
-          <text class="month-nav-arrow">&gt;</text>
+          <text class="month-nav-arrow">›</text>
         </view>
       </view>
       <!-- 星期标题行 -->

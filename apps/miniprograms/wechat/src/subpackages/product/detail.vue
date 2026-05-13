@@ -1,12 +1,7 @@
 <template>
   <view class="detail-page">
     <!-- ========== Detail Header — 使用 NavBar 组件 ========== -->
-    <NavBar title="商品详情" fixed>
-      <template #left>
-        <view class="icon-circle" hover-class="icon-hover" @tap="goBack">
-          <image src="/static/icons/nav-back.svg" class="nav-icon-img" mode="aspectFit" />
-        </view>
-      </template>
+    <NavBar title="商品详情" fixed title-align="left">
       <template #right>
         <view class="icon-circle" hover-class="icon-hover">
           <image src="/static/icons/nav-share.svg" class="nav-icon-img" mode="aspectFit" />
