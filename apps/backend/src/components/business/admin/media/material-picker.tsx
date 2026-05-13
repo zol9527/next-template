@@ -214,7 +214,10 @@ export function MaterialPicker({
         className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl"
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement
-          if (target.closest('[data-dropdown-content]') || target.closest('[data-dialog-content]')) return
+          if (target.closest('[data-dropdown-content]') || target.closest('[role="dialog"]')) {
+            e.preventDefault()
+            return
+          }
         }}
       >
         <DialogHeader className="flex flex-row items-center justify-between border-b space-y-0 shrink-0 px-6 py-4">

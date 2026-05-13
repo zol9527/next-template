@@ -138,6 +138,7 @@ describe('API: /api/v1/admin/products', () => {
       const body = {
         name: 'New Product',
         kind: 'course',
+        status: 'published',
         summary: 'Product summary',
         description: 'Product description',
         priceAmount: '100',
@@ -158,6 +159,9 @@ describe('API: /api/v1/admin/products', () => {
       const response = await POST(req, { params: Promise.resolve({}) })
 
       expect(response.status).toBe(200)
+      expect(mockCreateProduct).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'published',
+      }))
     })
   })
 })

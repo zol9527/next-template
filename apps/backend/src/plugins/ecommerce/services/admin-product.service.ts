@@ -267,6 +267,7 @@ export function createAdminProductService(
       name: string
       slug?: string | null
       kind: AdminProductKind
+      status?: AdminProductStatus
       summary?: string | null
       description?: string | null
       priceAmount: string
@@ -288,7 +289,7 @@ export function createAdminProductService(
         summary: params.summary ?? null,
         description: params.description ?? null,
         productKind: params.kind,
-        status: 'draft',
+        status: params.status ?? 'draft',
         price: params.priceAmount,
         originalPrice: params.originalPriceAmount ?? null,
         stockQuantity: params.stockQuantity ?? null,

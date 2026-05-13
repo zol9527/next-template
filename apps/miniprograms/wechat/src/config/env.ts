@@ -146,7 +146,7 @@ export const envConfig = {
    * 调试首页、商城、订单等页面时可临时改为 true，应用会保留 pages.json
    * 的默认首页入口，不再强制跳转登录页。提交或发布前应保持 false。
    */
-  skipStartupLogin: true,
+  skipStartupLogin: false,
 
   /**
    * API 基础地址
