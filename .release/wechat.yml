@@ -36,7 +36,7 @@ release:
     - "^dev$"
     - "^hotfix/.+$"
     - "^codex/.+$"
-    - "^production/shuoboda/.+$"
+    - "^production/shuoboda$"
   auto_stage: true
   commit_title: "🚀 release: {tag}"
   create_pr: false
