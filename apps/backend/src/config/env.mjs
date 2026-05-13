@@ -1,17 +1,20 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
 /**
  * 后端项目根目录（即 next.config.ts 所在目录）
  *
- * 使用 import.meta.url 定位本文件（src/config/env.mjs），
- * 然后向上回溯两级到达后端根目录。这样无论 process.cwd() 是什么，
- * 解析出来的路径始终一致。
+ * 使用 process.cwd() 在运行时动态获取启动目录。
+ *
+ * ⚠️  之前使用 import.meta.url + path.resolve(__dirname, '../..') 的方式
+ *    会被 Next.js 在 build 阶段内联为构建机器的绝对路径（如 /Users/xxx），
+ *    导致部署到 Linux 服务器后路径不存在，触发 EACCES 错误。
+ *    改用 process.cwd() 确保始终在运行时解析，不受构建环境影响。
+ *
+ * 前提：生产环境必须从 apps/backend/（即 next.config.ts 所在目录）启动，
+ *       例如 `next start` 或 `node server.js`。
  */
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-export const BACKEND_ROOT_DIR = path.resolve(__dirname, '../..')
+export const BACKEND_ROOT_DIR = process.cwd()
 
 /**
  * 集中校验并导出运行时环境变量（避免在组件中直接读取 process.env）
