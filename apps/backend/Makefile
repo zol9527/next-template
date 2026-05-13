@@ -1,6 +1,6 @@
 .PHONY: help dev install start stop restart clean \
   seed-minimal seed-development seed-full seed-help \
-  setup-db reset-db reset-db-empty fix-prisma \
+  setup-db reset-db reset-db-empty db-push fix-prisma \
   release release-patch release-minor release-major release-version \
   deploy pm2-start pm2-stop pm2-restart pm2-reload pm2-status pm2-logs pm2-delete \
   caddy-start caddy-stop caddy-reload caddy-restart caddy-status caddy-validate
@@ -39,6 +39,7 @@ help:
 	@echo "    seed-help          查看 seed 帮助"
 	@echo ""
 	@echo "  数据库管理:"
+	@echo "    db-push             同步 Prisma schema 到数据库（初次部署 / schema 变更）"
 	@echo "    setup-db           数据库初始化/刷新"
 	@echo "    reset-db           重置数据库 (⚠️ 危险操作)"
 	@echo "    reset-db-empty     重置数据库但不执行 seed (⚠️ 危险操作)"
@@ -86,6 +87,8 @@ dev:
 install:
 	@echo "📦 安装生产依赖..."
 	@bun install --production
+	@echo "🔧 生成 Prisma Client..."
+	@npx prisma generate
 	@echo "✅ 依赖安装完成"
 
 # ============================================
@@ -128,15 +131,15 @@ clean:
 
 seed-minimal:
 	@echo "🌱 执行 minimal seed（核心数据）..."
-	@$(SEED_SCRIPT) --mode=minimal
+	@NODE_ENV=$(ENV) $(SEED_SCRIPT) --mode=minimal
 
 seed-development:
 	@echo "🌱 执行 development seed..."
-	@$(SEED_SCRIPT) --mode=development
+	@NODE_ENV=$(ENV) $(SEED_SCRIPT) --mode=development
 
 seed-full:
 	@echo "🌱 执行 full seed..."
-	@$(SEED_SCRIPT) --mode=full
+	@NODE_ENV=$(ENV) $(SEED_SCRIPT) --mode=full
 
 seed-help:
 	@$(SEED_SCRIPT) --help
@@ -167,6 +170,13 @@ release-major:
 # ============================================
 # 数据库初始化/重置
 # ============================================
+
+# 同步 schema 到数据库（初次部署或 schema 变更时使用）
+# 不丢数据，只新增/修改表结构
+db-push:
+	@echo "📤 同步 Prisma schema 到数据库..."
+	@npx prisma db push
+	@echo "✅ 数据库 schema 同步完成"
 
 setup-db:
 	@echo "🔧 数据库初始化/刷新..."
