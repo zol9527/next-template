@@ -23,7 +23,8 @@
         :show-scrollbar="false"
       >
         <!-- ========== Product Hero Image ========== -->
-        <view class="product-hero">
+        <!-- 有图片时显示轮播，无图片时显示占位图 -->
+        <view class="product-hero" v-if="heroImages.length > 0">
           <swiper
             class="hero-swiper"
             :circular="true"
@@ -42,6 +43,11 @@
             />
           </view>
         </view>
+        <!-- 无图片时的占位区域 -->
+        <view class="product-hero-placeholder" v-else>
+          <image src="/static/icons/empty-image.svg" class="placeholder-icon" mode="aspectFit" />
+          <text class="placeholder-text">暂无图片</text>
+        </view>
 
         <!-- ========== Price Section ========== -->
         <view class="price-section">
@@ -49,7 +55,7 @@
             <view class="price-left">
               <text class="price-symbol">¥</text>
               <text class="current-price">{{ productPrice }}</text>
-              <text class="original-price">¥{{ originalPrice }}</text>
+              <text class="original-price" v-if="showOriginalPrice">¥{{ originalPrice }}</text>
             </view>
             <view class="discount-tag" v-if="discountLabel">
               <text class="discount-text">{{ discountLabel }}</text>
@@ -228,6 +234,13 @@ const discountLabel = computed(() => {
   return ''
 })
 
+// 是否显示原价划线 — 仅在原价大于 0 且不等于当前价时显示
+const showOriginalPrice = computed(() => {
+  const current = parseFloat(productPrice.value)
+  const original = parseFloat(originalPrice.value)
+  return original > 0 && original !== current
+})
+
 const salesCount = computed(() => {
   if (!product.value) return '0'
   // 适配后的字段: salesCount / soldCount（后端暂不返回，默认 0）
@@ -246,31 +259,156 @@ const serviceGuarantees = computed(() => {
 })
 
 /**
- * processedDescription — 处理后端 TipTap 编辑器返回的 description 富文本
- * 
- * 后端 TipTap 编辑器输出 HTML 格式，图片带有 Tailwind class（在小程序中无效）
- * 需要通过 inline style 确保小程序端正确显示
- * 
+ * processedDescription — 将后端 TipTap 编辑器输出的 HTML 转为小程序 rich-text 兼容格式
+ *
+ * 核心问题：微信小程序 rich-text 组件只识别 inline style，不识别 class / Tailwind。
+ * 后端 TipTap 输出的 HTML 带有 Tailwind class（如 rounded-lg、shadow-sm），
+ * 但这些 class 在 rich-text 中完全无效，导致标题不加粗、间距塌缩、无颜色层级。
+ *
+ * 解决方案：对每种 HTML 元素做正则替换，注入精确的 inline style，
+ * 使 rich-text 渲染出清晰的排版层次和舒适的阅读体验。
+ *
+ * 设计 Token 参考（与 design-tokens.scss 保持一致）：
+ *   主色 #009666  |  标题色 #1A2E35  |  正文色 #333333  |  次要文本 #6B8A94
+ *
  * 处理项：
- * 1. 图片：max-width 限制、自适应高度、圆角 16px（与设计系统卡片圆角一致）、垂直间距
- * 2. 外层容器：word-break 确保长文本在边界内自动换行，不会溢出
- * 3. 块级元素（p/h1-h6/li）：继承换行规则
+ * 1. h2 — 页面主标题：20px/600，大间距，主色调
+ * 2. h3 — 模块标题：17px/600，上间距分隔模块
+ * 3. h4 — 子标题：15px/600，左侧绿色边框装饰，视觉上与正文区分
+ * 4. p  — 段落：15px 正文，行高 1.8（舒适阅读），段间距 12px
+ * 5. ul/ol — 列表：左缩进，列表项间距
+ * 6. li — 列表项：行高 1.6，项间距 6px
+ * 7. strong/b — 加粗：字重 600 + 标题色加深
+ * 8. blockquote — 引用块：左侧绿色边框 + 浅背景
+ * 9. img — 图片：max-width 限制、圆角、间距（保留原有逻辑）
+ * 10. a — 链接：主题色 + 下划线（视觉标识，rich-text 不支持实际跳转）
+ * 11. em/i — 斜体：次要文本色
+ * 12. code — 行内代码：等宽字体 + 浅背景
+ * 13. 外层容器 — 换行控制、全局字体基线
  */
 const processedDescription = computed(() => {
   if (!product.value?.description) return ''
   let html = product.value.description
 
-  // 处理 <img> 标签：
-  // 后端 TipTap 输出: <img src="..." class="rounded-lg max-w-full ...">
-  // 小程序 rich-text 不识别 Tailwind class，需要注入 inline style
-  // 匹配 <img 后面跟空格或/（自闭合标签），在 img 后注入 style
+  // ── 颜色常量（与 design-tokens.scss 对齐）──
+  const primary = '#009666'       // 主色
+  const titleColor = '#1A2E35'    // 标题色（深色）
+  const bodyColor = '#333333'     // 正文色
+  const mutedColor = '#6B8A94'    // 次要文本色
+  const bgColor = '#F5F7F6'       // 浅背景色
+
+  // ── 1. h2 主标题 ──
+  // 最大的标题，用于商品描述的开篇标题（如"科学管理健康·开启职业新方向"）
   html = html.replace(
-    /<img(\s)/gi,
-    '<img style="max-width:100%;height:auto;border-radius:16px;display:block;margin:12px 0;"$1'
+    /<h2>/gi,
+    `<h2 style="font-size:20px;font-weight:600;color:${titleColor};margin-top:28px;margin-bottom:12px;line-height:1.4;">`
+  )
+  // 处理带属性的 h2（如 <h2 class="...">）
+  html = html.replace(
+    /<h2\s/gi,
+    `<h2 style="font-size:20px;font-weight:600;color:${titleColor};margin-top:28px;margin-bottom:12px;line-height:1.4;" `
   )
 
-  // 外层容器样式：控制换行，防止长文本溢出
-  const wrapperStyle = 'word-break:break-word;overflow-wrap:break-word;font-size:13px;line-height:18px;color:#1A2E35;'
+  // ── 2. h3 模块标题 ──
+  // 用于"课程亮点"、"适合人群"、"课程大纲"等模块分隔
+  html = html.replace(
+    /<h3>/gi,
+    `<h3 style="font-size:17px;font-weight:600;color:${titleColor};margin-top:24px;margin-bottom:8px;line-height:1.4;">`
+  )
+  html = html.replace(
+    /<h3\s/gi,
+    `<h3 style="font-size:17px;font-weight:600;color:${titleColor};margin-top:24px;margin-bottom:8px;line-height:1.4;" `
+  )
+
+  // ── 3. h4 子标题 ──
+  // 带左侧绿色边框装饰，视觉上与正文加粗区分（如"系统化教学"、"实战技能培养"）
+  html = html.replace(
+    /<h4>/gi,
+    `<h4 style="font-size:15px;font-weight:600;color:${titleColor};margin-top:16px;margin-bottom:6px;padding-left:10px;border-left:3px solid ${primary};line-height:1.5;">`
+  )
+  html = html.replace(
+    /<h4\s/gi,
+    `<h4 style="font-size:15px;font-weight:600;color:${titleColor};margin-top:16px;margin-bottom:6px;padding-left:10px;border-left:3px solid ${primary};line-height:1.5;" `
+  )
+
+  // ── 4. p 段落 ──
+  // 15px 正文 + 1.8 行高，确保移动端长文阅读舒适
+  html = html.replace(
+    /<p>/gi,
+    `<p style="font-size:15px;line-height:1.8;color:${bodyColor};margin-top:0;margin-bottom:12px;">`
+  )
+  html = html.replace(
+    /<p\s/gi,
+    `<p style="font-size:15px;line-height:1.8;color:${bodyColor};margin-top:0;margin-bottom:12px;" `
+  )
+
+  // ── 5. ul / ol 列表容器 ──
+  html = html.replace(
+    /<ul>/gi,
+    `<ul style="margin:8px 0 12px 0;padding-left:20px;list-style-type:disc;">`
+  )
+  html = html.replace(
+    /<ol>/gi,
+    `<ol style="margin:8px 0 12px 0;padding-left:20px;list-style-type:decimal;">`
+  )
+
+  // ── 6. li 列表项 ──
+  html = html.replace(
+    /<li>/gi,
+    `<li style="font-size:15px;line-height:1.6;color:${bodyColor};margin-bottom:6px;">`
+  )
+  html = html.replace(
+    /<li\s/gi,
+    `<li style="font-size:15px;line-height:1.6;color:${bodyColor};margin-bottom:6px;" `
+  )
+
+  // ── 7. strong / b 加粗 ──
+  // 加粗文本使用标题色加深对比，与正文形成明确区分
+  html = html.replace(
+    /<strong>/gi,
+    `<strong style="font-weight:600;color:${titleColor};">`
+  )
+  html = html.replace(
+    /<b>/gi,
+    `<b style="font-weight:600;color:${titleColor};">`
+  )
+
+  // ── 8. blockquote 引用块 ──
+  html = html.replace(
+    /<blockquote>/gi,
+    `<blockquote style="margin:12px 0;padding:12px 16px;border-left:3px solid ${primary};background-color:${bgColor};border-radius:0 8px 8px 0;">`
+  )
+
+  // ── 9. img 图片 ──
+  // 后端 TipTap 输出: <img src="..." class="rounded-lg max-w-full ...">
+  // 小程序 rich-text 不识别 Tailwind class，需要注入 inline style
+  html = html.replace(
+    /<img(\s)/gi,
+    `<img style="max-width:100%;height:auto;border-radius:16px;display:block;margin:16px 0;"$1`
+  )
+
+  // ── 10. a 链接 ──
+  // rich-text 不支持实际跳转，但用主题色 + 下划线做视觉标识
+  html = html.replace(
+    /<a\s/gi,
+    `<a style="color:${primary};text-decoration:underline;" `
+  )
+
+  // ── 11. em / i 斜体（保持，增加次要文本色）──
+  html = html.replace(
+    /<em>/gi,
+    `<em style="font-style:italic;color:${mutedColor};">`
+  )
+
+  // ── 12. code 行内代码 ──
+  html = html.replace(
+    /<code>/gi,
+    `<code style="font-family:monospace;font-size:13px;background-color:${bgColor};padding:2px 6px;border-radius:4px;color:${titleColor};">`
+  )
+
+  // ── 外层容器 ──
+  // 全局字体基线 + 换行控制，防止长文本溢出
+  const wrapperStyle = 'word-break:break-word;overflow-wrap:break-word;font-size:15px;line-height:1.8;color:#333333;'
 
   return `<div style="${wrapperStyle}">${html}</div>`
 })
@@ -473,6 +611,29 @@ onMounted(() => {
       background-color: rgba($color-primary, 0.2);
       border-radius: 50%;
     }
+  }
+}
+
+/* ========== Product Hero Placeholder（无图片时） ========== */
+.product-hero-placeholder {
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(135deg, #F0F5F2, #DDE9E3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+
+  .placeholder-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.4;
+  }
+
+  .placeholder-text {
+    font-size: 13px;
+    color: $color-text-muted;
   }
 }
 

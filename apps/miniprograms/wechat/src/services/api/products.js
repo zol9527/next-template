@@ -79,6 +79,9 @@ const normalizeProduct = (product) => {
     ...product,
     // 封面图映射: 后端 coverUrl / mediaUrls → 前端 coverImage / imageUrl
     // 后端公开文件接口返回的是 /api/v1/public/files/... 相对路径，小程序 image 需要完整 URL。
+    // 注意：确保 coverUrl / mediaUrls 始终有值（即使后端未返回），避免前端渲染时 undefined
+    coverUrl: product.coverUrl || coverUrl || null,
+    mediaUrls: Array.isArray(product.mediaUrls) ? product.mediaUrls : [],
     coverImage: buildFullUrl(coverUrl),
     imageUrl: buildFullUrl(coverUrl),
 

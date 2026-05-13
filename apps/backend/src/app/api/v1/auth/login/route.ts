@@ -12,7 +12,6 @@ import { TokenManager } from '@/lib/security/token-manager'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
 import { env } from '@/config'
 import { AppError } from '@/lib/errors/app-error'
-import { AuthError } from '@/services/core/auth.service'
 import type { z } from 'zod'
 
 export const POST = withV1Route({
@@ -30,15 +29,8 @@ export const POST = withV1Route({
   },
   onError: (_ctx, res, error) => {
     removeAuthCookies(res)
-
-    if (error instanceof AuthError && error.code === 'LOCKED' && error.lockedUntil) {
-      const lockExpiry = new Date(error.lockedUntil).getTime()
-      if (Number.isFinite(lockExpiry)) {
-        const remainingSeconds = Math.max(1, Math.ceil((lockExpiry - Date.now()) / 1000))
-        res.headers.set('X-Locked-Until', error.lockedUntil)
-        res.headers.set('X-Lock-Remaining-Seconds', String(remainingSeconds))
-      }
-    }
+    // 安全修复: 不再向客户端暴露锁定的精确到期时间，防止攻击者优化暴力破解窗口
+    // 锁定信息仅通过已登录用户的 UI 面板展示
   },
   handler: async ({ req, body, serviceContext }) => {
     const ipResult = extractClientIpSafe(req, {

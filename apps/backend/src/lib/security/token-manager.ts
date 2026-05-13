@@ -9,7 +9,7 @@
  * - 统一的错误处理和类型安全
  */
 
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { SignJWT, jwtVerify } from 'jose'
 import { env } from '@/config'
 
@@ -67,6 +67,27 @@ function getAccessSecretKey(): Uint8Array {
 }
 
 /**
+ * Function: getMfaSecretKey
+ *
+ * Description: 获取 MFA Token 的独立签名密钥
+ *   优先使用 AUTH_JWT_MFA_SECRET，未配置时回退到 AUTH_JWT_ACCESS_SECRET
+ *   这确保了 MFA Token 与 Access Token 使用不同的密钥，遵循最小权限原则
+ *
+ * Returns:
+ *   key(Uint8Array): 编码后的密钥
+ *
+ * Throws:
+ *   Error: 当无可用密钥时抛出错误
+ */
+function getMfaSecretKey(): Uint8Array {
+  const secret = env.AUTH_JWT_MFA_SECRET || env.AUTH_JWT_ACCESS_SECRET
+  if (!secret) {
+    throw new Error('AUTH_JWT_MFA_SECRET or AUTH_JWT_ACCESS_SECRET is not configured')
+  }
+  return new TextEncoder().encode(secret)
+}
+
+/**
  * Function: assertAuthSecrets
  *
  * Description: 断言认证相关的密钥已配置
@@ -113,6 +134,7 @@ export class TokenManager {
       .setSubject(payload.sub)
       .setIssuedAt(now)
       .setExpirationTime(now + expiresInSeconds)
+      .setJti(randomUUID()) // 唯一 ID，便于审计追踪和 token 级别黑名单
       .sign(getAccessSecretKey())
   }
 
@@ -264,7 +286,7 @@ export class TokenManager {
       .setSubject(payload.sub)
       .setIssuedAt(now)
       .setExpirationTime(now + expiresInSeconds)
-      .sign(getAccessSecretKey())
+      .sign(getMfaSecretKey())
   }
 
   /**
@@ -282,7 +304,7 @@ export class TokenManager {
    *   Error: 当 Token 无效、过期或类型不匹配时抛出错误
    */
   static async verifyMfaToken(token: string): Promise<MfaTokenPayload> {
-    const result = await jwtVerify(token, getAccessSecretKey(), {
+    const result = await jwtVerify(token, getMfaSecretKey(), {
       algorithms: ['HS256'],
     })
 
