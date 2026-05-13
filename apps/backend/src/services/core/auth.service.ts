@@ -335,6 +335,7 @@ export function createAuthService(
 
       const isRotated = Boolean(current.rotatedAt) || Boolean(current.replacedBySessionId)
       if (isRotated) {
+        // TODO(P2): 改为 revokeSessionFamily 仅撤销同族会话，避免攻击者利用旧 token 发起 DoS
         await deps.sessions.revokeAllSessionsForUser(repoCtx, { userId: current.userId })
         throw new AuthError('SESSION_REUSE_DETECTED', 'Session reuse detected')
       }

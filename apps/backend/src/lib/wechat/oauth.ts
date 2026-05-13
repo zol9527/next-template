@@ -1,5 +1,6 @@
 import { env } from '@/config'
 import { AppError } from '@/lib/errors/app-error'
+import { logger } from '@/lib/logger'
 
 export type WechatCode2SessionResponse = {
   openid: string
@@ -27,23 +28,25 @@ type WechatCode2SessionError = {
  * 	Never(void): 总是抛出 AppError
  */
 function mapWechatError(errcode: number, errmsg: string): never {
+  // 安全修复: 将微信原始错误信息仅记录在服务端日志中，不暴露给客户端
+  logger.warn({ errcode, errmsg }, 'WeChat API error')
   // 客户端错误：code 无效
   if (errcode === 40029) {
-    throw new AppError(400, 'INVALID_INPUT', `微信登录 code 无效: ${errmsg}`)
+    throw new AppError(400, 'INVALID_INPUT', '微信登录 code 无效或已过期')
   }
 
   // 客户端错误：code 已使用
   if (errcode === 40163) {
-    throw new AppError(400, 'INVALID_INPUT', `微信登录 code 已被使用: ${errmsg}`)
+    throw new AppError(400, 'INVALID_INPUT', '微信登录 code 已被使用')
   }
 
   // 配置错误：appid/secret 配置错误
   if (errcode === 40125 || errcode === 40013 || errcode === 40126) {
-    throw new AppError(500, 'INTERNAL_ERROR', `微信配置错误: ${errmsg}`)
+    throw new AppError(500, 'INTERNAL_ERROR', '微信服务暂时不可用，请稍后重试')
   }
 
   // 其他未知错误
-  throw new AppError(500, 'INTERNAL_ERROR', `微信 API 错误: ${errcode} - ${errmsg}`)
+  throw new AppError(500, 'INTERNAL_ERROR', '微信服务暂时不可用，请稍后重试')
 }
 
 export async function code2Session(code: string): Promise<WechatCode2SessionResponse> {

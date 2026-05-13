@@ -53,8 +53,18 @@ export const POST = withV1Route({
   action: 'auth:refresh',
   schemas: { body: RefreshSessionRequestSchema },
   rateLimit: {
-    max: 30,
+    // 安全修复: 降低刷新限流阈值，添加 identity 维度防止被盗 token 滥用
+    max: 20,
     windowMs: 60_000,
+    identity: ({ req }) => {
+      // 基于 refresh token 的前缀进行 identity 维度限流
+      const token = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value
+      return token ? token.slice(0, 8) : undefined
+    },
+    network: {
+      max: 30,
+      windowMs: 60_000,
+    },
     message: '请求过多，请稍后再试',
   },
   handler: async ({ req, body, traceId, logger }) => {

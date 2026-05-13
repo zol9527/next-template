@@ -32,6 +32,7 @@ export const env = createEnv({
 
     // 认证相关
     AUTH_JWT_ACCESS_SECRET: z.string().min(32).optional(),
+    AUTH_JWT_MFA_SECRET: z.string().min(32).optional(),
     AUTH_REFRESH_TOKEN_PEPPER: z.string().min(32).optional(),
     AUTH_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(15 * 60),
     AUTH_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(15 * 24 * 60 * 60),
@@ -154,6 +155,7 @@ export const env = createEnv({
 
     // 认证相关
     AUTH_JWT_ACCESS_SECRET: process.env.AUTH_JWT_ACCESS_SECRET,
+    AUTH_JWT_MFA_SECRET: process.env.AUTH_JWT_MFA_SECRET,
     AUTH_REFRESH_TOKEN_PEPPER: process.env.AUTH_REFRESH_TOKEN_PEPPER,
     AUTH_ACCESS_TTL_SECONDS: process.env.AUTH_ACCESS_TTL_SECONDS,
     AUTH_REFRESH_TTL_SECONDS: process.env.AUTH_REFRESH_TTL_SECONDS,

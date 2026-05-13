@@ -12,11 +12,12 @@ export const POST = withV1Route({
   action: 'auth:wechat',
   schemas: { body: WechatLoginRequestSchema },
   rateLimit: {
-    max: 10,
+    // 安全修复: 降低微信登录限流阈值，防止批量注册垃圾账户
+    max: 5,
     windowMs: 60_000,
     identity: ({ body }) => body?.code,
     network: {
-      max: 30,
+      max: 15,
       windowMs: 60_000,
     },
     message: '请求过多，请稍后再试',

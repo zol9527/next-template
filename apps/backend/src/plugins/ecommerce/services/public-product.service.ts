@@ -97,6 +97,21 @@ export function createPublicProductService(
   Returns:
       products(PublicProduct[]): 包含 coverUrl 和 mediaUrls 的商品数据列表
   */
+  /**
+   * 从 PublicProduct 中移除内部字段（coverAssetId, mediaAssetIds），
+   * 并补充 API 契约要求的 coverUrl / mediaUrls 字段。
+   * 确保前端始终能拿到 coverUrl (nullable) 和 mediaUrls (array)，
+   * 而不会出现 undefined 导致渲染异常。
+   */
+  function stripInternalAndEnsureMediaFields(
+    product: PublicProduct,
+    coverUrl: string | null = null,
+    mediaUrls: string[] = [],
+  ): PublicProduct {
+    const { coverAssetId: _coverAssetId, mediaAssetIds: _mediaAssetIds, ...publicProduct } = product
+    return { ...publicProduct, coverUrl, mediaUrls }
+  }
+
   async function enrichProductsWithMediaUrls(
     items: Array<{
       product: PublicProduct
@@ -104,8 +119,9 @@ export function createPublicProductService(
       mediaAssetIds: string[]
     }>,
   ): Promise<PublicProduct[]> {
+    // 媒体仓储或存储服务不可用时，降级返回（仍确保 coverUrl / mediaUrls 字段存在）
     if (!deps.media || !deps.storage || items.length === 0) {
-      return items.map((i) => i.product)
+      return items.map((i) => stripInternalAndEnsureMediaFields(i.product))
     }
 
     // 1. 收集所有需要查询的 assetId
@@ -116,7 +132,7 @@ export function createPublicProductService(
     }
 
     if (allAssetIds.size === 0) {
-      return items.map((i) => i.product)
+      return items.map((i) => stripInternalAndEnsureMediaFields(i.product))
     }
 
     try {
@@ -176,17 +192,12 @@ export function createPublicProductService(
           .map((id) => urlMap.get(id))
           .filter((url): url is string => !!url)
 
-        const { coverAssetId: _coverAssetId, mediaAssetIds: _mediaAssetIds, ...publicProduct } = item.product
-        return {
-          ...publicProduct,
-          coverUrl,
-          mediaUrls,
-        }
+        return stripInternalAndEnsureMediaFields(item.product, coverUrl, mediaUrls)
       })
     } catch (error) {
       logger.error({ action: 'enrich_products_media', error }, '批量获取媒体资源失败')
-      // 降级：如果不抛出错误，则返回没有图片的商品
-      return items.map((i) => i.product)
+      // 降级：如果不抛出错误，则返回没有图片的商品（确保 coverUrl/mediaUrls 字段存在）
+      return items.map((i) => stripInternalAndEnsureMediaFields(i.product))
     }
   }
 
