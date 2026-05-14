@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { VersionReleaseResponse, VersionReleaseListQuery } from '@/contracts/dtos/version-release.dto'
 import type { ApiResponse } from '@/contracts/api-response.schema'
+import { ClientApiError } from '@/lib/errors/client-api-error'
 
 /**
  * 版本列表响应类型
@@ -42,19 +43,27 @@ export function useVersionReleases(query: VersionReleaseListQuery) {
 				credentials: 'include',
 			})
 
+			const json = await res.json()
+
+			// 使用 ClientApiError 统一错误格式，确保 error.code 被正确保留
+			// 这样 AuthRefreshHandler 才能区分 MFA_REQUIRED 等特殊错误码
 			if (!res.ok) {
-				throw new Error(`Failed to fetch: ${res.statusText}`)
+				throw ClientApiError.fromResponse(res, json)
 			}
 
-			const json = (await res.json()) as ApiResponse<VersionReleasesListResponse['data']>
-			if (!json.success) {
-				throw new Error(json.error?.message || '获取版本列表失败')
+			const typedJson = json as ApiResponse<VersionReleasesListResponse['data']>
+			if (!typedJson.success) {
+				throw new ClientApiError(
+					typedJson.error?.code || 'INTERNAL_ERROR',
+					typedJson.error?.message || '获取版本列表失败',
+					res.status,
+				)
 			}
 
 			// 适配响应格式
 			return {
 				success: true,
-				data: json.data,
+				data: typedJson.data,
 			} as VersionReleasesListResponse
 		},
 		staleTime: 10 * 60 * 1000, // 10 分钟缓存

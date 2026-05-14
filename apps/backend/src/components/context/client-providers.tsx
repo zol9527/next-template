@@ -5,15 +5,22 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { AuthProvider, AuthContext } from '@/components/context/auth-context'
 import { SiteConfigProvider } from '@/components/context/site-config-context'
 import { AdminMediaAssetsProvider } from '@/components/context/admin-media-assets-context'
-import { ToastProvider } from '@/components/ui/toast'
+import { ToastProvider, useToast } from '@/components/ui/toast'
 import { getStatusByCode, type ApiErrorCode } from '@/contracts/api-response.schema'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 
 /**
  * Function: AuthRefreshHandler
  *
- * Description: 处理 401 错误时自动刷新认证的组件
- *              监听 QueryCache 事件，当检测到 401 时触发刷新
+ * Description: 处理认证相关错误的组件
+ *              监听 QueryCache 事件，根据 error.code 执行不同策略：
+ *              - MFA_REQUIRED → 跳转到 MFA 设置页 + 显示 toast
+ *              - 401 (UNAUTHORIZED) → 尝试刷新会话，失败则跳转登录页
+ *              - 403 (FORBIDDEN) → 跳转登录页
+ *
+ * Fix: 之前所有 403 都直接跳 /login，MFA_REQUIRED 也不例外。
+ *      导致用户在后台启用了 MFA 策略但未完成个人 MFA 设置时，
+ *      被「踢回」登录页而无任何提示。
  */
 function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
@@ -22,9 +29,32 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       if (event.type === 'updated' && event.action.type === 'error') {
-        const error = event.action.error as { code?: string }
+        const error = event.action.error as { code?: string; message?: string }
+
+        // ==================== MFA_REQUIRED 特殊处理 ====================
+        // 当后端检测到管理员角色需要 MFA 但用户未完成设置时，返回此错误。
+        // 此时应引导用户去 MFA 设置页，而非踢回登录页。
+        if (error.code === 'MFA_REQUIRED') {
+          // 通过自定义事件触发 toast（在非组件上下文中无法直接调用 useToast）
+          window.dispatchEvent(new CustomEvent('app:toast', {
+            detail: {
+              title: '需要设置多因素认证',
+              description: error.message || '系统已启用多因素认证，请先完成 MFA 设置',
+              variant: 'destructive',
+            },
+          }))
+
+          // 延迟跳转，让用户看到 toast
+          setTimeout(() => {
+            window.location.href = '/admin/mfa-setup'
+          }, 1500)
+          return
+        }
+
         if (error.code) {
           const status = getStatusByCode(error.code as ApiErrorCode)
+
+          // ==================== 401 处理：尝试刷新会话 ====================
           if (status === 401 && auth) {
             void (async () => {
               const ok = await auth.refreshSession()
@@ -38,6 +68,7 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
             return
           }
 
+          // ==================== 403 处理（非 MFA_REQUIRED）====================
           if (status === 403) {
             window.location.href = '/login'
           }
@@ -48,6 +79,32 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
   }, [queryClient, auth])
 
   return <>{children}</>
+}
+
+/**
+ * Function: GlobalToastListener
+ *
+ * Description: 监听 window 上的 'app:toast' 自定义事件，允许在非组件上下文
+ *              （如 QueryClient 的 onError 回调、useEffect 内部）触发 toast。
+ *              必须放在 ToastProvider 内部。
+ */
+function GlobalToastListener() {
+  const { toast } = useToast()
+
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ title: string; description?: string; variant?: string }>).detail
+      toast({
+        title: detail.title,
+        description: detail.description,
+        variant: (detail.variant === 'destructive' ? 'destructive' : 'default') as 'destructive' | 'default',
+      })
+    }
+    window.addEventListener('app:toast', handler)
+    return () => window.removeEventListener('app:toast', handler)
+  }, [toast])
+
+  return null
 }
 
 /**
@@ -81,10 +138,27 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       },
       mutations: {
         // 统一处理 Mutation 错误
-        // 如果是 401 则尝试刷新会话， 如果是 403 则跳转到首页
+        // - MFA_REQUIRED → 跳转 MFA 设置页（同 AuthRefreshHandler 策略）
+        // - 401 → 由 AuthRefreshHandler 通过 QueryCache 事件处理
+        // - 403 → 跳转登录页
         onError: (error) => {
-          const err = error as { code?: string }
+          const err = error as { code?: string; message?: string }
           if (err.code) {
+            // MFA_REQUIRED 特殊处理：跳转到 MFA 设置页
+            if (err.code === 'MFA_REQUIRED') {
+              window.dispatchEvent(new CustomEvent('app:toast', {
+                detail: {
+                  title: '需要设置多因素认证',
+                  description: err.message || '系统已启用多因素认证，请先完成 MFA 设置',
+                  variant: 'destructive',
+                },
+              }))
+              setTimeout(() => {
+                window.location.href = '/admin/mfa-setup'
+              }, 1500)
+              return
+            }
+
             const status = getStatusByCode(err.code as ApiErrorCode)
             if (status === 401) {
               // 注意：这里无法直接访问 auth context
@@ -138,8 +212,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
               <AdminMediaAssetsProvider>
                 {/* Provider: ToastProvider
                   Description: 全局提示（toast）容器。
+                  支持 programmatic toast：通过 window.dispatchEvent(new CustomEvent('app:toast', {...}))
+                  在非组件上下文（如 QueryClient onError）中触发 toast。
                 */}
               <ToastProvider>
+                <GlobalToastListener />
                 {children}
               </ToastProvider>
               </AdminMediaAssetsProvider>
