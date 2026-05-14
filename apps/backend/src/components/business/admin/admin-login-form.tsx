@@ -29,6 +29,7 @@ type BlockingState =
 
 const RATE_LIMIT_FALLBACK_MESSAGE = '尝试次数过多，请稍后再试'
 const LOCKED_FALLBACK_MESSAGE = '账号已锁定，请稍后再试'
+const ADMIN_LOGIN_INPUT_CLASS = 'admin-login-input h-[42px] rounded-sm py-2.5 px-3'
 
 function isValidRetryAfterSeconds(value: number | null): value is number {
   return value !== null && !Number.isNaN(value) && value > 0
@@ -356,7 +357,7 @@ export function AdminLoginForm() {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 disabled={submitting}
-                className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
+                className={ADMIN_LOGIN_INPUT_CLASS}
               />
             </div>
 
@@ -374,7 +375,7 @@ export function AdminLoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={submitting}
-                  className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 pr-10 text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
+                  className={`${ADMIN_LOGIN_INPUT_CLASS} pr-10`}
                 />
                 {/* 密码可见性切换按钮 — 匹配设计稿 eye-off 图标 (16px) */}
                 <button
@@ -426,7 +427,7 @@ export function AdminLoginForm() {
                 value={mfaToken}
                 onChange={(e) => setMfaToken(e.target.value)}
                 disabled={submitting}
-                className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 text-center text-lg tracking-widest text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
+                className={`${ADMIN_LOGIN_INPUT_CLASS} text-center text-lg tracking-widest`}
               />
             </div>
 

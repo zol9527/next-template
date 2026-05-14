@@ -31,6 +31,7 @@ import type {
 } from '@/contracts/dtos/admin/mfa-settings.dto'
 import type { ServiceContext } from '@/types/service/service-context'
 import { MfaAuditLogService, type MfaAuditAction } from '@/services/core/mfa-audit-log.service'
+import { env } from '@/config'
 
 // ==================== 类型定义 ====================
 
@@ -259,6 +260,21 @@ export function createMfaPolicyService(
       userRoles: string[],
     ): Promise<EffectiveMfaPolicy> {
       logger.debug({ action: 'mfa_get_effective_policy', userId }, 'Getting effective MFA policy')
+
+      // -1. 本地开发跳过开关：MFA_SKIP_ENABLED=true 且非生产环境时跳过所有 MFA 检查
+      // 安全约束：生产环境下此开关无效（即使误配也会被忽略）
+      if (env.MFA_SKIP_ENABLED && process.env.NODE_ENV !== 'production') {
+        logger.warn(
+          { action: 'mfa_skip_enabled', userId },
+          '⚠️ MFA 已通过 MFA_SKIP_ENABLED 环境变量跳过（仅限非生产环境）',
+        )
+        return {
+          required: false,
+          source: 'global',
+          reason: 'MFA 已通过 MFA_SKIP_ENABLED 跳过（本地开发模式）',
+          allowExemptions: true,
+        }
+      }
 
       // 0. admin 角色硬编码强制 MFA（不可豁免），无论数据库配置如何
       if (userRoles.includes('admin')) {

@@ -133,12 +133,17 @@ export async function useApiAuth(
   })
 
   // ==================== 管理后台 MFA 强制策略检查 ====================
-  // 说明：这是 API 层的“最后一道门”。当全局/角色策略要求 MFA，但用户未启用 MFA 时，
+  // 说明：这是 API 层的"最后一道门"。当全局/角色策略要求 MFA，但用户未启用 MFA 时，
   // 除 MFA 相关接口外，直接拒绝访问。
   const pathname = req.nextUrl.pathname
   const roles = tokenResult.roles || []
 
+  // 本地开发跳过开关：避免不必要的数据库查询
+  const { env: appEnv } = await import('@/config')
+  const mfaSkipEnabled = appEnv.MFA_SKIP_ENABLED && process.env.NODE_ENV !== 'production'
+
   if (
+    !mfaSkipEnabled &&
     isAdminApiPath(pathname) &&
     roles.includes('admin') &&
     !isMfaExemptAdminApiPath(pathname)

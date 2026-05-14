@@ -29,7 +29,9 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
 
   // H-1 修复: 使用 ref 存储 auth，避免 useEffect 因 auth 引用变化而反复重订阅
   const authRef = React.useRef(auth)
-  authRef.current = auth
+  React.useEffect(() => {
+    authRef.current = auth
+  }, [auth])
   // 防止 MFA_REQUIRED 导致无限跳转循环
   // 场景：跳转到 /admin/mfa-setup 后，该页面的 layout 仍会加载 admin API，
   // 这些 API 继续返回 MFA_REQUIRED，如果不加 guard 会反复触发跳转。
@@ -198,13 +200,14 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     },
   }))
 
+  // 主题切换：当前设计系统仅支持浅色主题，强制锁定 light 模式
+  // TODO: 待设计系统补充 dark 变量后，可恢复 defaultTheme="system" + enableSystem={true}
   return (
-    // Provider: ThemeProvider
-    // Description: 主题切换支持 (亮色/暗色模式)
     <ThemeProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem={true}
+      defaultTheme="light"
+      forcedTheme="light"
+      enableSystem={false}
       disableTransitionOnChange={false}
     >
       {/* Provider: QueryClientProvider */}

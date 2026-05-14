@@ -53,7 +53,10 @@ export const POST = withV1Route({
     const mfaRepo = await createMfaRepository()
     const mfaStatus = await mfaRepo.getUserMfaData(serviceContext, { userId })
 
-    if (mfaStatus?.mfaEnabled) {
+    // 本地开发跳过 MFA：MFA_SKIP_ENABLED=true 且非生产环境时，即使已启用 MFA 也直接登录
+    const mfaSkipEnabled = env.MFA_SKIP_ENABLED && process.env.NODE_ENV !== 'production'
+
+    if (mfaStatus?.mfaEnabled && !mfaSkipEnabled) {
       // MFA 已启用但未完成 setup（mfaSetupAt 为 null），阻止登录
       if (!mfaStatus.mfaSetupAt) {
         throw new AppError(403, 'MFA_SETUP_INCOMPLETE', '请先完成 MFA 设置后再登录')

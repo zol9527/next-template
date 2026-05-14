@@ -131,6 +131,8 @@ export const env = createEnv({
     TOTP_STEP: z.coerce.number().default(30),
     MFA_ACTION_TOKEN_TTL: z.coerce.number().default(300),
     MFA_PENDING_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+    // 本地开发跳过 MFA（仅非生产环境生效）
+    MFA_SKIP_ENABLED: z.coerce.boolean().default(false),
 
     // ==================== AI Configuration ====================
     AI_API_KEY_ENCRYPTION_KEY: z.string().min(32, 'AI API Key 加密密钥必须至少 32 字节').optional(),
@@ -251,6 +253,7 @@ export const env = createEnv({
     TOTP_STEP: process.env.TOTP_STEP,
     MFA_ACTION_TOKEN_TTL: process.env.MFA_ACTION_TOKEN_TTL,
     MFA_PENDING_TOKEN_TTL_SECONDS: process.env.MFA_PENDING_TOKEN_TTL_SECONDS,
+    MFA_SKIP_ENABLED: process.env.MFA_SKIP_ENABLED,
 
     // ==================== AI Configuration ====================
     AI_API_KEY_ENCRYPTION_KEY: process.env.AI_API_KEY_ENCRYPTION_KEY,

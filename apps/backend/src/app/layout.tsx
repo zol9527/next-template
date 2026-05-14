@@ -114,9 +114,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      {/* use antialiased to improve font rendering */}
+      {/* font-sans: Tailwind v4 不自动设置 body 字体，需手动指定以应用 DM Sans。
+          变量类（outfit.variable 等）仅注册 CSS 变量，不设置 font-family。 */}
       <body
-        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <ClientProvider>
           <Suspense fallback={null}>{children}</Suspense>

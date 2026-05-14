@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   SidebarProvider,
   SidebarInset,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/business/admin/sidebar/app-sidebar";
 import { ChangelogDropdown } from "@/components/business/admin/changelog/changelog-dropdown";
+import { AdminHeaderUser } from "@/components/business/admin/sidebar/admin-header-user";
 import { useSiteConfigContext } from "@/components/context/site-config-context";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Loader2 } from "lucide-react";
 import {
   getFilteredSidebarGroups,
@@ -57,7 +56,16 @@ function getPageTitle(pathname: string, groups: SidebarGroupConfig[]): string | 
 /**
  * Component: AdminHeader
  *
- * Description: 管理后台头部组件，显示站点名称和操作按钮
+ * Description: 管理后台头部组件（Paper Design AppShell CardHeader 规格）
+ *
+ * 结构:
+ *   左侧: 页面标题 (heading-1) + 补充说明文字 (text-body-sm)
+ *   右侧: 更新日志 + 用户头像下拉菜单
+ *
+ * 规格来源: Paper Design "App Shell — 主框架模板" CardHeader (FII-1)
+ *   - 固定高度: 60px (--card-header-height)
+ *   - 水平内边距: 28px
+ *   - 底部分割线: border-default
  *
  * Parameters:
  *     pathname(string): 当前路由路径
@@ -70,29 +78,49 @@ function AdminHeader({ pathname, groups }: { pathname: string; groups: SidebarGr
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex items-center gap-2 px-7">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <SidebarTrigger className="-ml-1" />
-      {pageTitle && (
-        <h1 className="text-lg font-semibold text-foreground">
-          {pageTitle}
-        </h1>
-      )}
-      {siteConfig?.siteName && (
-        <span className="text-sm text-muted-foreground">
-          {siteConfig.siteName}
-        </span>
-      )}
-    </div>
+    <>
+      {/* 左侧: 页面标题 + 补充说明 */}
+      <div className="flex items-center gap-2">
+        {pageTitle && (
+          <h1 className="heading-1">{pageTitle}</h1>
+        )}
+        {siteConfig?.siteName && (
+          <span className="text-body-sm text-fg-muted">
+            {siteConfig.siteName}
+          </span>
+        )}
+      </div>
+
+      {/* 右侧: 更新日志 + 用户头像 */}
+      <div className="flex items-center gap-3">
+        <ChangelogDropdown />
+        <AdminHeaderUser />
+      </div>
+    </>
   );
 }
 
+/**
+ * Component: AdminShellClient
+ *
+ * Description: 后台管理主框架布局（Paper Design AppShell 规格）
+ *
+ * 结构层级 (对应 Paper Design AppShell):
+ *   LayoutWrapper (FGD-1): flex, p-5, bg-bg
+ *     ├── Sidebar (FT6-1): w-56, flex-col, shrink-0
+ *     └── MainCard (FIH-1): grow, rounded-2xl, shadow-card, bg-surface
+ *         ├── CardHeader (FII-1): h-[60px], px-7, border-b
+ *         └── CardContent (FIZ-1): grow, py-6, px-7, overflow-auto
+ *
+ * 规格来源: Paper Design "App Shell — 主框架模板" (FGC-1)
+ */
 export function AdminShellClient({
   children,
   enabledPlugins,
@@ -100,31 +128,28 @@ export function AdminShellClient({
   const pathname = usePathname();
   const filteredGroups = getFilteredSidebarGroups(enabledPlugins);
 
+  // 首页直接渲染，不使用后台布局
   if (pathname === "/") {
     return <>{children}</>;
   }
 
   return (
     <SidebarProvider defaultOpen={true}>
-      {/* Base Layer: h-svh 锁死视口高度，overflow-hidden 禁止窗口级滚动 */}
-      <div className="bg-[var(--stitch-base,var(--bg))] h-svh w-full overflow-hidden flex">
+      {/* LayoutWrapper: 对应 Paper FGD-1 — 全视口高度 + 20px 内边距 */}
+      <div className="bg-bg h-svh w-full overflow-hidden flex p-5">
+        {/* Sidebar: 对应 Paper FT6-1 — 224px 宽度，融入背景 */}
         <AppSidebar enabledPlugins={enabledPlugins} />
 
+        {/* MainCard: 对应 Paper FIH-1 — 白色圆角卡片 + 阴影 */}
         <SidebarInset className="flex-1 flex-col overflow-hidden">
-          {/* Surface Layer: 四周 margin 暴露背景色，圆角 + 阴影营造悬浮感 */}
-          <div className="bg-background shadow-[var(--shadow-card)] flex-1 m-0 md:m-4 rounded-none md:rounded-2xl h-full md:h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
-            {/* Header: 固定高度，不参与滚动 */}
-            <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-6">
+          <div className="bg-surface shadow-card flex-1 rounded-2xl overflow-hidden flex flex-col md:m-0">
+            {/* CardHeader: 对应 Paper FII-1 — 固定 60px 高度 */}
+            <header className="flex h-[60px] shrink-0 items-center justify-between px-7 border-b border-border">
               <AdminHeader pathname={pathname} groups={filteredGroups} />
-
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-                <ChangelogDropdown />
-              </div>
             </header>
 
-            {/* Content: overflow-auto 滚动限制在此容器内 */}
-            <main className="flex flex-1 flex-col gap-6 p-6 overflow-auto">
+            {/* CardContent: 对应 Paper FIZ-1 — 可滚动主内容区域 */}
+            <main className="flex flex-1 flex-col gap-6 py-6 px-7 overflow-auto">
               {children}
             </main>
           </div>
