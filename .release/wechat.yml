@@ -4,7 +4,7 @@
 
 version:
   source: git-tag
-  tag_prefix: "wechat/v"
+  tag_prefix: "shuoboda/wechat/v"
   file: _state/wechat.VERSION
   hook: _shared/hooks/hook-version.py
 

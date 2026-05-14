@@ -4,7 +4,7 @@
 
 version:
   source: git-tag
-  tag_prefix: "backend/v"
+  tag_prefix: "shuoboda/backend/v"
   file: _state/backend.VERSION
   hook: _shared/hooks/hook-version.py
 

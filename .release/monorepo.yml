@@ -4,7 +4,7 @@
 
 version:
   source: git-tag
-  tag_prefix: "monorepo/v"
+  tag_prefix: "shuoboda/monorepo/v"
   file: _state/monorepo.VERSION
   hook: _shared/hooks/hook-version.py
 
