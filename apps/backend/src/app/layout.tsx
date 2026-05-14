@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Inter } from "next/font/google";
+import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Outfit, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ClientProvider } from "@/components/context/client-providers";
 import { Suspense } from "react";
@@ -57,17 +57,55 @@ const vt323 = VT323({
   weight: "400",
 });
 
-// Admin 后台字体：Inter（标题 + 正文 + 标签）
-const inter = Inter({
+// EduAdmin 后台字体 — 基于 Paper Design System 规范
+// Outfit: 品牌/标题（display），DM Sans: 正文/UI（body），JetBrains Mono: 代码/数据
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-outfit",
   display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
+
+// 站点基础 URL，用于生成 canonical URL、OG 链接等
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
 export const metadata: Metadata = {
-  title: "Generic Admin",
-  description: "",
-};
+  // title.template 让子页面自动拼接品牌后缀
+  // 例如子页面设置 title: "博客" → 渲染为 "博客 | EduAdmin"
+  title: {
+    default: 'EduAdmin — 教育行业 SaaS 管理后台',
+    template: '%s | EduAdmin',
+  },
+  description: '基于插件化架构的现代教育管理后台，支持 RBAC 权限控制、API 优先设计，按需启用业务模块。',
+  // metadataBase 让所有相对 URL（OG 图片、canonical）有正确的基础路径
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    type: 'website',
+    locale: 'zh_CN',
+    siteName: 'EduAdmin',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
 
 export default function RootLayout({
   children,
@@ -75,10 +113,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning>
       {/* use antialiased to improve font rendering */}
       <body
-        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${inter.variable} antialiased`}
+        className={`${geistMono.variable} ${archivo.variable} ${spaceGrotesk.variable} ${pressStart2P.variable} ${vt323.variable} ${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ClientProvider>
           <Suspense fallback={null}>{children}</Suspense>
