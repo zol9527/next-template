@@ -1,5 +1,5 @@
 <!-- 自定义 TabBar 模板：图标 + 文字胶囊样式，和 Paper Design 首页底部菜单保持一致 -->
-<view class="tab-bar">
+<view class="tab-bar" wx:if="{{visible}}">
   <view
     wx:for="{{list}}"
     wx:key="index"

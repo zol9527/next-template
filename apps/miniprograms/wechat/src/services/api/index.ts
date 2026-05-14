@@ -56,6 +56,10 @@ import { faqService as _faqService } from './faq';
 export { faqService } from './faq';
 export type { FaqItem } from './faq';
 
+// 协议服务
+import { agreementService as _agreementService } from './agreement';
+export { agreementService } from './agreement';
+
 // 文件上传服务
 import { uploadService as _uploadService } from './upload';
 export { uploadService } from './upload';
@@ -80,6 +84,7 @@ export const api = {
   banner: _bannerService,
   coupon: _couponService,
   faq: _faqService,
+  agreement: _agreementService,
   upload: _uploadService,
   notification: _notificationService,
 };

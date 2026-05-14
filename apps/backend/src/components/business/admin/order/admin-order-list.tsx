@@ -8,6 +8,7 @@ import { DataTable } from '@/components/ui/data-table/index'
 import type { PaginationConfig } from '@/components/ui/data-table/pagination'
 import { useToast } from '@/components/ui/toast'
 import { AdminOrderDetailForm } from './admin-order-detail-form'
+import { MfaVerifyRefundDialog } from './mfa-verify-refund-dialog'
 import { getOrderColumns } from './admin-order-columns'
 import type { ApiResponse } from '@/contracts/api-response.schema'
 import type { AdminOrder, AdminOrderListResponse } from '@/plugins/ecommerce/contracts/admin-orders.dto'
@@ -43,6 +44,8 @@ export function AdminOrderList({ refreshKey }: AdminOrderListProps) {
   const [orderId, setOrderId] = React.useState('')
 
   const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null)
+
+  const [refundTarget, setRefundTarget] = React.useState<{ orderId: string; maxAmount: string; status: string } | null>(null)
 
   const [nextCursor, setNextCursor] = React.useState<string | null>(null)
   const [prevCursors, setPrevCursors] = React.useState<string[]>([])
@@ -142,50 +145,17 @@ export function AdminOrderList({ refreshKey }: AdminOrderListProps) {
     }
   }, [load, prevCursors, toast])
 
-  const refundOrder = React.useCallback(async (targetOrderId: string, maxAmount: string, status: string) => {
-    if (status === 'completed') {
-      if (!window.confirm('警告：该订单已完成，佣金可能正在结算中。退款可能会导致佣金数据异常。是否继续？')) {
-        return
-      }
-    }
-    const amount = window.prompt(`请输入退款金额 (最大 ${maxAmount}):`, maxAmount)
-    if (amount === null) return
-
-    const reason = window.prompt('请输入退款原因 (可选):') || ''
-
-    try {
-      const res = await fetch(`/api/v1/admin/orders/${targetOrderId}/refund`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refundAmount: amount, reason }),
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        toast({ title: '退款失败', description: await readApiErrorMessage(res), variant: 'destructive' })
-        return
-      }
-
-      const json = (await res.json()) as ApiResponse<unknown>
-      if (!json.success) {
-        toast({ title: '退款失败', description: json.error.message, variant: 'destructive' })
-        return
-      }
-
-      toast({ title: '操作成功', description: '退款已发起', variant: 'default' })
-      await load(prevCursors.length > 0 ? prevCursors[prevCursors.length - 1] : null)
-    } catch {
-      toast({ title: '退款失败', description: '网络错误，请稍后再试', variant: 'destructive' })
-    }
-  }, [load, prevCursors, toast])
+  const handleRefundClick = React.useCallback((targetOrderId: string, maxAmount: string, status: string) => {
+    setRefundTarget({ orderId: targetOrderId, maxAmount, status })
+  }, [])
 
   const columns = React.useMemo(
     () => getOrderColumns({
       onViewDetail: setSelectedOrderId,
       onCompleteOrder: (id) => void completeOrder(id),
-      onRefundOrder: (id, max, status) => void refundOrder(id, max, status),
+      onRefundOrder: (id, max, status) => void handleRefundClick(id, max, status),
     }),
-    [completeOrder, refundOrder],
+    [completeOrder, handleRefundClick],
   )
 
   const pagination = React.useMemo<PaginationConfig>(
@@ -295,6 +265,19 @@ export function AdminOrderList({ refreshKey }: AdminOrderListProps) {
           orderId={selectedOrderId}
           onCloseAction={handleCloseDetail}
           onSuccess={handlePromoterBindSuccess}
+        />
+      )}
+
+      {refundTarget && (
+        <MfaVerifyRefundDialog
+          orderId={refundTarget.orderId}
+          maxRefundAmount={refundTarget.maxAmount}
+          orderStatus={refundTarget.status}
+          onCloseAction={() => setRefundTarget(null)}
+          onSuccess={() => {
+            setRefundTarget(null)
+            load(prevCursors.length > 0 ? prevCursors[prevCursors.length - 1] : null)
+          }}
         />
       )}
     </div>

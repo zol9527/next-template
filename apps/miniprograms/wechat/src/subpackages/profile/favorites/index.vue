@@ -21,11 +21,9 @@
           class="favorite-card"
           @tap="handleNavigate(item)"
         >
-          <!-- 缩略图 -->
-          <view class="item-thumbnail">
-            <view class="thumbnail-placeholder">
-              <text class="type-icon">{{ getTypeIcon(item.type) }}</text>
-            </view>
+          <!-- 缩略图：使用 SVG 图标 + 彩色背景 -->
+          <view class="item-thumbnail" :class="`thumbnail-${item.type}`">
+            <image :src="getTypeIcon(item.type)" class="type-icon-img" mode="aspectFit" />
           </view>
 
           <!-- 内容区 -->
@@ -37,9 +35,9 @@
             </view>
           </view>
 
-          <!-- 收藏状态图标 -->
+          <!-- 收藏状态图标：SVG 心形 -->
           <view class="favorite-action" @tap.stop="handleRemove(item.id)">
-            <text class="star-icon">★</text>
+            <image :src="typeIcons.heartFilled" class="heart-icon-img" mode="aspectFit" />
           </view>
         </view>
 
@@ -55,7 +53,7 @@
       <!-- 空状态 -->
       <view v-else-if="!loading" class="empty-container">
         <empty-state
-          icon="⭐"
+          icon="/static/icons/empty-favorites-courses.svg"
           title="暂无收藏"
           description="你还没有收藏任何内容，快去逛逛吧"
           action-text="去逛逛"
@@ -145,28 +143,12 @@ const onLoadMore = () => {
 
 /**
  * 取消收藏
+ *
+ * 注意：当前为 Mock 数据，取消收藏操作提示"功能开发中"。
+ * 待前端接入真实后端 API 后再开放此功能。
  */
-const handleRemove = async (id: string) => {
-  const confirmed = await showConfirm('确定要取消收藏吗？')
-  if (!confirmed) return
-  
-  showLoading('正在取消...')
-  try {
-    const res = await favoritesService.removeFavorite(id)
-    if (res.success) {
-      favorites.value = favorites.value.filter(item => item.id !== id)
-      showToast('已取消收藏')
-      
-      // 如果列表空了且还有更多，自动加载
-      if (favorites.value.length === 0 && hasMore.value) {
-        fetchFavorites(true)
-      }
-    }
-  } catch (err) {
-    console.error('取消收藏失败:', err)
-  } finally {
-    hideLoading()
-  }
+const handleRemove = (_id: string) => {
+  showToast('该功能开发中，敬请期待')
 }
 
 /**
@@ -180,18 +162,13 @@ const handleGoBrowse = () => {
 
 /**
  * 跳转详情
+ *
+ * 注意：当前收藏列表服务 (favorites.ts) 使用 Mock 数据，
+ * 后端 API 已实现但前端尚未接入。所有点击操作统一提示"功能开发中"，
+ * 待前端接入真实 API 后再开放跳转。
  */
-const handleNavigate = (item: Favorite) => {
-  let url = ''
-  if (item.type === FavoriteType.COURSE) {
-    url = `/subpackages/product/detail?id=${item.productId}&type=course`
-  } else if (item.type === FavoriteType.PRODUCT) {
-    url = `/subpackages/product/detail?id=${item.productId}&type=product`
-  }
-  
-  if (url) {
-    uni.navigateTo({ url })
-  }
+const handleNavigate = (_item: Favorite) => {
+  showToast('该功能开发中，敬请期待')
 }
 
 /**
@@ -204,14 +181,31 @@ const formatDate = (dateStr: string) => {
 }
 
 /**
- * 获取类型图标 (Mock)
+ * SVG 图标资源 - 使用 base64 编码的内联 SVG，与 profile.vue 风格统一
+ * 每种类型对应独特的颜色主题和图标形状
+ */
+const typeIcons = {
+  /** 课程 - 绿色，书本图标 */
+  course: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDA5NjY2IiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0yIDNoNmE0IDQgMCAwIDEgNCA0djE0YTMgMyAwIDAgMC0zLTNIMnoiIC8+PHBhdGggZD0iTTIyIDNoLTZhNCA0IDAgMCAwLTQgNHYxNGEzIDMgMCAwIDEgMy0zaDd6IiAvPjwvc3ZnPg==',
+  /** 商品 - 琥珀色，购物袋图标 */
+  product: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRDk3NzA2IiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik02IDJMMyA2djE0YTIgMiAwIDAgMCAyIDJoMTRhMiAyIDAgMCAwIDItMlY2bC0zLTR6IiAvPjxsaW5lIHgxPSIzIiB5MT0iNiIgeDI9IjIxIiB5Mj0iNiIgLz48cGF0aCBkPSJNMTYgMTBhNCA0IDAgMCAxLTggMCIgLz48L3N2Zz4=',
+  /** 文章 - 红色，文件文字图标 */
+  article: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjREMyNjI2IiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0xNCAySDZhMiAyIDAgMCAwLTIgMnYxNmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWOHoiIC8+PHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiIC8+PGxpbmUgeDE9IjE2IiB5MT0iMTMiIHgyPSI4IiB5Mj0iMTMiIC8+PGxpbmUgeDE9IjE2IiB5MT0iMTciIHgyPSI4IiB5Mj0iMTciIC8+PC9zdmc+',
+  /** 默认 - 蓝灰色，定位图标 */
+  default: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNkI4QTk0IiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0yMSAxMGMwIDctOSAxMy05IDEzcy05LTYtOS0xM2E5IDkgMCAwIDEgMTggMHoiIC8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMyIgLz48L3N2Zz4=',
+  /** 已收藏心形 - 粉红色实心 */
+  heartFilled: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0RCMjc3NyIgc3Ryb2tlPSIjREIyNzc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAuODQgNC42MWE1LjUgNS41IDAgMCAwLTcuNzggMEwxMiA1LjY3bC0xLjA2LTEuMDZhNS41IDUuNSAwIDAgMC03Ljc4IDcuNzhsMS4wNiAxLjA2TDEyIDIxLjIzbDcuNzgtNy43OCAxLjA2LTEuMDZhNS41IDUuNSAwIDAgMCAwLTcuNzh6IiAvPjwvc3ZnPg==',
+}
+
+/**
+ * 获取类型对应的 SVG 图标 data URI
  */
 const getTypeIcon = (type: FavoriteType) => {
   switch (type) {
-    case FavoriteType.COURSE: return '📚'
-    case FavoriteType.PRODUCT: return '🌿'
-    case FavoriteType.ARTICLE: return '📄'
-    default: return '📍'
+    case FavoriteType.COURSE: return typeIcons.course
+    case FavoriteType.PRODUCT: return typeIcons.product
+    case FavoriteType.ARTICLE: return typeIcons.article
+    default: return typeIcons.default
   }
 }
 
@@ -289,19 +283,31 @@ onMounted(() => {
   border-radius: $radius-12;
   overflow: hidden;
   flex-shrink: 0;
-}
-
-.thumbnail-placeholder {
-  width: 100%;
-  height: 100%;
-  background: $gradient-thumbnail;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* 各类型的主题背景色 */
+  &.thumbnail-course {
+    background: linear-gradient(135deg, #E8F7F0 0%, #D1FAE5 100%);
+  }
+  &.thumbnail-product {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  }
+  &.thumbnail-article {
+    background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  }
+  /* 默认 */
+  &.thumbnail-default,
+  &:not([class*="thumbnail-"]) {
+    background: $gradient-thumbnail;
+  }
 }
 
-.type-icon {
-  font-size: 32px;
+/* 类型图标 — 32×32，在 80px 容器中居中 */
+.type-icon-img {
+  width: 36px;
+  height: 36px;
 }
 
 .item-content {
@@ -361,9 +367,9 @@ onMounted(() => {
   margin-left: $spacing-4;
 }
 
-.star-icon {
-  font-size: 18px;
-  color: $color-accent;
+.heart-icon-img {
+  width: 18px;
+  height: 18px;
 }
 
 /* 加载更多 & 空状态 */

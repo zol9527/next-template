@@ -54,7 +54,7 @@
  * </popup-sheet>
  */
 
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 /** 组件 Props 定义 */
 const props = withDefaults(
@@ -85,6 +85,33 @@ const emit = defineEmits<{
  * 处理遮罩点击
  * 点击遮罩层时关闭弹窗
  */
+// 弹窗打开时隐藏 TabBar，关闭时恢复，防止原生 TabBar 遮挡弹窗内容
+watch(() => props.modelValue, (visible) => {
+  if (visible) {
+    // 隐藏原生 TabBar
+    uni.hideTabBar({ animation: false })
+    // 隐藏自定义 TabBar（通过 setData 控制 wx:if）
+    try {
+      const pages = getCurrentPages() as any[]
+      const page = pages[pages.length - 1]
+      if (page?.getTabBar?.()) {
+        page.getTabBar().setData({ visible: false })
+      }
+    } catch {}
+  } else {
+    // 恢复原生 TabBar
+    uni.showTabBar({ animation: false })
+    // 恢复自定义 TabBar
+    try {
+      const pages = getCurrentPages() as any[]
+      const page = pages[pages.length - 1]
+      if (page?.getTabBar?.()) {
+        page.getTabBar().setData({ visible: true })
+      }
+    } catch {}
+  }
+})
+
 const handleMaskTap = () => {
   emit('update:modelValue', false)
 }

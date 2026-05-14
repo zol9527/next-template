@@ -122,6 +122,9 @@
       <!-- Bottom Safe Area Padding -->
       <view :style="{ height: safeArea.safeAreaBottom + 'px' }"></view>
     </scroll-view>
+
+    <!-- 联系客服弹窗：复用商品详情页同款联系方式弹窗 -->
+    <ContactSupportPopup v-model="showContactPopup" />
   </view>
 </template>
 
@@ -131,11 +134,14 @@ import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores'
 import { orderService, productService, paymentService } from '@/services/api'
 import { showSuccess, showError } from '@/utils/toast'
+import { confirmCancelOrder } from '@/utils/dialog'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { syncCustomTabBar } from '@/utils/tab-bar'
+import { logger } from '@/utils/logger'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import ContactSupportPopup from '@/components/ContactSupportPopup.vue'
 
 // -- Safe Area --
 const safeArea = useSafeArea()
@@ -153,6 +159,7 @@ const activeTab = ref(0)
 const orders = ref<any[]>([])
 const productsMap = ref(new Map())
 const searchKeyword = ref('')
+const showContactPopup = ref(false)
 // 虚拟商品（课程）无物流流程，只保留：全部、待付款、已完成
 const orderTabs = ['全部', '待付款', '已完成']
 
@@ -208,7 +215,7 @@ const loadOrders = async () => {
     // Load product details
     await loadProductDetails(orders.value)
   } catch (error: any) {
-    console.error('Failed to load orders:', error)
+    logger.error('Failed to load orders', error)
     showError(error.message || '加载订单失败')
   } finally {
     loading.value = false
@@ -238,7 +245,7 @@ const loadProductDetails = async (orderList: any[]) => {
       }
     })
   } catch (error) {
-    console.error('Failed to load product details:', error)
+    logger.error('Failed to load product details', error)
   }
 }
 
@@ -303,7 +310,7 @@ const payOrder = async (order: any) => {
         loadOrders()
       },
       fail: (err) => {
-        console.error('Payment failed:', err)
+        logger.error('Payment failed', err)
         showError('支付失败')
       }
     })
@@ -313,7 +320,11 @@ const payOrder = async (order: any) => {
 }
 
 const cancelOrder = async (order: any) => {
-  // Add cancel logic
+  const success = await confirmCancelOrder(order.id)
+  if (success) {
+    // 刷新订单列表
+    loadOrders()
+  }
 }
 
 const confirmOrder = async (order: any) => {
@@ -333,7 +344,7 @@ const goToShop = () => {
 }
 
 const contactService = () => {
-  // Contact logic
+  showContactPopup.value = true
 }
 
 // -- Lifecycle --

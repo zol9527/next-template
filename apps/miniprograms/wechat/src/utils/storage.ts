@@ -4,6 +4,7 @@
  */
 
 import { logger } from './logger';
+import { PRESERVE_KEYS_ON_UPDATE } from '../config/constants';
 
 /**
  * 存储信息类型
@@ -146,6 +147,40 @@ class Storage {
     } catch (e) {
       logger.error('Storage clear 失败', e);
       return false;
+    }
+  }
+
+  /**
+   * Function: clearNonCritical
+   *
+   * Description: 选择性清除非关键缓存。
+   * 版本更新时调用此方法，保留白名单中的关键数据（Token、设备 ID 等），
+   * 清除其余所有业务缓存，避免旧数据结构与新代码不兼容。
+   *
+   * Parameters:
+   *   preserveKeys(string[]): 需要保留的键名列表，默认使用 PRESERVE_KEYS_ON_UPDATE
+   *
+   * Returns:
+   *   number: 被清除的键数量
+   */
+  clearNonCritical(preserveKeys: string[] = [...PRESERVE_KEYS_ON_UPDATE]): number {
+    try {
+      const info = uni.getStorageInfoSync() as { keys: string[] };
+      const preserveSet = new Set(preserveKeys);
+      let cleared = 0;
+
+      for (const key of info.keys) {
+        if (!preserveSet.has(key)) {
+          uni.removeStorageSync(key);
+          cleared++;
+        }
+      }
+
+      logger.info('选择性缓存清除完成', { cleared, preserved: preserveKeys.length });
+      return cleared;
+    } catch (e) {
+      logger.error('选择性缓存清除失败', e);
+      return 0;
     }
   }
 

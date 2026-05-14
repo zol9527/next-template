@@ -50,22 +50,7 @@
             
             <view class="course-info">
               <text class="course-name">{{ course.name }}</text>
-              <text class="course-desc">共 {{ course.lessonCount || 0 }} 课时</text>
-              
-              <view class="course-bottom">
-                <!-- 课程标签 -->
-                <view class="course-tag">
-                  <text class="tag-text">{{ course.tag }}</text>
-                </view>
-                
-                <!-- 进度条 (Mock) -->
-                <view class="progress-container">
-                  <view class="progress-bar">
-                    <view class="progress-inner" :style="{ width: (course.progress || 0) + '%' }"></view>
-                  </view>
-                  <text class="progress-text">已学 {{ course.progress || 0 }}%</text>
-                </view>
-              </view>
+              <text v-if="course.summary" class="course-desc">{{ course.summary }}</text>
             </view>
           </view>
         </template>
@@ -90,6 +75,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { orderService } from '@/services/api/orders'
 import { authService } from '@/services/api'
 import { favoritesService, FavoriteType } from '@/services/favorites'
+import { productService } from '@/services/api/products'
 
 // --- Tab 数据 ---
 const tabs = [
@@ -100,12 +86,17 @@ const tabs = [
 const currentTab = ref('all')
 
 // --- 课程数据 ---
+/** 课程卡片数据（源自订单/收藏 API） */
 interface Course {
+  /** 订单 ID 或收藏记录 ID */
   id: string
+  /** 商品 ID（用于跳转商品详情） */
+  productId: string
+  /** 商品名称 */
   name: string
-  lessonCount: number
-  tag: string
-  progress: number
+  /** 商品简介 */
+  summary?: string
+  /** 购买/支付时间 */
   buyTime?: string
 }
 
@@ -185,30 +176,45 @@ const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
-    // 1. 获取已购课程 (Mock 数据处理，因为后端具体返回字段需适配)
+    // 1. 获取已购课程（后端 OrderListItem 包含嵌套 product 对象）
+    //    后端字段：{ id, productId, status, product: { id, name, summary }, paidAt, createdAt }
     const orderRes = await orderService.getOrderList({ status: 'paid' })
-    // 这里简单 Mock 转换，实际应根据 API 字段映射
     if (orderRes.orders) {
       allCourses.value = orderRes.orders.map((o: any) => ({
         id: o.id,
-        name: o.productName || '注册会计师全科通关班',
-        lessonCount: o.lessonCount || 40,
-        tag: o.categoryName || '注册会计师',
-        progress: Math.floor(Math.random() * 100), // 进度通常在学习服务中，这里 Mock
-        buyTime: o.createdAt
+        productId: o.productId,
+        name: o.product?.name || '未知课程',
+        summary: o.product?.summary || '',
+        buyTime: o.paidAt || o.createdAt,
       }))
     }
 
-    // 2. 获取收藏课程
+    // 2. 获取收藏课程（Favorite 只有 productId，需批量查询商品详情）
     const favRes = await favoritesService.getFavorites({ type: FavoriteType.COURSE })
-    if (favRes.items) {
-      favoriteCourses.value = favRes.items.map((f: any) => ({
-        id: f.productId,
-        name: '收藏课程 - ' + f.productId,
-        lessonCount: 20,
-        tag: '热门课程',
-        progress: 0
-      }))
+    if (favRes.items && favRes.items.length > 0) {
+      // 并行获取每个收藏商品的详情
+      const detailPromises = favRes.items.map(async (f: any) => {
+        try {
+          const detail = await productService.getProductDetail(f.productId)
+          return {
+            id: f.id,
+            productId: f.productId,
+            name: detail?.name || '未知课程',
+            summary: detail?.summary || '',
+            buyTime: f.createdAt,
+          }
+        } catch {
+          // 商品可能已下架或删除，仍保留记录但用占位信息
+          return {
+            id: f.id,
+            productId: f.productId,
+            name: '已下架课程',
+            summary: '',
+            buyTime: f.createdAt,
+          }
+        }
+      })
+      favoriteCourses.value = await Promise.all(detailPromises)
     }
   } catch (e) {
     console.error('加载课程数据失败', e)
@@ -346,49 +352,6 @@ onMounted(() => {
   font-size: map-get($typography-label, font-size);
   color: $color-text-muted;
   margin-bottom: $spacing-8;
-}
-
-.course-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.course-tag {
-  background-color: $color-primary-light;
-  padding: 2px $spacing-8;
-  border-radius: 10px;
-}
-
-.tag-text {
-  font-size: map-get($typography-label, font-size);
-  color: $color-primary;
-}
-
-.progress-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.progress-bar {
-  width: 60px;
-  height: 4px;
-  background-color: $color-background;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-inner {
-  height: 100%;
-  background-color: $color-primary;
-  border-radius: 2px;
-}
-
-.progress-text {
-  font-size: map-get($typography-tab-bar, font-size);
-  color: $color-text-muted;
 }
 
 /* ===== Loading ===== */

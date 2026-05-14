@@ -12,6 +12,9 @@ import { useAuthStore } from './stores'
 import config from './config'
 import { logger } from './utils/logger'
 import { checkMiniProgramUpdate } from './utils/update-manager'
+import { storage } from './utils/storage'
+import { StorageKey } from './config/constants'
+import { APP_VERSION } from './config/version'
 import ErrorBoundary from './components/error-boundary.vue'
 import PrivacyPopup from './components/PrivacyPopup.vue'
 
@@ -110,7 +113,15 @@ export default {
   },
   async onLaunch() {
     const authStore = useAuthStore()
-    logger.info('App 启动')
+    logger.info('App 启动', { version: APP_VERSION })
+
+    // 版本比对：版本号变化时清除非关键缓存，防止旧数据结构与新代码不兼容
+    const cachedVersion = storage.get(StorageKey.APP_VERSION) as string | null
+    if (cachedVersion && cachedVersion !== APP_VERSION) {
+      logger.info('检测到版本更新，清除非关键缓存', { from: cachedVersion, to: APP_VERSION })
+      storage.clearNonCritical()
+    }
+    storage.set(StorageKey.APP_VERSION, APP_VERSION)
 
     // 注意：uni-app 的 onLaunch 不等待 async 函数完成，框架可能在 initAuthState 完成前就开始创建页面。
     // 因此：

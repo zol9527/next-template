@@ -86,6 +86,14 @@ function createDefaultGlobalSettings(): MfaGlobalSettingsDto {
  *   policy(MfaRolePolicyDto): 默认角色策略
  */
 function createDefaultRolePolicy(roleName: string): MfaRolePolicyDto {
+  // admin 角色默认强制 MFA，且不可豁免
+  if (roleName === 'admin') {
+    return {
+      roleName,
+      policy: 'force',
+      allowExemptions: false,
+    }
+  }
   return {
     roleName,
     policy: 'inherit',
@@ -251,6 +259,16 @@ export function createMfaPolicyService(
       userRoles: string[],
     ): Promise<EffectiveMfaPolicy> {
       logger.debug({ action: 'mfa_get_effective_policy', userId }, 'Getting effective MFA policy')
+
+      // 0. admin 角色硬编码强制 MFA（不可豁免），无论数据库配置如何
+      if (userRoles.includes('admin')) {
+        return {
+          required: true,
+          source: 'role',
+          reason: '管理员角色强制要求 MFA（硬编码策略）',
+          allowExemptions: false,
+        }
+      }
 
       // 1. 检查用户是否有有效的豁免
       const exemption = await mfaRepo.getExemptionByUserId(ctx, { userId })

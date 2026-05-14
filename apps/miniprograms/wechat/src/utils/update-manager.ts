@@ -1,3 +1,8 @@
+import { storage } from './storage'
+import { StorageKey } from '../config/constants'
+import { APP_VERSION } from '../config/version'
+import { logger } from './logger'
+
 let updateManager: WechatMiniprogram.UpdateManager | null = null
 let hasBoundListeners = false
 let hasReadyUpdate = false
@@ -16,7 +21,7 @@ function getUpdateManagerSafely(): WechatMiniprogram.UpdateManager | null {
   try {
     return getter()
   } catch (error) {
-    console.error('[UpdateManager] 获取更新管理器失败:', error)
+    logger.error('获取更新管理器失败', error)
     return null
   }
 }
@@ -35,6 +40,11 @@ function showUpdateModal() {
     success: ({ confirm }) => {
       isPromptVisible = false
       if (confirm) {
+        // 应用更新前清除非关键缓存，避免旧数据结构导致异常
+        const cleared = storage.clearNonCritical()
+        // 同步写入新版本号，避免 applyUpdate 重启后 onLaunch 再次重复清除
+        storage.set(StorageKey.APP_VERSION, APP_VERSION)
+        logger.info('更新前缓存已清除', { cleared })
         updateManager?.applyUpdate()
       }
     },
