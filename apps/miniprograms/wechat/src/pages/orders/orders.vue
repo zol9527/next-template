@@ -265,7 +265,10 @@ const getStatusClass = (status: string) => {
     pending_payment: 'pending',
     paid: 'paid',
     completed: 'completed',
-    cancelled: 'cancelled'
+    cancelled: 'cancelled',
+    closed: 'closed',
+    refunding: 'refunding',
+    refunded: 'refunded',
   }
   return map[status] || 'pending'
 }
@@ -276,7 +279,9 @@ const getStatusText = (status: string) => {
     paid: '已支付',
     completed: '已完成',
     cancelled: '已取消',
-    closed: '已关闭'
+    closed: '已关闭',
+    refunding: '退款中',
+    refunded: '已退款',
   }
   return map[status] || status
 }
@@ -483,6 +488,9 @@ watch(activeTab, () => {
       &.paid { color: $color-primary; }
       &.completed { color: $color-text-muted; }
       &.cancelled { color: $color-text-muted; }
+      &.closed { color: $color-text-muted; }
+      &.refunding { color: #E6A23C; }
+      &.refunded { color: #F56C6C; }
     }
   }
 
