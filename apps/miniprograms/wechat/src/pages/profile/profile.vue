@@ -57,12 +57,15 @@
             <image :src="menuIcons.arrow" class="menu-arrow-img" mode="aspectFit" />
           </view>
           <view class="menu-divider" />
-          <view class="menu-item" @tap="goToFavorites">
-            <view class="menu-icon-box">
-              <image :src="menuIcons.favorites" class="menu-icon-img" mode="aspectFit" />
+          <!-- 收藏功能：后端 API 尚未接入，暂时禁用入口 -->
+          <view class="menu-item menu-item--disabled" @tap="goToFavorites">
+            <view class="menu-icon-box menu-icon-box--disabled">
+              <image :src="menuIcons.favorites" class="menu-icon-img menu-icon-img--disabled" mode="aspectFit" />
             </view>
-            <text class="menu-label">我的收藏</text>
-            <image :src="menuIcons.arrow" class="menu-arrow-img" mode="aspectFit" />
+            <text class="menu-label menu-label--disabled">我的收藏</text>
+            <view class="menu-tag-soon">
+              <text class="menu-tag-soon-text">即将上线</text>
+            </view>
           </view>
         </view>
 
@@ -73,8 +76,8 @@
               <image :src="menuIcons.coupon" class="menu-icon-img" mode="aspectFit" />
             </view>
             <text class="menu-label">优惠券</text>
-            <view class="menu-badge" v-if="stats.pendingCount > 0">
-              <text class="menu-badge-text">{{ stats.pendingCount }}张可用</text>
+            <view class="menu-badge" v-if="couponAvailableCount > 0">
+              <text class="menu-badge-text">{{ couponAvailableCount }}张可用</text>
             </view>
             <image :src="menuIcons.arrow" class="menu-arrow-img" mode="aspectFit" />
           </view>
@@ -148,9 +151,11 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore, useUserDocumentsStore } from '@/stores'
 import { authService, userService, orderService } from '@/services/api'
+import { couponService } from '@/services/api/coupons'
 import { showSuccess, showError } from '@/utils/toast'
 import { checkMiniProgramUpdate } from '@/utils/update-manager'
 import { syncCustomTabBar } from '@/utils/tab-bar'
+import { logger } from '@/utils/logger'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { APP_VERSION } from '@/config/version'
@@ -165,6 +170,7 @@ const appVersion = APP_VERSION
 
 // ====== Refs ======
 const profileCompletionRef = ref()
+const couponAvailableCount = ref(0)
 const stats = ref({
   pendingCount: 0,
   paidCount: 0,
@@ -191,15 +197,31 @@ const menuIcons = {
 
 // ====== Functions ======
 const loadUserStats = async () => {
-  try {
-    const result = await orderService.getOrderStats()
+  // 并行加载订单统计和可用优惠券数量
+  const [orderResult, couponResult] = await Promise.allSettled([
+    orderService.getOrderStats(),
+    couponService.getMyCoupons({ status: 'available' })
+  ])
+
+  // 更新订单统计
+  if (orderResult.status === 'fulfilled') {
+    const result = orderResult.value
     stats.value = {
       pendingCount: result.pendingCount || 0,
       paidCount: result.paidCount || 0,
       completedCount: result.completedCount || 0
     }
-  } catch (error) {
-    console.error('Failed to load stats:', error)
+  } else {
+    logger.error('Failed to load order stats', orderResult.reason)
+  }
+
+  // 更新可用优惠券数量
+  if (couponResult.status === 'fulfilled') {
+    const coupons = couponResult.value?.coupons || couponResult.value?.items || []
+    couponAvailableCount.value = Array.isArray(coupons) ? coupons.length : 0
+  } else {
+    // API 未就绪或失败时不显示角标，静默处理
+    couponAvailableCount.value = 0
   }
 }
 
@@ -233,7 +255,12 @@ const goToMyCourses = () => {
 }
 
 const goToFavorites = () => {
-  navigateToAuthPage('/subpackages/profile/favorites/index')
+  // 收藏功能后端 API 尚未接入，暂时禁用跳转
+  uni.showToast({
+    title: '功能即将上线，敬请期待',
+    icon: 'none',
+    duration: 2000
+  })
 }
 
 const goToCoupons = () => {
@@ -500,6 +527,40 @@ onMounted(() => {
   height: 1px;
   background-color: $color-border;
   margin-left: calc(32px + 12px + 16px); // iconbox + gap + padding，与图标对齐
+}
+
+// 禁用菜单项 — 收藏功能暂未接入后端
+.menu-item--disabled {
+  // 移除点击态反馈
+  &:active {
+    background-color: transparent;
+  }
+}
+
+.menu-icon-box--disabled {
+  background-color: #E8ECED; // 灰色背景替代绿色
+}
+
+.menu-icon-img--disabled {
+  opacity: 0.35; // 降低图标亮度
+}
+
+.menu-label--disabled {
+  color: #B0BEC5; // 灰色文字替代主色
+}
+
+// "即将上线" 标签 — 替代箭头
+.menu-tag-soon {
+  background-color: #F0F4F5;
+  padding: 2px 8px;
+  border-radius: 8px;
+
+  .menu-tag-soon-text {
+    color: #90A4AE;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 14px;
+  }
 }
 
 /* Footer — Paper: 左对齐, padding 10px 16px 10px 20px, text 11px #6B8A94 */

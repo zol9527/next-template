@@ -1,5 +1,5 @@
 <template>
-  <view class="container" :style="{ backgroundColor: 'var(--color-background)' }">
+  <view class="container">
     <!-- Header — 使用 NavBar 组件 -->
     <NavBar ref="navBarRef" title="订单详情" />
 
@@ -55,20 +55,6 @@
           </view>
         </view>
 
-        <!-- Address Info -->
-        <view class="section address-info">
-          <view class="address-icon-container">
-            <text class="iconfont icon-location"></text>
-          </view>
-          <view class="address-content">
-            <view class="user-info">
-              <text class="user-name">陈晓明</text>
-              <text class="user-phone">138****6789</text>
-            </view>
-            <text class="address-detail">北京市海淀区中关村大街1号 鼎好大厦A座 1205室</text>
-          </view>
-        </view>
-
         <!-- Order Timeline -->
         <view class="section timeline-section">
           <text class="section-title">订单信息</text>
@@ -80,11 +66,8 @@
             <text class="timeline-label">付款时间</text>
             <text class="timeline-value">{{ formatDateTime(order.paidAt) }}</text>
           </view>
-          <view class="timeline-row" v-if="order.status === 'shipped' || order.status === 'completed'">
-            <text class="timeline-label">发货时间</text>
-            <text class="timeline-value">2026-05-04 09:15</text>
-          </view>
-          <view class="timeline-row">
+
+          <view class="timeline-row" v-if="order.paidAt">
             <text class="timeline-label">支付方式</text>
             <text class="timeline-value">微信支付</text>
           </view>
@@ -121,6 +104,9 @@
         >
           <text class="action-text-secondary">查看详情</text>
         </view>
+        <view class="action-secondary" v-if="order.status === 'pending_payment'" @tap="cancelOrder" style="margin-right: 12px">
+          <text class="action-text-secondary">取消订单</text>
+        </view>
         <view class="action-primary" v-if="order.status === 'pending_payment'" @tap="payOrder">
           <text class="action-text-primary">立即支付</text>
         </view>
@@ -136,7 +122,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { orderService, productService, paymentService } from '@/services/api'
 import { showSuccess, showError } from '@/utils/toast'
+import { confirmCancelOrder } from '@/utils/dialog'
 import { useSafeArea } from '@/hooks/useSafeArea'
+import { logger } from '@/utils/logger'
 
 // Constants
 const PLACEHOLDER_IMG =
@@ -220,11 +208,11 @@ const loadOrderDetail = async () => {
         const productResult = await productService.getProductDetail(order.value.productId)
         product.value = productResult.product || productResult
       } catch (error) {
-        console.error('Failed to load product:', error)
+        logger.error('Failed to load product', error)
       }
     }
   } catch (error: any) {
-    console.error('Failed to load order detail:', error)
+    logger.error('Failed to load order detail', error)
     showError(error.message || '加载订单详情失败')
   } finally {
     loading.value = false
@@ -244,7 +232,7 @@ const payOrder = async () => {
         setTimeout(() => loadOrderDetail(), 1000)
       },
       fail: (err) => {
-        console.error('Payment failed:', err)
+        logger.error('Payment failed', err)
         showError('支付失败或已取消')
       },
     })
@@ -275,6 +263,16 @@ const confirmReceipt = async () => {
   }
 }
 
+const cancelOrder = async () => {
+  if (!order.value) return
+
+  const success = await confirmCancelOrder(order.value.id)
+  if (success) {
+    // 刷新订单详情
+    loadOrderDetail()
+  }
+}
+
 const goBack = () => uni.navigateBack()
 const contactSupport = () => uni.showToast({ title: '联系客服', icon: 'none' })
 const viewLogistics = () => uni.showToast({ title: '查看详情', icon: 'none' })
@@ -291,6 +289,8 @@ onMounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: $color-background;
+  padding: 0; /* Override global .container padding */
 }
 
 /* Scroll Content */
@@ -468,51 +468,6 @@ onMounted(() => {
       font-size: 16px;
       font-weight: 600;
       color: $color-text-primary;
-    }
-  }
-}
-
-/* Address Info */
-.address-info {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-
-  .address-icon-container {
-    padding-top: 2px;
-    .iconfont {
-      font-size: 18px;
-      color: $color-text-muted;
-    }
-  }
-
-  .address-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-6;
-
-    .user-info {
-      display: flex;
-      gap: $spacing-8;
-      align-items: center;
-
-      .user-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: $color-text-primary;
-      }
-
-      .user-phone {
-        font-size: 13px;
-        color: $color-text-muted;
-      }
-    }
-
-    .address-detail {
-      font-size: 12px;
-      color: $color-text-muted;
-      line-height: 18px;
     }
   }
 }

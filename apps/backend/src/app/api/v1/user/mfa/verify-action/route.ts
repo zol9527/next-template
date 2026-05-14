@@ -34,6 +34,16 @@ export const POST = withV1Route({
 
     const mfaRepo = await createMfaRepository()
 
+    // 先检查 MFA 是否已注册，未注册时返回特定错误码（而非通用的验证失败）
+    const mfaStatus = await MfaService.getMFAStatus(userId!, mfaRepo, serviceContext)
+    if (!mfaStatus.enabled) {
+      return createJsonApiResponse(
+        req,
+        fail('MFA_NOT_ENABLED', '尚未启用 MFA，请先前往安全设置完成 MFA 绑定'),
+        { status: 403 },
+      )
+    }
+
     // 验证 MFA 验证码
     const isValid = await MfaService.verifyMFA(
       userId!,
@@ -45,7 +55,7 @@ export const POST = withV1Route({
     )
 
     if (!isValid) {
-      return createJsonApiResponse(req, fail('INVALID_CREDENTIALS', '无效的验证码'), { status: 401 })
+      return createJsonApiResponse(req, fail('INVALID_CREDENTIALS', '验证码无效或已过期'), { status: 401 })
     }
 
     // 生成操作令牌

@@ -106,7 +106,24 @@ export const StorageKey = {
   DEVICE_ID: 'device_id',
   /** HTTP Cookies（用于维持会话） */
   COOKIES: 'cookies',
+  /** 应用版本号（用于版本比对，决定是否清除缓存） */
+  APP_VERSION: 'app_version',
 } as const;
+
+/**
+ * 版本更新时需要保留的存储键白名单。
+ *
+ * 这些键对应的数据在跨版本更新时应保持不变（如登录凭证、设备标识），
+ * 其余键会在版本号变化时被清除，避免旧数据结构与新代码不兼容。
+ */
+export const PRESERVE_KEYS_ON_UPDATE: readonly string[] = [
+  StorageKey.ACCESS_TOKEN,
+  StorageKey.REFRESH_TOKEN,
+  StorageKey.USER_INFO,
+  StorageKey.DEVICE_ID,
+  StorageKey.COOKIES,
+  StorageKey.APP_VERSION,
+] as const;
 
 /**
  * 存储键类型

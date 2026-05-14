@@ -42,7 +42,8 @@ Component({
     selected: 0,
     color: '#4F6C7B',
     selectedColor: '#009666',
-    list: tabBarItems
+    list: tabBarItems,
+    visible: true
   },
 
   /**
