@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores'
-import { distributionService } from '@/services/api'
+import { distributionService } from '@/services/api/distribution'
 import { showSuccess, showError } from '@/utils/toast'
 import { logger } from '@/utils/logger'
 import { useSafeArea } from '@/hooks/useSafeArea'

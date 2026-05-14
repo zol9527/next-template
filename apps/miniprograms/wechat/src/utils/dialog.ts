@@ -4,7 +4,7 @@
  * 提供通用的确认弹窗逻辑，避免在多个页面重复实现。
  */
 
-import { orderService } from '@/services/api'
+import { orderService } from '@/services/api/orders'
 import { logger } from '@/utils/logger'
 import { showSuccess, showError } from '@/utils/toast'
 

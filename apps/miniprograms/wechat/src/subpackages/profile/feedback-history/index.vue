@@ -72,7 +72,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { feedbackService, type Feedback, FeedbackStatus, FeedbackType } from '@/services/feedback'
-import { authService } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import EmptyState from '@/components/EmptyState.vue'
 

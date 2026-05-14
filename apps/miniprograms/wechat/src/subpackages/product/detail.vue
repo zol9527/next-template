@@ -167,7 +167,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { productService, orderService, paymentService, userService } from '@/services/api'
+import { productService } from '@/services/api/products'
+import { orderService } from '@/services/api/orders'
+import { paymentService } from '@/services/api/payment'
+import { userService } from '@/services/api/user'
 import { showSuccess, showError, showLoading, hideLoading } from '@/utils/toast'
 import { buildFullUrl } from '@/utils/url'
 import { previewImages } from '@/utils/image-preview'

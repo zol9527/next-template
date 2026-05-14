@@ -31,7 +31,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { agreementService } from '@/services/api'
+import { agreementService } from '@/services/api/agreement'
 
 export default {
   setup() {

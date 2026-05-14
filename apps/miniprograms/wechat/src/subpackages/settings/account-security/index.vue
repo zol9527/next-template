@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { api } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { handleError } from '@/utils/error-handler'
 import type { UserInfo } from '@/types'
 
@@ -12,7 +12,7 @@ const isLoading = ref(true)
 const fetchUserInfo = async () => {
   try {
     isLoading.value = true
-    const res = await api.auth.getCurrentUser()
+    const res = await authService.getCurrentUser()
     userInfo.value = res
   } catch (error) {
     handleError(error)

@@ -100,7 +100,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, toRaw, onActivated } from 'vue'
-import { productService } from '@/services/api'
+import { productService } from '@/services/api/products'
 import { httpClient } from '@/core/http-client'
 import { showError } from '@/utils/toast'
 import { checkMiniProgramUpdate } from '@/utils/update-manager'

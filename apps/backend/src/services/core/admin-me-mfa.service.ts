@@ -19,6 +19,12 @@ authenticator.options = {
   window: 2,
 }
 
+/**
+ * TOTP 算法标识符（与 otplib 默认一致，均为 HMAC-SHA1）
+ * 显式声明以确保 otpauth URL 中的 algorithm 参数准确
+ */
+const TOTP_ALGORITHM = 'SHA1' as const
+
 // ==================== 类型定义 ====================
 
 /**
@@ -138,8 +144,11 @@ export class AdminMeMfaService {
     // 生成 TOTP 密钥
     const secret = authenticator.generateSecret()
 
-    // 生成二维码 URL
-    const otpauthUrl = authenticator.keyuri(this.ensureAdminEmail(admin), 'GenericAdmin', secret)
+    // 手动构建 otpauth URL，显式包含 digits/period/algorithm 参数，
+    // 确保 1Password 等验证器 App 使用与服务端完全一致的 TOTP 配置
+    const email = this.ensureAdminEmail(admin)
+    const issuer = env.TOTP_ISSUER
+    const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&digits=${env.TOTP_DIGITS}&period=${env.TOTP_STEP}&algorithm=${TOTP_ALGORITHM}`
 
     // 生成二维码图片
     const qrCodeUrl = await QRCode.toDataURL(otpauthUrl)

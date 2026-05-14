@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
-import { userService } from '@/services/api'
+import { userService } from '@/services/api/user'
 import { logger } from '@/utils/logger'
 import { useSafeArea } from '@/hooks/useSafeArea'
 

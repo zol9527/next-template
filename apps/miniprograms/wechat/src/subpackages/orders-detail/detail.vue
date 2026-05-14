@@ -120,7 +120,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { orderService, productService, paymentService } from '@/services/api'
+import { orderService } from '@/services/api/orders'
+import { productService } from '@/services/api/products'
+import { paymentService } from '@/services/api/payment'
 import { showSuccess, showError } from '@/utils/toast'
 import { confirmCancelOrder } from '@/utils/dialog'
 import { useSafeArea } from '@/hooks/useSafeArea'

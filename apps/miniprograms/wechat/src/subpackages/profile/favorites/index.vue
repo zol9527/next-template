@@ -67,7 +67,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { favoritesService, type Favorite, FavoriteType } from '@/services/favorites'
-import { authService } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { useSafeArea } from '@/hooks/useSafeArea'
 import EmptyState from '@/components/EmptyState.vue'
 import { showToast, showConfirm, showLoading, hideLoading } from '@/utils/toast'
