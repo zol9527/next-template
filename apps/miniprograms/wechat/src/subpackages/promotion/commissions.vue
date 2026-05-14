@@ -151,7 +151,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores'
-import { distributionService } from '@/services/api'
+import { distributionService } from '@/services/api/distribution'
 import { showError } from '@/utils/toast'
 import { logger } from '@/utils/logger'
 export default {

@@ -104,7 +104,7 @@
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { feedbackService, type FeedbackDetail, FeedbackStatus, FeedbackType } from '@/services/feedback'
-import { authService } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { useSafeArea } from '@/hooks/useSafeArea'
 
 /** 安全区域 */

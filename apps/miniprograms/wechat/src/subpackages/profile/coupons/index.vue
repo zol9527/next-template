@@ -84,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { authService } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { couponService, type Coupon } from '@/services/api/coupons'
 
 // ====== Constants ======

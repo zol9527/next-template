@@ -73,7 +73,7 @@
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { orderService } from '@/services/api/orders'
-import { authService } from '@/services/api'
+import { authService } from '@/services/api/auth.service'
 import { favoritesService, FavoriteType } from '@/services/favorites'
 import { productService } from '@/services/api/products'
 
