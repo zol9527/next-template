@@ -44,13 +44,14 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
   const isExpanded = expandedMenus.has(item.href)
 
   const isLocked = item.requiredAccess && !hasAccess && !auth.isLoading
+  // 圆角使用 --radius-sm (8px)，垂直 padding 9px，与 Paper Design 对齐
   const itemClassName = cn(
-    'gap-3 rounded-lg px-3 text-sidebar-foreground transition-colors',
+    'gap-3 rounded-sm px-3 py-[9px] text-sidebar-foreground transition-colors',
     'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
     'data-[active=true]:bg-sidebar-active data-[active=true]:text-sidebar-active-foreground'
   )
   const lockedItemClassName = cn(
-    'gap-3 rounded-lg px-3 text-sidebar-foreground/45 transition-colors',
+    'gap-3 rounded-sm px-3 py-[9px] text-sidebar-foreground/45 transition-colors',
     'hover:bg-sidebar-accent hover:text-sidebar-foreground/70'
   )
 

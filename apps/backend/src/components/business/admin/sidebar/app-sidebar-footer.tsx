@@ -45,11 +45,11 @@ export function AppSidebarFooter() {
   }
 
   return (
-    <div className="shrink-0 py-2 px-2.5 group-data-[collapsible=icon]:px-1">
+    <div className="shrink-0 pt-2 px-2.5 group-data-[collapsible=icon]:px-1">
       <button
         type="button"
         onClick={handleLogout}
-        className="w-full flex items-center rounded-lg py-2.25 px-3 gap-2 border border-solid border-border-default transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:rounded-md"
+        className="w-full flex items-center rounded-sm py-2.25 px-3 gap-2 border border-solid border-border-default transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:rounded-sm"
       >
         <LogOut className="size-[18px] shrink-0 text-fg-muted" strokeWidth={2} />
         <span className="font-body font-medium text-fg-muted text-[13px] leading-4 group-data-[collapsible=icon]:hidden">

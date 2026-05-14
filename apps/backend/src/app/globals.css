@@ -605,10 +605,11 @@ html {
     border-left: none !important;
   }
 
-  /* Sidebar Inner: 上下 20px padding 对齐 MainCard 的视觉边界
-     使退出登录按钮的底部与 MainCard 底部齐平 */
+  /* Sidebar Inner: 上下 12px padding 对齐 MainCard 视觉边界
+     SidebarHeader/Footer 各自带 p-2 (8px)，所以 sidebar-inner 需要
+     20px - 8px = 12px，才能与 LayoutWrapper p-5 (20px) 底边齐平 */
   [data-slot="sidebar-inner"] {
-    padding-block: 20px;
+    padding-block: 12px;
   }
 
   /* 移动端：Surface 面板全宽，无圆角/间距 */
