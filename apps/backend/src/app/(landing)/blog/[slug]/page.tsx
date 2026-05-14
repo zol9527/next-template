@@ -53,6 +53,9 @@ export async function generateMetadata({
 	return {
 		title: article.metaTitle ?? article.title,
 		description: article.metaDescription ?? article.excerpt ?? '',
+		alternates: {
+			canonical: `/blog/${article.slug}`,
+		},
 		openGraph: {
 			title: article.metaTitle ?? article.title,
 			description: article.metaDescription ?? article.excerpt ?? '',
@@ -96,11 +99,36 @@ export default async function BlogArticlePage({
 	const related = relatedArticles.items.filter((a) => a.slug !== slug).slice(0, 3);
 	const readingTime = calculateReadingTime(article.content);
 
+	// 构建博客文章的 JSON-LD 结构化数据，帮助搜索引擎理解文章内容
+	const jsonLd = {
+		'@context': 'https://schema.org',
+		'@type': 'BlogPosting',
+		headline: article.title,
+		description: article.metaDescription ?? article.excerpt ?? '',
+		datePublished: article.publishedAt ?? undefined,
+		author: {
+			'@type': 'Organization',
+			name: article.authorName ?? 'EduAdmin',
+		},
+		publisher: {
+			'@type': 'Organization',
+			name: 'EduAdmin',
+		},
+		...(article.coverImage && { image: article.coverImage }),
+	}
+
 	return (
-		<BlogArticleShell
-			article={article}
-			relatedArticles={related}
-			readingTime={readingTime}
-		/>
-	);
+		<>
+			{/* 注入 JSON-LD 结构化数据，供搜索引擎解析 */}
+			<script
+				type="application/ld+json"
+				dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+			/>
+			<BlogArticleShell
+				article={article}
+				relatedArticles={related}
+				readingTime={readingTime}
+			/>
+		</>
+	)
 }
