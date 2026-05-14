@@ -1,74 +1,160 @@
 @import "tailwindcss";
 
 /* ============================================
-   CSS 原始变量 — 浅色主题
-   配色: #EF7324(橙) #38894C(绿) #69DEF8(蓝) #E4F2F2(薄荷) #596060(炭灰)
+   CSS 原始变量 — NextAdmin 浅色主题
+   基于 Paper Design System v2 设计令牌
+   配色: 暖灰基底 + 暖橙强调 + 辅助语义色
    ============================================ */
 :root {
-  /* 调色板 */
-  --palette-orange: #EF7324;
-  --palette-green: #38894C;
-  --palette-blue: #69DEF8;
-  --palette-mint: #E4F2F2;
-  --palette-charcoal: #596060;
+  /* ── NextAdmin 设计令牌 ── */
 
-  /* 布局层 */
-  --background: #E4F2F2;
-  --foreground: #596060;
-  --card: #FFFFFF;
-  --card-foreground: #596060;
-  --popover: #FFFFFF;
-  --popover-foreground: #596060;
+  /* 背景 & 表面 */
+  --bg: #f2f1ed;                        /* 页面背景（暖灰） */
+  --surface: #ffffff;                    /* 卡片/面板背景 */
+  --surface-alt: #f7f7f4;               /* 表格表头、次要面板背景 */
 
-  /* 主操作 */
-  --primary: #EF7324;
-  --primary-foreground: #FFFFFF;
+  /* 前景/文字 */
+  --fg: #26251e;                         /* 主要文字 */
+  --fg-secondary: #6b6960;              /* 辅助文字 */
+  --fg-muted: #9c9a91;                  /* 标签、提示文字、占位符 */
 
-  /* 辅助 */
-  --secondary: #D0DEDE;
-  --secondary-foreground: #596060;
+  /* 边框（使用 -default 后缀避免与 shadcn --border 自引用冲突） */
+  --border-default: rgba(38, 37, 30, 0.08);   /* 默认边框/分割线 */
+  --border-medium: rgba(38, 37, 30, 0.15);    /* 中等强调边框 */
+  --border-strong: rgba(38, 37, 30, 0.25);    /* 强调边框 */
 
-  /* 柔和 */
-  --muted: #D0DEDE;
-  --muted-foreground: #8A9191;
+  /* 主色 — 暖橙（使用 ds- 前缀避免与 shadcn --accent 冲突） */
+  --ds-accent: #f54e00;                  /* 主色，用于主按钮、Active 状态、关键 CTA */
+  --ds-accent-hover: #d94400;           /* 主色悬停态 */
+  --ds-accent-subtle: rgba(245, 78, 0, 0.08); /* 主色浅底，用于选中行/图标背景 */
 
-  /* 信息/高亮 */
-  --accent: #69DEF8;
-  --accent-foreground: #3A5560;
+  /* 辅助色 — 金棕 */
+  --gold: #c08532;                       /* KPI、警告态 */
+  --gold-subtle: rgba(192, 133, 50, 0.1);
 
-  /* 边框/输入 */
-  --border: #C4CCCC;
-  --input: #C4CCCC;
-  --ring: #EF7324;
+  /* 辅助色 — 青绿 */
+  --teal: #1f8a65;                       /* 成功态、正向指标 */
+  --teal-subtle: rgba(31, 138, 101, 0.1);
 
-  /* Sidebar — 深色融合式（透明背景，继承 Base 层 #596060） */
+  /* 辅助色 — 玫红 */
+  --rose: #cf2d56;                       /* 错误态、危险操作 */
+  --rose-subtle: rgba(207, 45, 86, 0.08);
+
+  /* 辅助色 — 棕色 */
+  --brown: #8b6f47;                      /* 特定 KPI */
+  --brown-subtle: rgba(139, 111, 71, 0.1);
+
+  /* 辅助色 — 桃色 */
+  --peach: #dfa88f;                      /* 活动 Feed 点 */
+  --peach-subtle: rgba(223, 168, 143, 0.12);
+
+  /* 语义色 — 状态 */
+  --success: #1f8a65;
+  --success-bg: rgba(31, 138, 101, 0.08);
+  --warning: #c08532;
+  --warning-bg: rgba(192, 133, 50, 0.08);
+  --error: #cf2d56;
+  --error-bg: rgba(207, 45, 86, 0.08);
+
+  /* ── shadcn/ui 语义映射 ── */
+  /* 将 shadcn/ui 组件变量映射到 NextAdmin 设计令牌 */
+  --background: var(--surface);          /* 0 - 背景 */
+  --foreground: var(--fg);               /* 0 - 前景 */
+  --card: var(--surface);                /* 1 - 卡片 */
+  --card-foreground: var(--fg);          /* 1 */
+  --popover: var(--surface);             /* 2 - 弹出层 */
+  --popover-foreground: var(--fg);       /* 2 */
+  --primary: var(--ds-accent);            /* 3 - 主色（暖橙） */
+  --primary-foreground: #ffffff;         /* 3 */
+  --secondary: var(--bg);                /* 4 - 次要 */
+  --secondary-foreground: var(--fg);     /* 4 */
+  --muted: var(--bg);                    /* 5 - 静音 */
+  --muted-foreground: var(--fg-muted);   /* 5 */
+  --accent: var(--ds-accent-subtle);     /* 6 - shadcn 强调背景（暖橙浅底） */
+  --accent-foreground: var(--ds-accent); /* 6 - shadcn 强调文字（暖橙） */
+  --destructive: var(--rose);            /* 7 - 破坏性 */
+  --destructive-foreground: #ffffff;     /* 7 */
+  --border: var(--border-default);       /* 8 */
+  --input: var(--border-medium);         /* 9 */
+  --ring: var(--ds-accent);              /* 10 */
+
+  /* Sidebar — 暖灰融合式（融入页面背景，无边框无阴影） */
   --sidebar: transparent;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #596060;
-  --sidebar-accent: rgba(255, 255, 255, 0.10);
-  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-foreground: var(--fg-secondary);
+  --sidebar-primary: var(--ds-accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(38, 37, 30, 0.04);
+  --sidebar-accent-foreground: var(--fg);
   --sidebar-border: transparent;
-  --sidebar-ring: #69DEF8;
-  --sidebar-active: rgba(255, 255, 255, 0.18);
-  --sidebar-active-foreground: #FFFFFF;
+  --sidebar-ring: var(--ds-accent);
+  --sidebar-active: var(--ds-accent-subtle);
+  --sidebar-active-foreground: var(--ds-accent);
 
-  --radius: 0.25rem;
+  /* 圆角 — NextAdmin 规范 */
+  --radius: 0.5rem;
+  --radius-sm: 8px;                      /* 按钮、输入框、导航项、图标按钮 */
+  --radius-md: 12px;                     /* 卡片、面板、表格容器 */
+  --radius-lg: 16px;                     /* 主卡片、弹窗 */
+  --radius-pill: 9999px;                 /* 搜索框、状态药丸、标签、趋势指标、头像 */
 
-  /* Stitch Admin 间距令牌（4px 基线） */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+  /* 间距令牌（4px 基线） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
 
-  /* Stitch Admin 阴影令牌 */
-  --shadow-surface: 0 4px 24px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* 阴影令牌 — NextAdmin 规范 */
+  --shadow-card: 0 1px 3px rgba(38, 37, 30, 0.04), 0 8px 24px rgba(38, 37, 30, 0.06);
+  --shadow-hover: 0 2px 6px rgba(38, 37, 30, 0.06), 0 12px 32px rgba(38, 37, 30, 0.08);
+  --shadow-dropdown: 0 2px 6px rgba(38, 37, 30, 0.06), 0 12px 32px rgba(38, 37, 30, 0.08);
+  --shadow-modal: 0 2px 6px rgba(38, 37, 30, 0.06), 0 16px 48px rgba(38, 37, 30, 0.12);
 
-  /* Stitch Admin 布局色彩 */
-  --stitch-base: #596060;
-  --stitch-surface: #E4F2F2;
+  /* Z-Index 层级 — NextAdmin 规范 */
+  --z-background: 0;                     /* 页面背景层 · 无装饰 */
+  --z-sidebar: 10;                       /* 侧边栏 · 融入背景 */
+  --z-main-card: 20;                     /* 主内容卡片 · --shadow-card */
+  --z-dropdown: 30;                      /* 下拉菜单/弹出层 · --shadow-hover */
+  --z-overlay: 40;                       /* 遮罩层 · blur(2px) 30% */
+  --z-modal: 50;                         /* 对话框 · 加强阴影 */
+  --z-toast: 60;                         /* 通知 · 固定定位 */
+  --z-tooltip: 70;                       /* 工具提示 · --fg 反色 */
+
+  /* 遮罩层 */
+  --overlay-bg: rgba(38, 37, 30, 0.3);
+  --overlay-blur: blur(2px);
+
+  /* 图标尺寸 */
+  --icon-xs: 16px;                       /* 状态药丸内图标、紧凑列表图标 */
+  --icon-sm: 20px;                       /* 导航项图标、表单字段图标 */
+  --icon-md: 24px;                       /* 默认图标尺寸，按钮内图标、工具栏 */
+  --icon-lg: 32px;                       /* 空状态插图、大图标按钮 */
+
+  /* 动效令牌 */
+  --duration-fast: 0.1s;
+  --duration-normal: 0.15s;
+  --duration-slow: 0.25s;
+  --easing: ease;
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 组件级令牌 — 表格/卡片/滚动条 */
+  --table-row-hover: rgba(38, 37, 30, 0.02);  /* 表格行悬停背景 */
+  --table-header-bg: var(--surface-alt);       /* 表头背景 */
+  --card-header-height: 60px;                  /* 卡片头部固定高度 */
+  --scrollbar-height: 4px;                     /* 自定义滚动条高度 */
+  --scrollbar-track: var(--surface-alt);       /* 滚动条轨道颜色 */
+  --scrollbar-thumb: var(--border-medium);     /* 滚动条滑块颜色 */
+  --kpi-icon-size: 28px;                       /* KPI 图标色块尺寸 */
+  --activity-dot-size: 7px;                    /* 活动动态色点尺寸 */
+  --progress-bar-height: 5px;                  /* 进度条高度 */
+  --progress-bar-radius: 3px;                  /* 进度条圆角 */
+
+  /* ── 旧令牌兼容（渐进迁移） ── */
+  --stitch-base: var(--bg);
+  --stitch-surface: var(--bg);
 
   /* 像素风配色 — 始终深色，不跟随主题切换 */
   --color-landing-background: #0F0F23;
@@ -116,57 +202,6 @@
 }
 
 /* ============================================
-   CSS 原始变量 — 暗色主题
-   基于 #596060 炭灰色系派生
-   ============================================ */
-.dark {
-  --background: #2A2E2E;
-  --foreground: #E2E8F0;
-  --primary: #EF7324;
-  --primary-foreground: #FFFFFF;
-  --card: #353A3A;
-  --card-foreground: #E2E8F0;
-  --popover: #353A3A;
-  --popover-foreground: #E2E8F0;
-  --secondary: #3A3E3E;
-  --secondary-foreground: #E2E8F0;
-  --muted: #3A3E3E;
-  --muted-foreground: #9A9F9F;
-  --accent: #69DEF8;
-  --accent-foreground: #2A2E2E;
-  --border: #4A4E4E;
-  --input: #4A4E4E;
-  --ring: #EF7324;
-
-  /* Sidebar dark — 保持深色融合式 */
-  --sidebar: transparent;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #596060;
-  --sidebar-accent: rgba(255, 255, 255, 0.08);
-  --sidebar-accent-foreground: #E2E8F0;
-  --sidebar-border: transparent;
-  --sidebar-ring: #69DEF8;
-  --sidebar-active: rgba(255, 255, 255, 0.12);
-  --sidebar-active-foreground: #FFFFFF;
-
-  /* Prose dark */
-  --prose-code-background: #2A2B35;
-
-  --color-landing-background: #0A0A1A;
-  --color-landing-foreground: #E8E8E8;
-  --color-landing-muted: #7B8794;
-  --color-landing-primary: #4CC9F0;
-  --color-landing-secondary: #3A86FF;
-  --color-landing-cta: #FF6B35;
-  --color-landing-card: #1A1A2E;
-  --color-landing-border: #2A2A4A;
-  --color-landing-success: #06D6A0;
-  --color-landing-gold: #FFD700;
-  --color-landing-heart: #FF6B35;
-}
-
-/* ============================================
    @theme inline — Tailwind v4 主题令牌映射
    shadcn/ui v4 官方模式：:root 变量 → Tailwind token
    ============================================ */
@@ -200,17 +235,44 @@
   --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
 
-  /* 语义色彩 — 状态 */
-  --color-success: #38894C;
-  --color-success-foreground: #FFFFFF;
-  --color-info: #69DEF8;
-  --color-info-foreground: #2A4A50;
-  --color-warning: #F59E0B;
-  --color-warning-foreground: #FFFFFF;
-  --color-error: #EF4444;
-  --color-error-foreground: #FFFFFF;
-  --color-neutral: #596060;
-  --color-neutral-foreground: #FFFFFF;
+  /* 语义色彩 — NextAdmin 状态 */
+  --color-success: var(--success);
+  --color-success-foreground: #ffffff;
+  --color-info: var(--teal);
+  --color-info-foreground: #ffffff;
+  --color-warning: var(--warning);
+  --color-warning-foreground: #ffffff;
+  --color-error: var(--error);
+  --color-error-foreground: #ffffff;
+  --color-neutral: var(--fg-secondary);
+  --color-neutral-foreground: #ffffff;
+
+  /* NextAdmin 扩展色彩令牌 — 直接 Tailwind 可用 */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-fg: var(--fg);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+
+  --color-ds-accent: var(--ds-accent);
+  --color-ds-accent-hover: var(--ds-accent-hover);
+  --color-ds-accent-subtle: var(--ds-accent-subtle);
+
+  --color-gold: var(--gold);
+  --color-gold-subtle: var(--gold-subtle);
+  --color-teal: var(--teal);
+  --color-teal-subtle: var(--teal-subtle);
+  --color-rose: var(--rose);
+  --color-rose-subtle: var(--rose-subtle);
+  --color-brown: var(--brown);
+  --color-brown-subtle: var(--brown-subtle);
+  --color-peach: var(--peach);
+  --color-peach-subtle: var(--peach-subtle);
+
+  --color-success-bg: var(--success-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-error-bg: var(--error-bg);
 
   /* 像素风配色 */
   --color-landing-primary: #4CC9F0;
@@ -224,26 +286,51 @@
   --color-landing-success: #06D6A0;
   --color-landing-gold: #FFD700;
 
-  /* 圆角 — Stitch 规范 */
-  --radius-sm: 0.125rem;
-  --radius-md: 0.25rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  /* 圆角 — NextAdmin 规范 */
+  --radius-sm: 8px;                      /* 按钮、输入框、导航项 */
+  --radius-md: 12px;                     /* 卡片、面板 */
+  --radius-lg: 16px;                     /* 主卡片、弹窗 */
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;                 /* 搜索框、状态药丸、头像 */
 
-  /* 阴影 */
+  /* 阴影 — NextAdmin 规范 */
+  --shadow-xs: 0 1px rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 1px 3px rgba(38, 37, 30, 0.04), 0 8px 24px rgba(38, 37, 30, 0.06);
+  --shadow-lg: 0 2px 6px rgba(38, 37, 30, 0.06), 0 12px 32px rgba(38, 37, 30, 0.08);
+  --shadow-xl: 0 2px 6px rgba(38, 37, 30, 0.06), 0 16px 48px rgba(38, 37, 30, 0.12);
   --shadow-2xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-  /* Stitch 阴影令牌 */
-  --shadow-surface: var(--shadow-surface);
-  --shadow-card: var(--shadow-card);
+  /* 字体 — NextAdmin 规范 */
+  --font-display: "Outfit", var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "DM Sans", var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  /* 字体 */
-  --font-sans: "Inter", var(--font-inter), -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Z-Index — NextAdmin 规范 */
+  /* 命名型令牌：业务代码使用 z-dropdown、z-modal 等语义化类名 */
+  --z-background: 0;
+  --z-sidebar: 10;
+  --z-main-card: 20;
+  --z-dropdown: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+
+  /* 数字型别名：base 组件使用标准 Tailwind 类名 z-10/z-50 等 */
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-100: 100;
+
+  /* 响应式断点 — NextAdmin 规范 */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1400px;
 }
 
 @layer base {
@@ -255,6 +342,110 @@
     background-color: var(--background);
     color: var(--foreground);
     min-height: 100vh;
+  }
+}
+
+/* ============================================
+   NextAdmin 排版工具类 — Heading / Text Styles
+   基于 Paper Design System 字体规格令牌
+   ============================================ */
+@layer utilities {
+  /* ── 标题层级 (Heading Hierarchy) ── */
+  .heading-1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.2;
+    color: var(--fg);
+  }
+
+  .heading-2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--fg);
+  }
+
+  .heading-3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--fg);
+  }
+
+  .heading-4 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--fg-secondary);
+  }
+
+  .heading-5 {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--fg-muted);
+  }
+
+  .heading-6 {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--fg-muted);
+  }
+
+  /* ── 文本样式组 (Text Styles) ── */
+  .text-body-lg {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--fg);
+  }
+
+  .text-body {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+
+  .text-body-sm {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--fg-secondary);
+  }
+
+  .text-caption {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--fg-muted);
+  }
+
+  .text-overline {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--fg-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── 数值型数据 — 等宽数字 ── */
+  .text-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -580,4 +771,100 @@ html {
 
 .animate-form-shake {
   animation: form-shake 0.5s ease-in-out;
+}
+
+/* ============================================
+   NextAdmin UI 动画 — Toast / Modal / 入场
+   ============================================ */
+
+/* Toast — 从右侧滑入 */
+@keyframes edu-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Toast — 向右侧滑出 */
+@keyframes edu-toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* Modal — 缩放进入（scale 0.98 → 1） */
+@keyframes edu-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Modal — 缩放退出 */
+@keyframes edu-modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.animate-toast-in {
+  animation: edu-toast-in var(--duration-slow) var(--easing) forwards;
+}
+
+.animate-toast-out {
+  animation: edu-toast-out var(--duration-slow) var(--easing) forwards;
+}
+
+.animate-modal-in {
+  animation: edu-modal-in var(--duration-slow) var(--easing) forwards;
+}
+
+.animate-modal-out {
+  animation: edu-modal-out var(--duration-slow) var(--easing) forwards;
+}
+
+/* ============================================
+   NextAdmin 自定义滚动条 — 细粒度规格
+   ============================================ */
+.edu-scrollbar::-webkit-scrollbar {
+  height: var(--scrollbar-height);
+  width: var(--scrollbar-height);
+}
+
+.edu-scrollbar::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 2px;
+}
+
+.edu-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+}
+
+.edu-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* Firefox 滚动条 */
+.edu-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }

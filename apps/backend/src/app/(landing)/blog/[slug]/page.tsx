@@ -108,11 +108,11 @@ export default async function BlogArticlePage({
 		datePublished: article.publishedAt ?? undefined,
 		author: {
 			'@type': 'Organization',
-			name: article.authorName ?? 'EduAdmin',
+			name: article.authorName ?? 'NextAdmin',
 		},
 		publisher: {
 			'@type': 'Organization',
-			name: 'EduAdmin',
+			name: 'NextAdmin',
 		},
 		...(article.coverImage && { image: article.coverImage }),
 	}

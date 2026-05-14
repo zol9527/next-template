@@ -166,6 +166,7 @@ export function AdminLoginForm() {
   const [mfaToken, setMfaToken] = React.useState('')
   const [formError, setFormError] = React.useState<string | null>(null)
   const [blockingState, setBlockingState] = React.useState<BlockingState | null>(null)
+  const [showPassword, setShowPassword] = React.useState(false)
   const submitLockRef = React.useRef(false)
 
   React.useEffect(() => {
@@ -338,57 +339,82 @@ export function AdminLoginForm() {
   }
 
   return (
-    <div className="grid gap-6">
-      <form onSubmit={onSubmit} className="grid gap-4">
+    <div className="w-full">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {step === 'password' ? (
           <>
-            {/* 账号输入框 - 极简设计 */}
-            <div className="grid gap-2">
-              <Label htmlFor="identifier" className="text-sm font-medium text-foreground">
+            {/* ── 账号输入框 ── */}
+            {/* 设计规格: gap-1.5 (6px), label 使用 text-body, input 使用 rounded-sm (8px) */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="identifier" className="text-fg">
                 账号
               </Label>
               <Input
                 id="identifier"
                 autoComplete="username"
-                placeholder="用户名/邮箱/手机号"
+                placeholder="用户名 / 邮箱 / 手机号"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 disabled={submitting}
-                className="h-11 border-input transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
               />
             </div>
 
-            {/* 密码输入框 - 极简设计 */}
-            <div className="grid gap-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+            {/* ── 密码输入框 ── */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password" className="text-fg">
                 密码
               </Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="请输入密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={submitting}
-                className="h-11 border-input transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="请输入密码"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={submitting}
+                  className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 pr-10 text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
+                />
+                {/* 密码可见性切换按钮 — 匹配设计稿 eye-off 图标 (16px) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg-secondary transition-colors duration-normal"
+                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* 登录按钮 - 居中主 CTA */}
+            {/* ── 登录按钮 — 主 CTA ── */}
+            {/* 设计规格: rounded-sm (8px), bg ds-accent (#f54e00), py-2.5 px-5, 白色文字 */}
             <Button
               type="submit"
               disabled={submitting || isTemporarilyBlocked}
-              className="mt-2 h-11 w-full bg-primary text-primary-foreground transition-all duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-0 h-[40px] w-full rounded-sm bg-ds-accent text-white hover:bg-ds-accent-hover transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? '登录中…' : blockingState?.kind === 'locked' ? '等待解锁…' : blockingState?.kind === 'rate-limit' ? '请稍后重试…' : '登录'}
             </Button>
           </>
         ) : (
           <>
-            {/* MFA 验证码输入框 */}
-            <div className="grid gap-2">
-              <Label htmlFor="mfaToken" className="text-sm font-medium text-foreground">
+            {/* ── MFA 验证码输入框 ── */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mfaToken" className="text-fg">
                 验证码
               </Label>
               <Input
@@ -400,25 +426,25 @@ export function AdminLoginForm() {
                 value={mfaToken}
                 onChange={(e) => setMfaToken(e.target.value)}
                 disabled={submitting}
-                className="h-11 border-input text-center text-lg tracking-widest transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-[42px] rounded-sm bg-surface border-border-medium py-2.5 px-3 text-center text-lg tracking-widest text-fg-secondary placeholder:text-fg-muted transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:border-ds-accent"
               />
             </div>
 
-            {/* 验证按钮 - 居中主 CTA */}
+            {/* ── 验证按钮 — 主 CTA ── */}
             <Button
               type="submit"
               disabled={submitting || isTemporarilyBlocked}
-              className="mt-2 h-11 w-full bg-primary text-primary-foreground transition-all duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-[40px] w-full rounded-sm bg-ds-accent text-white hover:bg-ds-accent-hover transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ds-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? '验证中…' : blockingState?.kind === 'rate-limit' ? '请稍后重试…' : '验证并登录'}
             </Button>
           </>
         )}
 
-        {/* 错误提示 - 极简设计 */}
+        {/* ── 错误提示 — 语义色 error ── */}
         {displayedFormError ? (
-          <div className="flex items-center justify-center rounded-md border border-error/20 bg-error/5 px-4 py-3">
-            <p data-testid="login-error" className="text-sm text-error">
+          <div className="flex items-center justify-center rounded-sm border border-rose/20 bg-rose-subtle px-4 py-3">
+            <p data-testid="login-error" className="text-body-sm text-rose">
               {displayedFormError}
             </p>
           </div>

@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
 	title: '博客 — Generic Admin',
-	description: '技术文章、系统更新与最佳实践分享。探索 EduAdmin 的功能特性和开发动态。',
-	keywords: ['博客', '技术文章', '系统更新', 'EduAdmin', '教程'],
+	description: '技术文章、系统更新与最佳实践分享。探索 NextAdmin 的功能特性和开发动态。',
+	keywords: ['博客', '技术文章', '系统更新', 'NextAdmin', '教程'],
 	alternates: {
 		canonical: '/blog',
 	},

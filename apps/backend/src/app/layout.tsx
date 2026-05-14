@@ -57,7 +57,7 @@ const vt323 = VT323({
   weight: "400",
 });
 
-// EduAdmin 后台字体 — 基于 Paper Design System 规范
+// NextAdmin 后台字体 — 基于 Paper Design System 规范
 // Outfit: 品牌/标题（display），DM Sans: 正文/UI（body），JetBrains Mono: 代码/数据
 const outfit = Outfit({
   subsets: ["latin"],
@@ -85,10 +85,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 export const metadata: Metadata = {
   // title.template 让子页面自动拼接品牌后缀
-  // 例如子页面设置 title: "博客" → 渲染为 "博客 | EduAdmin"
+  // 例如子页面设置 title: "博客" → 渲染为 "博客 | NextAdmin"
   title: {
-    default: 'EduAdmin — 教育行业 SaaS 管理后台',
-    template: '%s | EduAdmin',
+    default: '用用管理后台',
+    template: '%s | NextAdmin',
   },
   description: '基于插件化架构的现代教育管理后台，支持 RBAC 权限控制、API 优先设计，按需启用业务模块。',
   // metadataBase 让所有相对 URL（OG 图片、canonical）有正确的基础路径
@@ -96,7 +96,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
-    siteName: 'EduAdmin',
+    siteName: 'NextAdmin',
   },
   twitter: {
     card: 'summary_large_image',

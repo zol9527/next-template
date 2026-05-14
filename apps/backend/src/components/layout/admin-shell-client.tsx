@@ -107,12 +107,12 @@ export function AdminShellClient({
   return (
     <SidebarProvider defaultOpen={true}>
       {/* Base Layer: h-svh 锁死视口高度，overflow-hidden 禁止窗口级滚动 */}
-      <div className="bg-[var(--stitch-base,#596060)] h-svh w-full overflow-hidden flex">
+      <div className="bg-[var(--stitch-base,var(--bg))] h-svh w-full overflow-hidden flex">
         <AppSidebar enabledPlugins={enabledPlugins} />
 
         <SidebarInset className="flex-1 flex-col overflow-hidden">
-          {/* Surface Layer: 四周 margin 暴露深色背景，四角圆角 + 阴影营造悬浮感 */}
-          <div className="bg-background shadow-[var(--shadow-surface,0_4px_24px_rgba(0,0,0,0.12))] flex-1 m-0 md:m-4 rounded-none md:rounded-2xl h-full md:h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
+          {/* Surface Layer: 四周 margin 暴露背景色，圆角 + 阴影营造悬浮感 */}
+          <div className="bg-background shadow-[var(--shadow-card)] flex-1 m-0 md:m-4 rounded-none md:rounded-2xl h-full md:h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
             {/* Header: 固定高度，不参与滚动 */}
             <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-6">
               <AdminHeader pathname={pathname} groups={filteredGroups} />
