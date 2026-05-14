@@ -29,8 +29,8 @@ model User {
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @default(now()) @map("updated_at")
   mfaEnabled            Boolean                 @default(false)
-  mfaSecret             String?
-  mfaBackupCodes        String?
+  mfaSecret             String?  @db.VarChar(512)
+  mfaBackupCodes        String?  @db.Text
   mfaSetupAt            DateTime?
   mfaLastVerifiedAt     DateTime?
   mfaPendingSecret      String?                 @map("mfa_pending_secret")
