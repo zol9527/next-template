@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Light mode: warm orange rounded square with white "E" -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #f54e00; }
+      .letter { fill: #26251e; }
+    }
+  </style>
+  <rect class="bg" x="1" y="1" width="30" height="30" rx="7" fill="#f54e00"/>
+  <path class="letter" fill="#26251e" d="
+    M 9 8
+    H 23
+    V 11.5
+    H 12.5
+    V 14.25
+    H 21
+    V 17.75
+    H 12.5
+    V 20.5
+    H 23
+    V 24
+    H 9
+    Z
+  "/>
+</svg>
