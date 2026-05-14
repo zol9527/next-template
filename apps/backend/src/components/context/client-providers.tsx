@@ -26,6 +26,11 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const auth = React.useContext(AuthContext)
 
+  // 防止 MFA_REQUIRED 导致无限跳转循环
+  // 场景：跳转到 /admin/mfa-setup 后，该页面的 layout 仍会加载 admin API，
+  // 这些 API 继续返回 MFA_REQUIRED，如果不加 guard 会反复触发跳转。
+  const mfaRedirectingRef = React.useRef(false)
+
   React.useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       if (event.type === 'updated' && event.action.type === 'error') {
@@ -34,20 +39,31 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
         // ==================== MFA_REQUIRED 特殊处理 ====================
         // 当后端检测到管理员角色需要 MFA 但用户未完成设置时，返回此错误。
         // 此时应引导用户去 MFA 设置页，而非踢回登录页。
-        if (error.code === 'MFA_REQUIRED') {
-          // 通过自定义事件触发 toast（在非组件上下文中无法直接调用 useToast）
-          window.dispatchEvent(new CustomEvent('app:toast', {
-            detail: {
-              title: '需要设置多因素认证',
-              description: error.message || '系统已启用多因素认证，请先完成 MFA 设置',
-              variant: 'destructive',
-            },
-          }))
+        if (error.code === 'MFA_REQUIRED' && !mfaRedirectingRef.current) {
+          // 标记正在跳转，防止后续的 MFA_REQUIRED 错误重复触发
+          mfaRedirectingRef.current = true
 
-          // 延迟跳转，让用户看到 toast
-          setTimeout(() => {
-            window.location.href = '/admin/mfa-setup'
-          }, 1500)
+          // 如果当前不在 MFA 设置页，才跳转
+          if (!window.location.pathname.startsWith('/admin/mfa-setup')) {
+            // 通过自定义事件触发 toast
+            window.dispatchEvent(new CustomEvent('app:toast', {
+              detail: {
+                title: '需要设置多因素认证',
+                description: error.message || '系统已启用多因素认证，请先完成 MFA 设置',
+                variant: 'destructive',
+              },
+            }))
+
+            // 延迟跳转，让用户看到 toast
+            setTimeout(() => {
+              window.location.href = '/admin/mfa-setup'
+            }, 1500)
+          }
+          return
+        }
+
+        // 如果已经在跳转中，忽略所有其他错误
+        if (mfaRedirectingRef.current) {
           return
         }
 
