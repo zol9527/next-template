@@ -116,7 +116,7 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
   })
 
   it('should return 400 for invalid body', async () => {
-    const body = { userId: 'invalid-uuid' } // invalid UUID and missing token
+    const body = { badField: 'xxx' } // 缺少必填的 token 字段
     const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -128,7 +128,7 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
   })
 
   it('should return 401 for missing mfa_pending_token cookie', async () => {
-    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    const body = { token: '000000' }
     const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -148,7 +148,7 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
   it('should return 401 for invalid mfa_pending_token', async () => {
     vi.mocked(TokenManager.verifyMfaToken).mockRejectedValue(new Error('Invalid token'))
 
-    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    const body = { token: '000000' }
     const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -165,10 +165,20 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
     expect(response.status).toBe(401)
   })
 
-  it('should return 401 for user mismatch in mfa_pending_token', async () => {
-    vi.mocked(TokenManager.verifyMfaToken).mockResolvedValue({ sub: 'other-user', type: 'mfa_pending' })
+  it('should extract userId from mfa_pending_token cookie, not request body', async () => {
+    // H-5 修复: userId 不再从请求体获取，仅从 mfa_pending_token cookie 中提取
+    vi.mocked(TokenManager.verifyMfaToken).mockResolvedValue({ sub: '550e8400-e29b-41d4-a716-446655440000', type: 'mfa_pending' })
+    vi.mocked(AuthDeps.createAuth).mockResolvedValue({
+      loginWithMfa: vi.fn().mockResolvedValue({
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        sessionId: 'session-id',
+      }),
+    } as any)
 
-    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '000000' }
+    // 请求体不包含 userId，只包含 token
+    const body = { token: '123456' }
     const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -182,7 +192,17 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
 
     const response = await POST(req, { params: Promise.resolve({}) })
 
-    expect(response.status).toBe(401)
+    // 应该成功，因为 userId 从 cookie 中的 token 获取
+    expect(response.status).toBe(200)
+    // 验证 MFA 使用的是从 cookie 中解析的 userId
+    expect(MfaService.verifyMFA).toHaveBeenCalledWith(
+      '550e8400-e29b-41d4-a716-446655440000',
+      '123456',
+      expect.anything(),
+      expect.anything(),
+      '127.0.0.1',
+      undefined,
+    )
   })
 
   it('should return 200 for valid token and valid MFA', async () => {
@@ -195,7 +215,7 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
       }),
     } as any)
 
-    const body = { userId: '550e8400-e29b-41d4-a716-446655440000', token: '123456' }
+    const body = { token: '123456' }
     const req = new NextRequest('http://localhost/api/v1/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -211,6 +231,6 @@ describe('API: POST /api/v1/auth/mfa/verify', () => {
 
     expect(response.status).toBe(200)
     const json = await response.json()
-    expect(json.data.accessToken).toBe('access-token')
+    expect(json.data.userId).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 })

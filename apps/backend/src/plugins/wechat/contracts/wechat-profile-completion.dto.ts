@@ -24,8 +24,10 @@ export const WechatProfileCompletionRequestSchema = z
       .trim()
       .min(1, '昵称不能为空')
       .max(64, '昵称最多 64 个字符')
+      // H-6 修复: 限制合法字符集，防止 HTML 标签注入（存储型 XSS）
+      .regex(/^[\p{L}\p{N}\s_.-]+$/u, '昵称包含不允许的字符')
       .openapi({ description: '用户昵称（展示名称，不唯一）' }),
-    avatarUrl: z.string().url('头像 URL 格式不正确').optional().openapi({ description: '用户头像 URL（可选，不传则不更新头像）' }),
+    avatarUrl: z.string().url('头像 URL 格式不正确').refine(url => url.startsWith('https://'), '头像 URL 必须使用 HTTPS').optional().openapi({ description: '用户头像 URL（可选，不传则不更新头像，必须 HTTPS）' }),
   })
   .openapi({ description: '微信资料补全请求' })
 

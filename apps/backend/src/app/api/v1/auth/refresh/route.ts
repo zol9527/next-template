@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { ok, fail } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
@@ -7,6 +8,7 @@ import { createAuth } from '@/app/api/v1/auth/auth-deps'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
 import { RefreshSessionRequestSchema } from '@/contracts/dtos/auth/refresh.dto'
+import { isNonBrowserClient } from '@/lib/http/client-detector'
 
 /**
  * 从请求中提取 refresh token
@@ -39,16 +41,6 @@ function extractRefreshToken(
   return null
 }
 
-/**
- * 判断请求是否来自非浏览器客户端（小程序等）
- * 非浏览器客户端需要通过响应体返回 token，浏览器端通过 Set-Cookie 管理
- */
-function isNonBrowserClient(req: NextRequest): boolean {
-  const authHeader = req.headers.get('authorization')
-  // 如果请求携带了 Authorization 头，说明是自行管理 token 的客户端（小程序等）
-  return !!authHeader?.startsWith('Bearer ')
-}
-
 export const POST = withV1Route({
   action: 'auth:refresh',
   schemas: { body: RefreshSessionRequestSchema },
@@ -57,9 +49,14 @@ export const POST = withV1Route({
     max: 20,
     windowMs: 60_000,
     identity: ({ req }) => {
-      // 基于 refresh token 的前缀进行 identity 维度限流
+      // 安全修复 C-4: 使用 HMAC 哈希前缀作为限流标识，避免暴露 token 明文
       const token = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value
-      return token ? token.slice(0, 8) : undefined
+        ?? req.headers.get('authorization')?.slice(7).trim()
+      if (!token) return undefined
+      return createHmac('sha256', 'rate-limit-salt')
+        .update(token)
+        .digest('hex')
+        .slice(0, 16)
     },
     network: {
       max: 30,

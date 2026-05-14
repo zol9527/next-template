@@ -86,9 +86,9 @@ describe('AuthContext Refresh Lock', () => {
       data: { userId: '550e8400-e29b-41d4-a716-446655440000' },
     })))
 
-    // 模拟另一个标签页持有了锁
+    // 模拟另一个标签页持有了锁 (使用新的 ownerId 格式)
     window.localStorage.setItem('auth_refresh_lock', JSON.stringify({
-      locked: true,
+      ownerId: 'other-tab-id',
       timestamp: Date.now()
     }))
 
@@ -98,15 +98,15 @@ describe('AuthContext Refresh Lock', () => {
     // 此时 fetch 不应该被调用，因为被阻塞在 acquireLock
     expect(global.fetch).not.toHaveBeenCalled()
 
-    // 前进 500ms，仍然被阻塞
-    await vi.advanceTimersByTimeAsync(500)
-    expect(global.fetch).not.toHaveBeenCalled()
-
-    // 模拟另一个标签页释放了锁
+    // 模拟另一个标签页释放了锁（通过 storage 事件通知）
     window.localStorage.removeItem('auth_refresh_lock')
-
-    // 继续前进时间，让轮询检查到锁释放
-    await vi.advanceTimersByTimeAsync(100)
+    // C-3 修复: waitForLockRelease 现在通过 storage 事件监听锁释放
+    // jsdom 的 localStorage 不会自动触发 storage 事件，需要手动 dispatch
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'auth_refresh_lock',
+      oldValue: JSON.stringify({ ownerId: 'other-tab-id', timestamp: Date.now() }),
+      newValue: null,
+    }))
 
     // 现在应该能获取锁并执行 fetch
     await expect(p1).resolves.toBe(true)
@@ -126,7 +126,7 @@ describe('AuthContext Refresh Lock', () => {
 
     // 模拟一个过期的锁 (11秒前)
     window.localStorage.setItem('auth_refresh_lock', JSON.stringify({
-      locked: true,
+      ownerId: 'other-tab-id',
       timestamp: Date.now() - 11000
     }))
 
@@ -158,32 +158,23 @@ describe('AuthContext Refresh Lock', () => {
       data: { userId: '550e8400-e29b-41d4-a716-446655440000' },
     })))
 
-    // 1. 设置锁
+    // 设置一个属于其他标签页的锁 (使用新的 ownerId 格式)
     window.localStorage.setItem('auth_refresh_lock', JSON.stringify({
-      locked: true,
+      ownerId: 'other-tab-id',
       timestamp: Date.now()
     }))
 
-    // 2. 发起请求
+    // 发起请求
     const p1 = refreshSession()
 
-    // 3. 此时 fetch 未调用
+    // 此时 fetch 未调用
     expect(global.fetch).not.toHaveBeenCalled()
 
-    // 4. 在 waitForLockRelease 期间，我们模拟锁虽然被删除了，但在 acquireLock 之前又被"别人"抢占了
-    // 这是一个比较难模拟的竞态。
-    // 我们可以通过 mock acquireLock 或者修改 localStorage 的时机来模拟。
-    // 但 waitForLockRelease 是轮询的。
-    
-    // 我们可以让 waitForLockRelease 结束（通过移除锁），但在 acquireLock 调用前（微任务队列中）插入一个操作再次设置锁？
-    // 在 jsdom 单线程环境下很难精确控制微任务顺序来模拟"瞬间抢占"。
-    
-    // 简单的替代测试：锁一直不释放直到超时，然后 waitForLockRelease 会 resolve (超时机制)
-    // 然后代码尝试 acquireLock，发现还是有锁 (因为我们没删)，于是返回 false。
-    
-    // 锁不会被释放，应该等待直到锁过期，然后继续刷新
+    // 锁不会被释放，waitForLockRelease 等待直到超时（10秒）
     await vi.advanceTimersByTimeAsync(11000)
 
+    // 超时后 waitForLockRelease resolve，但锁还是有效
+    // acquireLock 会发现锁过期了（>10秒），允许获取
     await expect(p1).resolves.toBe(true)
     expect(global.fetch).toHaveBeenCalledTimes(1)
   })

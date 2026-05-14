@@ -11,6 +11,7 @@ import { MFA_PENDING_TOKEN_COOKIE } from '@/lib/constants/token'
 import { TokenManager } from '@/lib/security/token-manager'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
 import { env } from '@/config'
+import { isNonBrowserClient } from '@/lib/http/client-detector'
 import { AppError } from '@/lib/errors/app-error'
 import type { z } from 'zod'
 
@@ -27,7 +28,7 @@ export const POST = withV1Route({
     },
     message: '请求过多，请稍后再试',
   },
-  onError: (_ctx, res, error) => {
+  onError: (_ctx, res, _error) => {
     removeAuthCookies(res)
     // 安全修复: 不再向客户端暴露锁定的精确到期时间，防止攻击者优化暴力破解窗口
     // 锁定信息仅通过已登录用户的 UI 面板展示
@@ -82,12 +83,16 @@ export const POST = withV1Route({
     // 3. MFA Not Enabled -> Issue Session
     const result = await auth.loginUser({ userId, ctx })
 
-    // MFA 未启用，直接颁发令牌
-    const res = createJsonApiResponse(req, ok({
-      userId: result.userId,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    }))
+    // 安全修复 C-1: 浏览器端仅通过 HttpOnly Cookie 下发 token，不在响应体中暴露
+    // 非浏览器客户端（小程序等）自行管理 token，需要通过响应体获取
+    const responseData: Record<string, unknown> = { userId: result.userId }
+
+    if (isNonBrowserClient(req)) {
+      responseData.accessToken = result.accessToken
+      responseData.refreshToken = result.refreshToken
+    }
+
+    const res = createJsonApiResponse(req, ok(responseData))
     appendAuthCookies(res, result.accessToken, result.refreshToken)
     return res
   },

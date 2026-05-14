@@ -26,6 +26,10 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const auth = React.useContext(AuthContext)
 
+
+  // H-1 修复: 使用 ref 存储 auth，避免 useEffect 因 auth 引用变化而反复重订阅
+  const authRef = React.useRef(auth)
+  authRef.current = auth
   // 防止 MFA_REQUIRED 导致无限跳转循环
   // 场景：跳转到 /admin/mfa-setup 后，该页面的 layout 仍会加载 admin API，
   // 这些 API 继续返回 MFA_REQUIRED，如果不加 guard 会反复触发跳转。
@@ -69,11 +73,13 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
 
         if (error.code) {
           const status = getStatusByCode(error.code as ApiErrorCode)
+          // 通过 ref 读取最新 auth，避免闭包捕获过期引用
+          const currentAuth = authRef.current
 
           // ==================== 401 处理：尝试刷新会话 ====================
-          if (status === 401 && auth) {
+          if (status === 401 && currentAuth) {
             void (async () => {
-              const ok = await auth.refreshSession()
+              const ok = await currentAuth.refreshSession()
               if (ok) {
                 await queryClient.invalidateQueries()
                 await queryClient.refetchQueries({ type: 'active' })
@@ -92,7 +98,7 @@ function AuthRefreshHandler({ children }: { children: React.ReactNode }) {
       }
     })
     return () => unsubscribe()
-  }, [queryClient, auth])
+  }, [queryClient])  // 移除 auth 依赖，仅依赖稳定的 queryClient
 
   return <>{children}</>
 }
