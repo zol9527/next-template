@@ -1,6 +1,6 @@
 {
   "name": "@repo/miniprogram-wechat",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "> 本文档说明小程序的基础架构模块使用方法",
   "main": "src/main.js",
   "scripts": {
