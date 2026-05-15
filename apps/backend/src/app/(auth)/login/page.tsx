@@ -1,5 +1,6 @@
 import { AdminLoginForm } from '@/components/business/admin/admin-login-form'
 import { PublicIcpFiling } from '@/components/business/shared/public-icp-filing'
+import { APP_NAME, getCopyrightText } from '@/config/site'
 
 /**
  * Function: AdminLoginPage
@@ -41,7 +42,7 @@ export default function AdminLoginPage() {
 
           {/* 品牌名称 — heading-2 规范（Outfit 600 15px） */}
           <h1 className="heading-1 text-center">
-            硕博达教育后台管理
+            {APP_NAME}
           </h1>
         </div>
 
@@ -67,7 +68,7 @@ export default function AdminLoginPage() {
       {/* ── 底部版权信息 — absolute 定位 ── */}
       <footer className="absolute bottom-8 flex gap-1">
         <p className="text-caption">
-          © 2026 硕博达教育后台管理 · All rights reserved.
+          {getCopyrightText()}
         </p>
         <PublicIcpFiling className="mt-2" />
       </footer>
