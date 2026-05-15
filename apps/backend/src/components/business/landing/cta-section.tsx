@@ -5,8 +5,8 @@ import { PixelRobot } from "@/components/business/landing/pixel-sprites/pixel-ro
 import { PixelStar } from "@/components/business/landing/pixel-sprites/pixel-star";
 import { PixelCoin } from "@/components/business/landing/pixel-sprites/pixel-coin";
 import { PixelHeart } from "@/components/business/landing/pixel-sprites/pixel-heart";
-import GlitchText from "@/components/GlitchText";
-import ClickSpark from "@/components/ClickSpark";
+import GlitchText from "@/components/ui/GlitchText";
+import ClickSpark from "@/components/ui/ClickSpark";
 
 /**
  * CTA Section 组件

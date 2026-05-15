@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils"
 import type { InputSize } from "@/types/ui-component/semantics"
 
 // Textarea 尺寸映射
+// Paper Design: py=8px, px=12px, radius=8px, minHeight=56px
 const textareaSizeClasses: Record<InputSize, string> = {
-  sm: "h-20 px-2.5 py-2 text-xs min-h-[60px]",
-  md: "h-24 px-3 py-2 text-sm min-h-[80px]",
-  lg: "h-28 px-4 py-2 text-base min-h-[96px]",
+  sm: "px-3 py-2 text-xs min-h-[48px]",
+  md: "px-3 py-2 text-sm min-h-[56px]",
+  lg: "px-3 py-2 text-base min-h-[72px]",
 }
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -24,7 +25,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         className={cn(
-          "flex w-full rounded-md border border-input bg-transparent shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "flex w-full rounded-[8px] border border-[var(--border-medium)] bg-transparent shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ds-accent)] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           textareaSizeClasses[size],
           className
         )}

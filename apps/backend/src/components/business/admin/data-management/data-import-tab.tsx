@@ -563,7 +563,7 @@ export function DataImportTab() {
   return (
     <div className="flex flex-col gap-6">
       {/* 风险警告 */}
-      <Alert variant="destructive">
+      <Alert variant="error">
         <AlertTriangle className="size-4" />
         <AlertDescription className="text-sm">
           <strong>警告：</strong>数据导入将<strong>覆盖现有数据</strong>。

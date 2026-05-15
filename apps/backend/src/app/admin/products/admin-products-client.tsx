@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
-import { KPICard } from "@/components/ui/kpi-card";
+import { KpiCard } from "@/components/business/ui/kpi-card";
 import type { AdminCategory } from "@/plugins/ecommerce/contracts/admin-categories.dto";
 import type { ApiResponse } from "@/contracts/api-response.schema";
 import type { AdminProductStats } from "@/plugins/ecommerce/contracts/admin-products.dto";
@@ -128,36 +128,35 @@ export function AdminProductsClient() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       {/* KPI 卡片行 - 商品管理指标 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard
-          title="总商品"
+        <KpiCard
+          label="总商品"
           value={stats?.totalProducts ?? 0}
           icon={<Package className="h-4 w-4" />}
         />
-        <KPICard
-          title="已上架"
+        <KpiCard
+          label="已上架"
           value={stats?.publishedCount ?? 0}
           icon={<CheckCircle className="h-4 w-4" />}
         />
-        <KPICard
-          title="草稿"
+        <KpiCard
+          label="草稿"
           value={stats?.draftCount ?? 0}
           icon={<AlertCircle className="h-4 w-4" />}
         />
-        <KPICard
-          title="精选"
+        <KpiCard
+          label="精选"
           value={stats?.featuredCount ?? 0}
           icon={<Star className="h-4 w-4" />}
         />
-        <KPICard
-          title="今日新增"
+        <KpiCard
+          label="今日新增"
           value={stats?.todayAdded ?? 0}
           icon={<TrendingUp className="h-4 w-4" />}
         />
-        <KPICard
-          title="库存预警"
+        <KpiCard
+          label="库存预警"
           value={stats?.lowStockCount ?? 0}
           icon={<AlertCircle className="h-4 w-4" />}
-          trendUp={false}
         />
       </div>
 

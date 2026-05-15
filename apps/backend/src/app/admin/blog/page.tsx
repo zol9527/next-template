@@ -9,7 +9,7 @@ import { AdminBlogArticleList } from '@/components/business/admin/blog/admin-blo
 import { AdminFilterBar } from '@/components/ui/admin-filter-bar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { KPICard } from '@/components/ui/kpi-card'
+import { KpiCard } from '@/components/business/ui/kpi-card'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -174,10 +174,10 @@ export default function AdminBlogArticlesPage() {
   return (
     <div className="flex animate-in fade-in duration-500 flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KPICard title="总文章数" value={stats?.totalArticles ?? 0} icon={<FileText className="h-4 w-4" />} />
-        <KPICard title="已发布数" value={stats?.publishedCount ?? 0} icon={<CheckCircle className="h-4 w-4" />} />
-        <KPICard title="草稿数" value={stats?.draftCount ?? 0} icon={<FileText className="h-4 w-4" />} />
-        <KPICard title="总阅读量" value={stats?.totalViews ?? 0} icon={<Layers className="h-4 w-4" />} />
+        <KpiCard label="总文章数" value={stats?.totalArticles ?? 0} icon={<FileText className="h-4 w-4" />} />
+        <KpiCard label="已发布数" value={stats?.publishedCount ?? 0} icon={<CheckCircle className="h-4 w-4" />} />
+        <KpiCard label="草稿数" value={stats?.draftCount ?? 0} icon={<FileText className="h-4 w-4" />} />
+        <KpiCard label="总阅读量" value={stats?.totalViews ?? 0} icon={<Layers className="h-4 w-4" />} />
       </div>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
