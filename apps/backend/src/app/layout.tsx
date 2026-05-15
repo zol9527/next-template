@@ -87,7 +87,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
 export const metadata: Metadata = {
   // title.template 让子页面自动拼接品牌后缀
-  // 例如子页面设置 title: "博客" → 渲染为 "博客 | NextAdmin"
+  // 例如子页面设置 title: "博客" → 渲染为 "博客 | {APP_NAME}"
   title: {
     default: DEFAULT_TITLE,
     template: TITLE_TEMPLATE,

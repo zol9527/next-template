@@ -13,8 +13,8 @@
  * 登录后的客户端组件可以优先使用第 3 层（数据库 API）。
  */
 
-/** 品牌名称 — 从环境变量读取，默认 "NextAdmin" */
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'NextAdmin'
+/** 品牌名称 — 从环境变量读取，默认 "NextAdmin"。使用 || 防御空字符串 */
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'NextAdmin'
 
 /** SEO 默认标题 */
 export const DEFAULT_TITLE = APP_NAME
