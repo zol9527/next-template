@@ -4,6 +4,7 @@ import { Archivo, Space_Grotesk, Press_Start_2P, VT323, Outfit, DM_Sans, JetBrai
 import "./globals.css";
 import { ClientProvider } from "@/components/context/client-providers";
 import { Suspense } from "react";
+import { DEFAULT_TITLE, TITLE_TEMPLATE, OG_SITE_NAME, SITE_DESCRIPTION } from '@/config/site'
 
 const geistMono = localFont({
   variable: "--font-geist-mono",
@@ -81,22 +82,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 // 站点基础 URL，用于生成 canonical URL、OG 链接等
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+// 使用 || 而非 ??，因为空字符串 '' 也是 falsy 值，不应作为有效的 URL
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
 export const metadata: Metadata = {
   // title.template 让子页面自动拼接品牌后缀
   // 例如子页面设置 title: "博客" → 渲染为 "博客 | NextAdmin"
   title: {
-    default: '用用管理后台',
-    template: '%s | NextAdmin',
+    default: DEFAULT_TITLE,
+    template: TITLE_TEMPLATE,
   },
-  description: '基于插件化架构的现代教育管理后台，支持 RBAC 权限控制、API 优先设计，按需启用业务模块。',
+  description: SITE_DESCRIPTION,
   // metadataBase 让所有相对 URL（OG 图片、canonical）有正确的基础路径
   metadataBase: new URL(siteUrl),
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
-    siteName: 'NextAdmin',
+    siteName: OG_SITE_NAME,
   },
   twitter: {
     card: 'summary_large_image',
