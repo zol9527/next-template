@@ -37,11 +37,11 @@ export function KpiCard({
 }) {
   const variantStyles = {
     default: {
-      bg: 'bg-muted/30',
+      bg: 'bg-card',
       iconBg: 'bg-muted/50',
       iconColor: 'text-foreground/70',
       valueColor: 'text-foreground',
-      border: 'border-border/20',
+      border: 'border-border/40',
     },
     primary: {
       bg: 'bg-primary/5',
@@ -78,7 +78,7 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        'border shadow-sm hover:shadow-md transition-all duration-200',
+        'rounded-xl border shadow-sm hover:shadow-md transition-all duration-200',
         styles.border,
         className
       )}

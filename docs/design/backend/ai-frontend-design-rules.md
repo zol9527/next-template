@@ -1,4 +1,4 @@
-# EduAdmin — AI 前端开发规则
+# NextAdmin — AI 前端开发规则
 
 > 此文档可直接交给 AI Agent 作为持久化前端开发约束。
 > 基于已有 Dashboard 页面的真实设计证据提炼，确保后续生成的页面在视觉、交互、状态、代码结构、安全性和可维护性上保持一致。
@@ -11,11 +11,11 @@
 ```text
 你是一个资深前端设计师和前端工程师。
 
-请根据以下设计规则，为「EduAdmin」设计或实现前端页面。
+请根据以下设计规则，为「NextAdmin」设计或实现前端页面。
 
 === 产品背景 ===
 
-- 产品名称：EduAdmin
+- 产品名称：NextAdmin
 - 产品类型：教育行业 SaaS 管理后台
 - 目标用户：教育培训机构管理员、学校教务人员、运营人员
 - 核心业务：学员管理、课程管理、商城管理、财务管理、权限控制
@@ -34,6 +34,9 @@
 - 数据层：Server Components 优先读取服务端数据；Client Components 仅用于交互、浏览器 API 和客户端状态
 - 表单栈：react-hook-form + zod
 - 测试栈：Vitest 单元测试 + Playwright E2E
+- 样式架构：Tailwind v4 + @theme inline（所有设计令牌通过 CSS Variables → Tailwind token 自动映射）
+- 主题策略：仅浅色主题（暗色主题暂不支持），通过 globals.css :root 变量统一管理
+- 组件策略：shadcn/ui base 组件不可修改（`components/base/`），所有主题定制仅通过 globals.css 变量
 
 === 色彩系统 ===
 
@@ -63,6 +66,14 @@
 | --brown-subtle       | rgba(139,111,71,0.1)          | 棕色浅底                                  |
 | --peach              | #dfa88f                       | 辅助色（桃色），用于活动 Feed 点          |
 | --peach-subtle       | rgba(223,168,143,0.12)        | 桃色浅底                                  |
+
+> **⚠️ CSS 工程命名说明：** 为了避免与 shadcn/ui 的 `--accent` 和 `--border` 变量冲突，CSS 实际代码使用以下别名：
+> - `--accent` → CSS 中为 `--ds-accent` (ds = design system)
+> - `--accent-hover` → CSS 中为 `--ds-accent-hover`
+> - `--accent-subtle` → CSS 中为 `--ds-accent-subtle`
+> - `--border` → CSS 中为 `--border-default`
+>
+> 开发时请使用 `--ds-accent` / `--border-default`，设计规范文档中使用简写 `--accent` / `--border`。
 
 语义色映射：
 - 成功 (--success / --success-bg): #1f8a65 / rgba(31,138,101,0.08)
@@ -106,6 +117,27 @@
 - 数值型数据必须使用 font-variant-numeric: tabular-nums 保持对齐
 - 禁止随意创建新字号，新页面只能使用上表中的字号
 
+=== shadcn/ui 语义映射 ===
+
+以下映射将 NextAdmin 令牌桥接到 shadcn/ui 组件系统（定义在 globals.css `:root` 中）：
+
+| shadcn 变量              | 映射到                    | 说明         |
+|--------------------------|---------------------------|--------------|
+| --background             | var(--surface)            | 页面背景     |
+| --foreground             | var(--fg)                 | 页面前景     |
+| --card / --card-foreground | var(--surface) / var(--fg) | 卡片       |
+| --popover / --popover-foreground | var(--surface) / var(--fg) | 弹出层 |
+| --primary / --primary-foreground | var(--ds-accent) / #ffffff | 主色   |
+| --secondary / --secondary-foreground | var(--bg) / var(--fg) | 次要   |
+| --muted / --muted-foreground | var(--bg) / var(--fg-muted) | 静音   |
+| --accent / --accent-foreground | var(--ds-accent-subtle) / var(--ds-accent) | shadcn强调 |
+| --destructive / --destructive-foreground | var(--rose) / #ffffff | 破坏性 |
+| --border                 | var(--border-default)     | 边框         |
+| --input                  | var(--border-medium)      | 输入框边框   |
+| --ring                   | var(--ds-accent)          | 焦点环       |
+
+注意：不要直接修改 shadcn 基础组件（`components/base/`），所有主题定制通过 globals.css 变量完成。
+
 === 标题层级 (Heading Hierarchy) ===
 
 HTML 语义标题到设计 token 的映射，所有页面必须遵循此层级：
@@ -142,6 +174,8 @@ HTML 语义标题到设计 token 的映射，所有页面必须遵循此层级�
 - overline 必须配合 text-transform: uppercase 使用
 - body-sm 不用于按钮或可交互元素（最小可交互文字 13px）
 - 数值型数据使用 --font-mono + font-variant-numeric: tabular-nums
+
+> **✅ 已实现为 CSS 工具类：** 以上文本样式已通过 `@layer utilities` 注册为全局 class，可直接使用 `.heading-1`~`.heading-6`、`.text-body`、`.text-body-lg`、`.text-body-sm`、`.text-caption`、`.text-overline`、`.text-tabular` 等类名。
 
 === 链接样式 (Link Styles) ===
 
@@ -362,6 +396,30 @@ HTML 语义标题到设计 token 的映射，所有页面必须遵循此层级�
 - 饼图/环形图使用完整色板
 - 坐标轴网格线使用 --border (rgba 8%)
 - 图例使用 caption 样式
+
+=== NextAdmin CSS 工具类 ===
+
+以下工具类已在 `globals.css` 中定义，可直接在 Tailwind className 中使用：
+
+**排版类：**
+- `.heading-1` ~ `.heading-6` — 标题层级（font-family/weight/size/line-height/color 组合）
+- `.text-body-lg` / `.text-body` / `.text-body-sm` — 正文变体
+- `.text-caption` / `.text-overline` — 标签/表头
+- `.text-tabular` — 等宽数字（font-mono + tabular-nums）
+
+**动画类：**
+- `.animate-toast-in` / `.animate-toast-out` — Toast 滑入/滑出
+- `.animate-modal-in` / `.animate-modal-out` — Modal 缩放进入/退出
+
+**滚动条类：**
+- `.edu-scrollbar` — 自定义滚动条（4px 高度、指定轨道/滑块颜色）
+
+**组件级令牌（CSS 变量）：**
+- `--table-row-hover` — 表格行悬停背景色
+- `--table-header-bg` — 表头背景
+- `--card-header-height` — 卡片头部固定高度 (60px)
+- `--kpi-icon-size` / `--activity-dot-size` — 组件尺寸
+- `--progress-bar-height` / `--progress-bar-radius` — 进度条规格
 
 === 组件规则 ===
 

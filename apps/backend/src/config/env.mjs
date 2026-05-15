@@ -131,6 +131,8 @@ export const env = createEnv({
     TOTP_STEP: z.coerce.number().default(30),
     MFA_ACTION_TOKEN_TTL: z.coerce.number().default(300),
     MFA_PENDING_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+    // 本地开发跳过 MFA（仅非生产环境生效）
+    MFA_SKIP_ENABLED: z.coerce.boolean().default(false),
 
     // ==================== AI Configuration ====================
     AI_API_KEY_ENCRYPTION_KEY: z.string().min(32, 'AI API Key 加密密钥必须至少 32 字节').optional(),
@@ -143,6 +145,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+    NEXT_PUBLIC_APP_NAME: z.string().min(1).optional(),
   },
   runtimeEnv: {
     // 基础配置
@@ -152,6 +155,7 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
 
     // 认证相关
     AUTH_JWT_ACCESS_SECRET: process.env.AUTH_JWT_ACCESS_SECRET,
@@ -251,6 +255,7 @@ export const env = createEnv({
     TOTP_STEP: process.env.TOTP_STEP,
     MFA_ACTION_TOKEN_TTL: process.env.MFA_ACTION_TOKEN_TTL,
     MFA_PENDING_TOKEN_TTL_SECONDS: process.env.MFA_PENDING_TOKEN_TTL_SECONDS,
+    MFA_SKIP_ENABLED: process.env.MFA_SKIP_ENABLED,
 
     // ==================== AI Configuration ====================
     AI_API_KEY_ENCRYPTION_KEY: process.env.AI_API_KEY_ENCRYPTION_KEY,

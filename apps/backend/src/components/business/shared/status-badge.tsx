@@ -4,6 +4,7 @@
  */
 
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import type { ColorRole } from '@/types/ui-component/semantics'
 
 /**
@@ -41,14 +42,24 @@ export interface StatusBadgeProps {
  *     <StatusBadge status="pending" config={orderStatuses} />
  */
 function StatusBadge({ status, config }: StatusBadgeProps) {
-  // 颜色角色到样式类名的映射
+  // 颜色角色到样式类名的映射（语义色浅底 + 语义色文字 + 语义色边框）
   const colorClassMap: Record<ColorRole, string> = {
-    primary: 'bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:text-primary dark:border-primary/40',
-    success: 'bg-success/10 text-success border-success/30 dark:bg-success/20 dark:text-success dark:border-success/40',
-    warning: 'bg-warning/10 text-warning border-warning/30 dark:bg-warning/20 dark:text-warning dark:border-warning/40',
-    error: 'bg-error/10 text-error border-error/30 dark:bg-error/20 dark:text-error dark:border-error/40',
-    info: 'bg-info/10 text-info border-info/30 dark:bg-info/20 dark:text-info dark:border-info/40',
-    neutral: 'bg-neutral/10 text-neutral border-neutral/30 dark:bg-neutral/20 dark:text-neutral dark:border-neutral/40',
+    primary: 'bg-primary/10 text-primary border-primary/20',
+    success: 'bg-success/10 text-success border-success/20',
+    warning: 'bg-warning/10 text-warning border-warning/20',
+    error: 'bg-error/10 text-error border-error/20',
+    info: 'bg-info/10 text-info border-info/20',
+    neutral: 'bg-muted text-muted-foreground border-border',
+  }
+
+  // 色点颜色映射（与文字色一致）
+  const dotColorMap: Record<ColorRole, string> = {
+    primary: 'bg-primary',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    error: 'bg-error',
+    info: 'bg-info',
+    neutral: 'bg-muted-foreground',
   }
 
   const statusConfig = config[status]
@@ -59,7 +70,15 @@ function StatusBadge({ status, config }: StatusBadgeProps) {
   }
 
   return (
-    <Badge variant="outline" className={colorClassMap[statusConfig.color]}>
+    <Badge
+      variant="outline"
+      className={cn('inline-flex items-center gap-1.5 rounded-full', colorClassMap[statusConfig.color])}
+    >
+      {/* 5×5px 圆形色点 */}
+      <span
+        className={cn('inline-block h-[5px] w-[5px] rounded-full', dotColorMap[statusConfig.color])}
+        aria-hidden="true"
+      />
       {statusConfig.label}
     </Badge>
   )

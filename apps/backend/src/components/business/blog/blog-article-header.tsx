@@ -3,8 +3,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import type { PublicBlogArticle } from '@/contracts/dtos/public/blog/articles.dto';
-import SplitText from '@/components/SplitText';
-import DecryptedText from '@/components/DecryptedText';
+import SplitText from '@/components/ui/SplitText';
+import DecryptedText from '@/components/ui/DecryptedText';
 
 interface BlogArticleHeaderProps {
   article: PublicBlogArticle;

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, ReactNode, useRef } from 'react'
+import { createContext, ReactNode, useRef, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { z } from 'zod'
 import type { AuthContextValue, MeUserDto, RoleDto, LoginParams, GrantDto } from '@/types/lib/auth-context'
@@ -13,6 +13,11 @@ import { RefreshSessionResponseSchema } from '@/contracts/dtos/auth/refresh.dto'
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 // ==================== 跨标签页刷新锁 ====================
+
+/**
+ * 标签页唯一标识，用于跨标签页锁的 ownership 验证
+ */
+const TAB_ID = typeof crypto !== 'undefined' ? crypto.randomUUID() : 'ssr'
 
 /**
  * localStorage 锁的 Key
@@ -30,7 +35,7 @@ const REFRESH_LOCK_TIMEOUT = 10000 // 10 秒
  * Description: 刷新锁的数据结构
  */
 type RefreshLockData = {
-  locked: boolean
+  ownerId: string
   timestamp: number
 }
 
@@ -59,22 +64,37 @@ function isLockValid(): boolean {
 /**
  * Function: acquireLock
  *
- * Description: 尝试获取刷新锁
+ * Description: 尝试获取跨标签页刷新锁
+ *   使用「乐观写入 + 读回验证」策略解决 TOCTOU 竞态
  *
  * Returns:
- *     boolean: 成功获取锁返回 true，否则返回 false
+ *     boolean: 成功获取锁返回 true
  */
 function acquireLock(): boolean {
   if (typeof window === 'undefined') return false
 
-  if (isLockValid()) return false
-
+  // 检查是否有有效锁
   try {
-    window.localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify({
-      locked: true,
-      timestamp: Date.now(),
-    }))
-    return isLockValid()
+    const raw = window.localStorage.getItem(REFRESH_LOCK_KEY)
+    if (raw) {
+      const data: RefreshLockData = JSON.parse(raw)
+      if (Date.now() - data.timestamp < REFRESH_LOCK_TIMEOUT) {
+        // 如果锁是自己持有的（同标签页重入），允许
+        return data.ownerId === TAB_ID
+      }
+    }
+  } catch {
+    // 损坏的数据，可以覆盖
+  }
+
+  // 乐观写入
+  const lockData: RefreshLockData = { ownerId: TAB_ID, timestamp: Date.now() }
+  window.localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData))
+
+  // 读回验证：确保自己赢得了写入竞争
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(REFRESH_LOCK_KEY)!)
+    return stored.ownerId === TAB_ID
   } catch {
     return false
   }
@@ -83,16 +103,53 @@ function acquireLock(): boolean {
 /**
  * Function: releaseLock
  *
- * Description: 释放刷新锁
+ * Description: 释放刷新锁（仅释放自己持有的锁）
  */
 function releaseLock(): void {
   if (typeof window === 'undefined') return
 
   try {
-    window.localStorage.removeItem(REFRESH_LOCK_KEY)
+    const raw = window.localStorage.getItem(REFRESH_LOCK_KEY)
+    if (raw) {
+      const data: RefreshLockData = JSON.parse(raw)
+      // 只释放自己持有的锁，避免误删其他标签页的锁
+      if (data.ownerId === TAB_ID) {
+        window.localStorage.removeItem(REFRESH_LOCK_KEY)
+      }
+    }
   } catch {
     // 忽略错误
   }
+}
+
+/**
+ * Function: waitForLockRelease
+ *
+ * Description: 等待跨标签页锁释放，使用 storage 事件 + 超时兜底
+ */
+async function waitForLockRelease(timeoutMs: number = REFRESH_LOCK_TIMEOUT): Promise<void> {
+  if (typeof window === 'undefined') return
+
+  return new Promise<void>((resolve) => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === REFRESH_LOCK_KEY || e.key === null) {
+        cleanup()
+        resolve()
+      }
+    }
+
+    const timer = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, timeoutMs)
+
+    const cleanup = () => {
+      window.removeEventListener('storage', onStorage)
+      clearTimeout(timer)
+    }
+
+    window.addEventListener('storage', onStorage)
+  })
 }
 
 // ==================== 测试专用：模块级刷新锁实现 ====================
@@ -101,24 +158,6 @@ function releaseLock(): void {
  * 单文件内的并发刷新 Promise（用于同标签页并发去重）
  */
 let pendingRefreshPromise: Promise<boolean> | null = null
-
-/**
- * 等待跨标签页锁释放（轮询），避免忙等
- */
-async function waitForLockRelease(timeoutMs: number = REFRESH_LOCK_TIMEOUT): Promise<void> {
-  if (typeof window === 'undefined') return
-
-  const start = Date.now()
-  while (isLockValid()) {
-    if (Date.now() - start >= timeoutMs) {
-      return
-    }
-
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 100)
-    })
-  }
-}
 
 /**
  * Function: refreshSession (仅用于测试)
@@ -264,6 +303,11 @@ interface AuthProviderProps {
  *     - 提供权限和角色检查方法
  *     - 使用 mutation 状态自动处理并发刷新请求
  */
+/** 空数组常量，避免 useMemo 中每次创建新引用 */
+const EMPTY_ROLES: RoleDto[] = []
+const EMPTY_GRANTS: GrantDto[] = []
+const EMPTY_SESSIONS: Session[] = []
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const queryClient = useQueryClient()
 
@@ -327,7 +371,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Returns:
    *     Promise<boolean>: 是否刷新成功
    */
-  const refreshSession = async (): Promise<boolean> => {
+  const refreshSession = useCallback(async (): Promise<boolean> => {
     // 如果已经在刷新，返回现有的 Promise
     if (refreshState.current.isRefreshing && refreshState.current.pendingPromise) {
       return refreshState.current.pendingPromise
@@ -359,7 +403,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     })()
 
     return refreshState.current.pendingPromise
-  }
+  }, [refetch])
 
   // 登录 Mutation
   const loginMutation = useMutation({
@@ -381,7 +425,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return res.json()
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // H-2 修复: MFA 分支不做缓存操作，用户尚未真正登录
+      if (data?.data?.requiresMfa) {
+        return
+      }
       // 立即使缓存失效并重新获取，确保权限数据是最新的
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       await refetch()
@@ -415,46 +463,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
       if (!res.ok) throw new Error(`撤销会话失败: ${res.status}`)
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await refetchSessions()
     },
   })
 
-  // 构建上下文值
-  const contextValue: AuthContextValue = {
-    user: data?.user || null,
-    roles: data?.roles || [],
-    grants: data?.grants || [],
+  // H-1 修复: 使用 useMemo 稳定 contextValue，避免消费组件不必要的重渲染
+  const contextValue = useMemo<AuthContextValue>(() => ({
+    user: data?.user ?? null,
+    roles: data?.roles ?? EMPTY_ROLES,
+    grants: data?.grants ?? EMPTY_GRANTS,
     isAuthenticated: !!data?.user,
     isLoading: isLoading || isFetching,
     error: error as Error | null,
-    login: async (params) => {
-      await loginMutation.mutateAsync(params)
-    },
-    logout: async () => {
-      await logoutMutation.mutateAsync()
-    },
+    login: loginMutation.mutateAsync,
+    logout: logoutMutation.mutateAsync,
     refreshSession,
     refetch: async () => {
       await refetch()
     },
     hasRole: (requiredRole: string) => {
-      return (data?.roles || []).some((role) => role.name === requiredRole)
+      return (data?.roles ?? EMPTY_ROLES).some((role) => role.name === requiredRole)
     },
     // Session 管理
-    sessions: sessionsData || [],
+    sessions: sessionsData ?? EMPTY_SESSIONS,
     sessionsLoading,
     sessionsError: sessionsError as Error | null,
-    revokeSession: async (sessionId: string) => {
-      await revokeSessionMutation.mutateAsync(sessionId)
-    },
+    revokeSession: revokeSessionMutation.mutateAsync,
     revokeOtherSessions: async () => {
       await refetchSessions()
     },
     refreshSessions: async () => {
       await refetchSessions()
     },
-  }
+  }), [
+    data, isLoading, isFetching, error,
+    loginMutation.mutateAsync, logoutMutation.mutateAsync,
+    refreshSession, refetch,
+    sessionsData, sessionsLoading, sessionsError,
+    revokeSessionMutation.mutateAsync, refetchSessions,
+  ])
 
   return (
     <AuthContext.Provider value={contextValue}>

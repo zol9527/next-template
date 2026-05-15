@@ -55,9 +55,11 @@ export const SelectScrollDownButton = BaseSelectScrollDownButton
 
 function sizeToClassName(size: InputSize): string {
   const sizeClassMap: Record<InputSize, string> = {
-    sm: 'h-8 px-2.5 text-xs',
-    md: 'h-9 px-3 text-sm',
-    lg: 'h-10 px-4 text-base',
+    // Paper Design: py=8px, px=12px, height≈34px, radius=8px
+    // 匹配 Input 组件的尺寸
+    sm: 'h-8 px-3 text-xs',
+    md: 'h-[34px] px-3 text-sm',
+    lg: 'h-10 px-3 text-base',
   }
   return sizeClassMap[size]
 }

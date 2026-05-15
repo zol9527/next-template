@@ -46,18 +46,19 @@ export interface MoneyAmountProps {
  *     <MoneyAmount amount={1234.56} showRate rate={0.15} />
  */
 export function MoneyAmount({ amount, currency = '¥', rate, showRate, color = 'success', className }: MoneyAmountProps) {
+  // 颜色角色到文字色类名的映射
   const colorClassMap: Record<ColorRole, string> = {
     primary: 'text-primary',
     success: 'text-success',
     warning: 'text-warning',
-    error: 'text-destructive',
+    error: 'text-error',
     info: 'text-info',
     neutral: 'text-muted-foreground',
   }
 
   return (
     <div className={cn('text-right', className)}>
-      <div className={cn('font-mono font-semibold', colorClassMap[color])}>
+      <div className={cn('font-mono font-semibold tabular-nums', colorClassMap[color])}>
         {currency}{Number(amount).toFixed(2)}
       </div>
       {showRate && rate !== undefined && (

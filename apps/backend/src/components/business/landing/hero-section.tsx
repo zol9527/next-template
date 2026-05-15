@@ -9,8 +9,8 @@ import {
 	PixelHeart,
 	PixelDivider,
 } from "@/components/business/landing/pixel-sprites";
-import ClickSpark from "@/components/ClickSpark";
-import DecryptedText from "@/components/DecryptedText";
+import ClickSpark from "@/components/ui/ClickSpark";
+import DecryptedText from "@/components/ui/DecryptedText";
 
 /**
  * Hero Section 组件

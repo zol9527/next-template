@@ -1,5 +1,5 @@
 import { PublicBlogArticle } from '@/contracts/dtos/public/blog/articles.dto';
-import PixelCard from '@/components/PixelCard';
+import PixelCard from '@/components/ui/PixelCard';
 
 interface BlogRelatedArticlesProps {
   articles: PublicBlogArticle[];

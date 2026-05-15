@@ -17,7 +17,7 @@ extendZodWithOpenApi(z)
  */
 export const MfaVerifyRequestSchema = z
   .object({
-    userId: z.string().uuid().openapi({ description: '用户 ID（从第一步登录响应中获取）' }),
+    // H-5 修复: userId 已移除，仅从服务端签发的 mfa_pending_token cookie 中获取
     token: z
       .string()
       // TOTP 通常为 6 位；备份码可能包含连字符且更长（如 XXXX-XXXX-XXXX）。
@@ -40,8 +40,8 @@ export type MfaVerifyRequest = z.infer<typeof MfaVerifyRequestSchema>
 export const MfaVerifyResponseSchema = z
   .object({
     userId: z.string().uuid().openapi({ description: '用户 ID' }),
-    accessToken: z.string().openapi({ description: '访问令牌' }),
-    refreshToken: z.string().openapi({ description: '刷新令牌' }),
+    accessToken: z.string().optional().openapi({ description: '访问令牌（非浏览器客户端）' }),
+    refreshToken: z.string().optional().openapi({ description: '刷新令牌（非浏览器客户端）' }),
   })
   .openapi({ description: 'MFA 验证成功响应（完成登录）' })
 

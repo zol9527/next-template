@@ -10,3 +10,5 @@ export const env: typeof rawEnv & { SITE_CURRENCY_CODE: string } = rawEnv
 
 /** 后端项目根目录（next.config.ts 所在目录），用于路径解析 */
 export const BACKEND_ROOT_DIR: string = rawBackendRootDir
+
+export { APP_NAME, DEFAULT_TITLE, TITLE_TEMPLATE, OG_SITE_NAME, SITE_DESCRIPTION, getCopyrightText } from './site'

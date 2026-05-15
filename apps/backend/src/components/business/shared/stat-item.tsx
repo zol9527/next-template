@@ -44,20 +44,51 @@ export interface StatItemProps {
  *     <StatItem label="总用户" value="1,234" color="primary" />
  */
 export function StatItem({ label, value, color = 'primary', icon, className }: StatItemProps) {
-  const colorClassMap: Record<ColorRole, string> = {
-    primary: 'text-primary',
-    success: 'text-success',
-    warning: 'text-warning',
-    error: 'text-error',
-    info: 'text-info',
-    neutral: 'text-neutral',
+  // 语义色浅底 + 边框样式映射
+  const colorStyleMap: Record<ColorRole, { container: string; icon: string; value: string }> = {
+    primary: {
+      container: 'bg-primary/5 border-primary/10',
+      icon: 'bg-primary/10 text-primary',
+      value: 'text-primary',
+    },
+    success: {
+      container: 'bg-success/5 border-success/10',
+      icon: 'bg-success/10 text-success',
+      value: 'text-success',
+    },
+    warning: {
+      container: 'bg-warning/5 border-warning/10',
+      icon: 'bg-warning/10 text-warning',
+      value: 'text-warning',
+    },
+    error: {
+      container: 'bg-error/5 border-error/10',
+      icon: 'bg-error/10 text-error',
+      value: 'text-error',
+    },
+    info: {
+      container: 'bg-info/5 border-info/10',
+      icon: 'bg-info/10 text-info',
+      value: 'text-info',
+    },
+    neutral: {
+      container: 'bg-muted/50 border-border',
+      icon: 'bg-muted text-muted-foreground',
+      value: 'text-foreground',
+    },
   }
 
+  const styles = colorStyleMap[color]
+
   return (
-    <div className={cn('bg-card/20 backdrop-blur-xl border border-border shadow-2xl p-4', className)}>
-      {icon && <div className="mb-2">{icon}</div>}
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className={cn('text-xl font-bold', colorClassMap[color])}>{value}</div>
+    <div className={cn('flex flex-col gap-1.5 p-4 rounded-xl border', styles.container, className)}>
+      {icon && (
+        <div className={cn('flex items-center justify-center h-7 w-7 rounded-lg', styles.icon)}>
+          {icon}
+        </div>
+      )}
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={cn('text-lg font-semibold tabular-nums', styles.value)}>{value}</div>
     </div>
   )
 }

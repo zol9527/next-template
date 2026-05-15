@@ -17,6 +17,7 @@ import type { SidebarItem, SidebarGroupConfig } from './sidebar-items'
 import { useAuth } from '@/hooks/use-auth'
 import { useAccess } from '@/hooks/use-access'
 import { PermissionDeniedModal, usePermissionDeniedModal } from './permission-denied-modal'
+import { cn } from '@/lib/utils'
 
 // 单个菜单项组件
 interface MenuItemProps {
@@ -43,6 +44,16 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
   const isExpanded = expandedMenus.has(item.href)
 
   const isLocked = item.requiredAccess && !hasAccess && !auth.isLoading
+  // 圆角使用 --radius-sm (8px)，垂直 padding 9px，与 Paper Design 对齐
+  const itemClassName = cn(
+    'gap-3 rounded-sm px-3 py-[9px] text-sidebar-foreground transition-colors',
+    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+    'data-[active=true]:bg-sidebar-active data-[active=true]:text-sidebar-active-foreground'
+  )
+  const lockedItemClassName = cn(
+    'gap-3 rounded-sm px-3 py-[9px] text-sidebar-foreground/45 transition-colors',
+    'hover:bg-sidebar-accent hover:text-sidebar-foreground/70'
+  )
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -64,13 +75,13 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           isActive={isActive}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 text-white/90 hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white transition-colors"
+          className={itemClassName}
         >
           <item.icon className="h-4 w-4 shrink-0" />
           <span className="truncate">{item.name}</span>
           <div className="ml-auto flex items-center gap-2">
             {isLocked && (
-              <Lock className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <Lock className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/45" />
             )}
             {!isLocked && (
               <ChevronDown
@@ -95,7 +106,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
       <item.icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{item.name}</span>
       {isLocked && (
-        <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-500" />
+        <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-sidebar-foreground/45" />
       )}
     </>
   )
@@ -108,7 +119,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           onClick={() => showModal(item.name, `${item.requiredAccess?.action}:${item.requiredAccess?.scope}`)}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 text-white/40 hover:bg-white/5 transition-colors"
+          className={lockedItemClassName}
         >
           {menuContent}
         </SidebarMenuButton>
@@ -118,7 +129,7 @@ function MenuItem({ item, expandedMenus, toggleMenu, renderChild, showModal }: M
           isActive={isActive}
           tooltip={item.name}
           size="sm"
-          className="gap-3 rounded-lg px-3 text-white/90 hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white transition-colors"
+          className={itemClassName}
         >
           <Link href={item.href}>{menuContent}</Link>
         </SidebarMenuButton>
@@ -134,7 +145,7 @@ interface AppSidebarMenuProps {
 // 侧边栏菜单组件
 export function AppSidebarMenu({ groups }: AppSidebarMenuProps) {
   const pathname = usePathname()
-  const [expandedMenus, setExpandedMenus] = React.useState<Set<string>>(new Set())
+  const [menuOverrides, setMenuOverrides] = React.useState<Record<string, boolean>>({})
   const modal = usePermissionDeniedModal()
 
   const allItems = React.useMemo(
@@ -142,25 +153,36 @@ export function AppSidebarMenu({ groups }: AppSidebarMenuProps) {
     [groups]
   )
 
-  React.useEffect(() => {
-    const activeParents = allItems.filter(item => {
-      if (item.children) {
-        return item.children.some(child => pathname.startsWith(child.href))
-      }
-      return false
-    })
-    setExpandedMenus(new Set(activeParents.map(item => item.href)))
+  const activeParentHrefs = React.useMemo(() => {
+    return allItems
+      .filter(item => {
+        if (item.children) {
+          return item.children.some(child => pathname.startsWith(child.href))
+        }
+        return false
+      })
+      .map(item => item.href)
   }, [pathname, allItems])
 
-  const toggleMenu = (href: string) => {
-    setExpandedMenus((prev) => {
-      const next = new Set(prev)
-      if (next.has(href)) {
-        next.delete(href)
-      } else {
+  const expandedMenus = React.useMemo(() => {
+    const next = new Set(activeParentHrefs)
+    for (const [href, expanded] of Object.entries(menuOverrides)) {
+      if (expanded) {
         next.add(href)
+      } else {
+        next.delete(href)
       }
-      return next
+    }
+    return next
+  }, [activeParentHrefs, menuOverrides])
+
+  const toggleMenu = (href: string) => {
+    setMenuOverrides((prev) => {
+      const isCurrentlyExpanded = expandedMenus.has(href)
+      return {
+        ...prev,
+        [href]: !isCurrentlyExpanded,
+      }
     })
   }
 
@@ -181,7 +203,7 @@ export function AppSidebarMenu({ groups }: AppSidebarMenuProps) {
     <>
       {groups.map((group) => (
         <SidebarGroup key={group.group}>
-          <SidebarGroupLabel className="px-3 py-2 text-white/50 text-xs font-semibold uppercase tracking-wider">
+          <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-fg-muted">
             {group.group}
           </SidebarGroupLabel>
           <SidebarGroupContent>

@@ -467,8 +467,10 @@ describe('公开商品服务测试', () => {
 
       const result = await service.listProducts()
 
-      expect(result.items[0].coverAssetId).toBe('cover-123')
-      expect(result.items[0].mediaAssetIds).toEqual(['media-1', 'media-2'])
+      // 重构后 stripInternalAndEnsureMediaFields 会移除内部字段 coverAssetId/mediaAssetIds，
+      // 替换为对外字段 coverUrl/mediaUrls。无 media/storage 依赖时走降级路径。
+      expect(result.items[0].coverUrl).toBeNull()
+      expect(result.items[0].mediaUrls).toEqual([])
     })
 
     /**
@@ -476,7 +478,7 @@ describe('公开商品服务测试', () => {
      *
      * Description: 测试商品无封面时的处理
      */
-    it('应该在无封面时设置 coverAssetId 为 null', async () => {
+    it('应该在无封面时设置 coverUrl 为 null', async () => {
       const mockProduct = buildTestProduct({ id: 'product-123' })
 
       const products = createMockProductRepository({
@@ -495,8 +497,9 @@ describe('公开商品服务测试', () => {
 
       const result = await service.listProducts()
 
-      expect(result.items[0].coverAssetId).toBeNull()
-      expect(result.items[0].mediaAssetIds).toEqual(['media-1'])
+      // 无 media/storage 依赖，走降级路径：coverUrl=null, mediaUrls=[]
+      expect(result.items[0].coverUrl).toBeNull()
+      expect(result.items[0].mediaUrls).toEqual([])
     })
   })
 
@@ -595,8 +598,10 @@ describe('公开商品服务测试', () => {
 
       const result = await service.getProductById('product-123')
 
-      expect(result?.coverAssetId).toBe('cover-123')
-      expect(result?.mediaAssetIds).toEqual(['media-1'])
+      // 重构后 coverAssetId/mediaAssetIds 被替换为 coverUrl/mediaUrls
+      // 无 media/storage 依赖时走降级路径
+      expect(result?.coverUrl).toBeNull()
+      expect(result?.mediaUrls).toEqual([])
     })
 
     /**
@@ -617,8 +622,9 @@ describe('公开商品服务测试', () => {
 
       const result = await service.getProductById('product-123')
 
-      expect(result?.coverAssetId).toBeNull()
-      expect(result?.mediaAssetIds).toEqual([])
+      // 无附件 + 无 media/storage 依赖：coverUrl=null, mediaUrls=[]
+      expect(result?.coverUrl).toBeNull()
+      expect(result?.mediaUrls).toEqual([])
     })
   })
 })

@@ -1,6 +1,6 @@
 import { FileSearch, Code2 } from "lucide-react";
 import { PixelChest, PixelShield, PixelSword, PixelPotion, PixelStar, PixelDivider } from "@/components/business/landing/pixel-sprites";
-import BlurText from "@/components/BlurText";
+import BlurText from "@/components/ui/BlurText";
 
 /**
  * Services Section 组件

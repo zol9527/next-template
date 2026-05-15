@@ -31,7 +31,7 @@ export function StatCard({ title, value, progress, color, icon }: StatCardProps)
   return (
     <article className="bg-card p-4 sm:p-6 relative overflow-hidden group rounded-xl border border-border/40 shadow-sm hover:shadow-md hover:border-border transition-shadow motion-safe:duration-300">
       <header className="flex justify-between items-start mb-4 sm:mb-6">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-muted/20 flex items-center justify-center text-foreground motion-safe:group-hover:scale-110 transition-transform motion-safe:duration-300" aria-hidden="true">
+        <div className="w-10 h-10 rounded-xl bg-muted/20 flex items-center justify-center text-foreground motion-safe:group-hover:scale-110 transition-transform motion-safe:duration-300" aria-hidden="true">
           {icon}
         </div>
         <button
@@ -51,7 +51,7 @@ export function StatCard({ title, value, progress, color, icon }: StatCardProps)
       {progress !== undefined && (
         <div className="mt-3 sm:mt-4 space-y-2">
           <dl className="flex justify-between text-[10px]">
-            <dt className="text-muted-foreground/50">Progress</dt>
+            <dt className="text-muted-foreground/50">进度</dt>
             <dd className="text-foreground font-medium">{progress}%</dd>
           </dl>
           <div

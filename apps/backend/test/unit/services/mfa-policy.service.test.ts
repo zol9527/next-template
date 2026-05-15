@@ -183,12 +183,13 @@ describe('Unit: MfaPolicyService', () => {
       expect(result.global.mode).toBe('optional')
       expect(result.global.allowExemptions).toBe(true)
 
-      // 所有角色都应该有策略（使用默认值）
+      // 所有角色都应该有策略
+      // admin 角色默认强制 MFA（硬编码策略），其他角色使用默认值
       expect(result.roles).toHaveLength(2)
       expect(result.roles[0]).toEqual({
         roleName: 'admin',
-        policy: 'inherit',
-        allowExemptions: true,
+        policy: 'force',
+        allowExemptions: false,
       })
       expect(result.roles[1]).toEqual({
         roleName: 'user',
@@ -583,9 +584,11 @@ describe('Unit: MfaPolicyService', () => {
 
       const result = await service.getEffectivePolicyForUser('user-123', ['admin'])
 
+      // admin 角色有硬编码强制 MFA 策略，优先于数据库角色策略
+      // 注意：由于硬编码策略的 reason 是中文 "管理员角色"，不再包含英文 "admin"
       expect(result.required).toBe(true)
       expect(result.source).toBe('role')
-      expect(result.reason).toContain('admin')
+      expect(result.reason).toContain('管理员')
       expect(result.reason).toContain('强制要求 MFA')
     })
 
