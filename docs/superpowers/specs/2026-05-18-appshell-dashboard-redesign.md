@@ -367,7 +367,97 @@ interface DistributionItem {
 
 ---
 
-## 7. 不做的事
+## 7. 实施检查点（Checkpoint）
+
+每个 checkpoint 完成后，**必须截图对比 Paper Design 参考设计**，确认视觉一致性后方可继续。
+
+### CP1：侧边栏完成
+
+- **触发时机**：侧边栏（品牌区 + 导航 + 退出登录）重写完成
+- **验证方式**：
+  1. 启动 dev server，打开 Dashboard 页面
+  2. 截取侧边栏区域截图
+  3. 对比 Paper Design `App Shell — 主框架模板` (FGC-1) 的 Sidebar 部分
+- **检查项**：
+  - [ ] 品牌区：Logo 方块 36×36 (#26251E) + "EduAdmin" (Outfit 600 17px)
+  - [ ] 10 个导航项扁平排列，无分组 label
+  - [ ] 导航项尺寸 204×36，间距 2px，圆角 8px
+  - [ ] Active 项：accent-subtle 背景 + 左侧 3px 指示条 + accent 色文字/图标
+  - [ ] 默认项：透明背景 + #6B6960 文字/图标
+  - [ ] 退出登录按钮位于底部，带 border 边框
+  - [ ] 侧边栏融入页面背景色，无边框无阴影
+  - [ ] 路由切换时 Active 状态正确跟随
+
+### CP2：AppShell 主卡片完成
+
+- **触发时机**：CardHeader + CardContent 框架完成
+- **验证方式**：
+  1. 截取 MainCard 区域截图
+  2. 对比 Paper Design `App Shell — 主框架模板` (FGC-1) 的 MainCard 部分
+- **检查项**：
+  - [ ] MainCard：白色背景 + 16px 圆角 + shadow-card
+  - [ ] CardHeader 高度 60px，底部分割线
+  - [ ] 左侧页面标题 (Outfit 600 18px) + 补充说明
+  - [ ] 右侧搜索框 (pill 圆角, --bg 背景)
+  - [ ] 通知图标 34×34 + 用户头像 32×32
+  - [ ] CardContent 内边距 py-6 px-7，子页面正确渲染
+
+### CP3：Dashboard TopGrid 完成
+
+- **触发时机**：系统状态卡片 + 交易数据卡片实现完成
+- **验证方式**：
+  1. 截取 TopGrid 区域截图
+  2. 对比 Paper Design `Dashboard — 数据面板` (1O0-0) 的 TopGrid 部分
+- **检查项**：
+  - [ ] 2 列等宽布局，gap 16px
+  - [ ] 子卡片 rounded-xl + border + 白色背景 + p-5
+  - [ ] 系统状态 5 行指标 + 进度条正确渲染
+  - [ ] 交易数据 5 行指标 + 语义色正确
+  - [ ] 行间距、字体大小、颜色完全匹配
+
+### CP4：Dashboard KPI + ActivityFeed 完成
+
+- **触发时机**：KPI 指标条 + 活动 Feed 实现完成
+- **验证方式**：
+  1. 截取 KpiActivityRow 区域截图
+  2. 对比 Paper Design Dashboard 的 KpiActivityRow 部分
+- **检查项**：
+  - [ ] KPI 条 6 列等宽，列间分割线
+  - [ ] 每个 KPI：图标色块 28×28 + 数值 Outfit 600 18px + 标签 + 趋势标签
+  - [ ] 6 个 KPI 颜色主题按序使用（accent/gold/teal/rose/brown/peach）
+  - [ ] 底部详情区：key-value 行 + 进度条 3px
+  - [ ] 活动 Feed：色点 7×7 + 内容 + 时间戳，间距匹配
+
+### CP5：Dashboard 图表区完成
+
+- **触发时机**：折线图 + 环形图实现完成
+- **验证方式**：
+  1. 截取 ChartsGrid 区域截图
+  2. 对比 Paper Design Dashboard 的 ChartsGrid 部分
+- **检查项**：
+  - [ ] 1.4:1 网格比例
+  - [ ] 折线图：渐变填充 + 数据点 + Tab 切换（周/月/年）
+  - [ ] 环形图：5 色数据系列 + 中心汇总值 + 右侧图例
+  - [ ] 图表颜色严格按色板顺序
+  - [ ] 轴标签 11px，网格线 border 颜色
+
+### CP6：全页面集成验证
+
+- **触发时机**：所有区域集成完成
+- **验证方式**：
+  1. 截取完整页面截图
+  2. 对比 Paper Design `Dashboard — 数据面板` (1O0-0) 整体
+- **检查项**：
+  - [ ] 整体布局与 Paper Design 一致
+  - [ ] 4 个区域间距 gap-6 (24px)
+  - [ ] 数据来自真实 API，无 mock
+  - [ ] 响应式：小屏侧边栏变为抽屉
+  - [ ] 通过 lint + typecheck
+  - [ ] 新增 API 有 E2E 测试覆盖
+
+---
+
+## 8. 不做的事
 
 - ❌ 不修改其他菜单页面（博客、用户、商城等）
 - ❌ 不引入色板之外的颜色
@@ -378,13 +468,11 @@ interface DistributionItem {
 
 ---
 
-## 8. 验证标准
+## 9. 最终验证标准
 
-- [ ] 侧边栏视觉完全匹配 Paper Design AppShell 模板
-- [ ] Dashboard 布局完全匹配 Paper Design Dashboard
+- [ ] 所有 6 个 Checkpoint 通过 Paper Design 截图对比
 - [ ] 所有颜色来自 `globals.css` 设计令牌
 - [ ] 字体仅使用 Outfit / DM Sans / JetBrains Mono
 - [ ] 对接真实后端 API，无 mock 数据
 - [ ] 新增 API 有对应的 E2E 测试
 - [ ] 通过 lint + typecheck
-- [ ] 在浏览器中实际验证渲染结果
