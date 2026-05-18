@@ -42,6 +42,9 @@ function mapUserListItem(u: Record<string, unknown>): AdminUserListItem {
     canUpload: (u.canUpload as boolean) ?? false,
     lockedUntil: (u.lockedUntil as Date | null)?.toISOString() ?? null,
     createdAt: (u.createdAt as Date)?.toISOString() ?? '',
+    // 最后登录信息（暂从 User 记录直接读取，字段不存在时返回 null）
+    lastLoginAt: (u.lastLoginAt as Date | null)?.toISOString() ?? null,
+    lastDevice: (u.lastDevice as string) ?? null,
   }
 }
 
@@ -96,7 +99,7 @@ export function createPrismaUserRepository(): UserRepository {
       await prisma.user.update({ where: { id: params.userId }, data: { canUpload: params.canUpload } })
     },
 
-    async listUsersWithCursor(ctx: RepoContext, params: { limit: number; cursor: string; keyword: string | undefined; status: string | undefined }): Promise<{ items: AdminUserListItem[]; nextCursor: string | null; totalCount: number }> {
+    async listUsersWithCursor(ctx: RepoContext, params: { limit: number; cursor: string; keyword: string | undefined; status: string | undefined; role?: string }): Promise<{ items: AdminUserListItem[]; nextCursor: string | null; totalCount: number }> {
       const { logger } = ctx
       logger.info({ action: 'list_users_cursor', limit: params.limit, cursor: params.cursor })
 
@@ -114,6 +117,12 @@ export function createPrismaUserRepository(): UserRepository {
         ]
       }
       if (params.cursor) where.createdAt = { lt: new Date(params.cursor) }
+      // role 过滤：通过 userRoles 关联表筛选
+      if (params.role) {
+        where.userRoles = {
+          some: { roleId: params.role },
+        }
+      }
 
       const items = await prisma.user.findMany({
         where,
@@ -147,6 +156,12 @@ export function createPrismaUserRepository(): UserRepository {
           { email: { contains: params.keyword } },
           { phone: { contains: params.keyword } },
         ]
+      }
+      // role 过滤：通过 userRoles 关联表筛选
+      if (params.role) {
+        where.userRoles = {
+          some: { roleId: params.role },
+        }
       }
 
       const [items, totalCount] = await Promise.all([
@@ -322,16 +337,42 @@ export function createPrismaUserRepository(): UserRepository {
      * Returns:
      *   void: 无返回值
      */
-    async updateUserPhone(ctx: RepoContext, params: { userId: string; phone: string }) {
-      const { logger } = ctx
-      logger.info({ action: 'update_user_phone', userId: params.userId })
+     async updateUserPhone(ctx: RepoContext, params: { userId: string; phone: string }) {
+       const { logger } = ctx
+       logger.info({ action: 'update_user_phone', userId: params.userId })
 
-      await prisma.user.update({
-        where: { id: params.userId },
-        data: {
-          phone: params.phone,
-        },
-      })
-    },
-  }
+       await prisma.user.update({
+         where: { id: params.userId },
+         data: {
+           phone: params.phone,
+         },
+       })
+     },
+
+     async updateUserAdmin(
+       ctx: RepoContext,
+       params: {
+         userId: string
+         nickname?: string
+         email?: string
+         phone?: string
+         status?: string
+       }
+     ) {
+       const { logger } = ctx
+       logger.info({ action: 'update_user_admin', userId: params.userId })
+
+       const data: Record<string, unknown> = {}
+       if (params.nickname !== undefined) data.nickname = params.nickname
+       if (params.email !== undefined) data.email = params.email
+       if (params.phone !== undefined) data.phone = params.phone
+       if (params.status !== undefined) data.status = params.status
+
+       const user = await prisma.user.update({
+         where: { id: params.userId },
+         data,
+       })
+       return mapUser(user)
+     },
+   }
 }

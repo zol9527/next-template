@@ -14,7 +14,7 @@ export interface UserRepository {
 	updateUploadPermission(ctx: RepoContext, params: { userId: string; canUpload: boolean }): Promise<void>
 
   listUsers(ctx: RepoContext, params: AdminUserListQuery): Promise<{ items: AdminUserListItem[]; total: number; offset: number; limit: number; nextCursor: string | null }>
-  listUsersWithCursor(ctx: RepoContext, params: { limit: number; cursor: string; keyword: string | undefined; status: string | undefined }): Promise<{ items: AdminUserListItem[]; nextCursor: string | null; totalCount: number }>
+  listUsersWithCursor(ctx: RepoContext, params: { limit: number; cursor: string; keyword: string | undefined; status: string | undefined; role?: string }): Promise<{ items: AdminUserListItem[]; nextCursor: string | null; totalCount: number }>
 
   resetLoginFailures(ctx: RepoContext, params: { userId: string }): Promise<void>
   recordLoginFailure(ctx: RepoContext, params: {
@@ -132,4 +132,31 @@ export interface UserRepository {
    *   void: 无返回值
    */
   updateUserPhone(ctx: RepoContext, params: { userId: string; phone: string }): Promise<void>
+
+  /**
+   * Function: updateUserAdmin
+   *
+   * Description: 管理员更新用户基本信息（昵称、邮箱、手机号、状态）
+   *
+   * Parameters:
+   *   ctx(RepoContext): 仓储上下文
+   *   params.userId(string): 用户 ID
+   *   params.nickname?(string): 昵称
+   *   params.email?(string): 邮箱
+   *   params.phone?(string): 手机号
+   *   params.status?(string): 账户状态
+   *
+   * Returns:
+   *   user(AdminUserDetail): 更新后的用户信息
+   */
+  updateUserAdmin(
+    ctx: RepoContext,
+    params: {
+      userId: string
+      nickname?: string
+      email?: string
+      phone?: string
+      status?: string
+    }
+  ): Promise<AdminUserDetail>
 }

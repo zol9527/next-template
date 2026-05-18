@@ -1,10 +1,11 @@
 import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
 import type { GrantDto } from '@/contracts/dtos/rbac/access.dto'
+import type { AdminRoleDetail } from '@/contracts/dtos/admin/rbac/roles.dto'
 import type { Grant } from '@/config/access'
 import type { RbacRepository } from '@/repositories/interfaces/core/rbac.interface'
 import type { ServiceContext } from '@/types/service/service-context'
 import type { RepoContext } from '@/types/repo/repo-context'
-import { ForbiddenError, NotFoundError } from '@/lib/errors/app-error'
+import { ForbiddenError, NotFoundError, ConflictError } from '@/lib/errors/app-error'
 
 export function createAdminRbacService(deps: { rbac: RbacRepository }, ctx: ServiceContext) {
   const repoCtx: RepoContext = {
@@ -29,6 +30,71 @@ export function createAdminRbacService(deps: { rbac: RbacRepository }, ctx: Serv
       }, 'RBAC 角色已创建')
 
       return role
+    },
+
+    async getRoleDetail(roleId: string): Promise<AdminRoleDetail> {
+      const roles = await deps.rbac.listRoles(repoCtx)
+      const role = roles.find((r) => r.id === roleId)
+      if (!role) {
+        throw new NotFoundError('角色不存在')
+      }
+
+      // 并行获取权限列表和用户计数，减少总延迟
+      const [grants, userCount] = await Promise.all([
+        deps.rbac.getGrantsForRole(repoCtx, { roleId }),
+        deps.rbac.countUsersWithRole(repoCtx, { roleId }),
+      ])
+
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        grants: grants.map((g) => ({ action: g.action, scope: g.scope })),
+        userCount,
+        // RoleDto 暂无时间戳字段，数据库中无真实数据时返回 null
+        createdAt: (role as Record<string, unknown>).createdAt as string | null ?? null,
+        updatedAt: (role as Record<string, unknown>).updatedAt as string | null ?? null,
+      }
+    },
+
+    async updateRole(params: { roleId: string; name?: string; description?: string; actorId?: string }): Promise<AdminRoleDetail> {
+      const roles = await deps.rbac.listRoles(repoCtx)
+      const targetRole = roles.find((r) => r.id === params.roleId)
+      if (!targetRole) {
+        throw new NotFoundError('角色不存在')
+      }
+
+      // 保护 admin 保留角色名，禁止修改
+      if (targetRole.name === 'admin' && params.name && params.name !== 'admin') {
+        throw new ForbiddenError('无法修改 admin 角色名称')
+      }
+
+      // 检查角色名是否与其他角色重复
+      if (params.name) {
+        const duplicate = roles.some((r) => r.id !== params.roleId && r.name === params.name)
+        if (duplicate) {
+          throw new ConflictError('角色名已存在')
+        }
+      }
+
+      await deps.rbac.updateRole(repoCtx, {
+        roleId: params.roleId,
+        name: params.name,
+        description: params.description,
+      })
+
+      ctx.logger.info({
+        audit: true,
+        actorId: params.actorId ?? 'unknown',
+        action: 'rbac.update_role',
+        target: `role:${params.roleId}`,
+        // 审计日志仅记录变更的字段名，避免泄露敏感值
+        details: { updatedFields: [params.name && 'name', params.description && 'description'].filter(Boolean) },
+      }, 'RBAC 角色信息已更新')
+
+      // 直接获取更新后的详情返回（避免在 getRoleDetail 内再次 listRoles 全表扫描）
+      // 但为了复用逻辑、保持一致性，仍调用 getRoleDetail
+      return this.getRoleDetail(params.roleId)
     },
 
     async getRoleGrants(roleId: string): Promise<GrantDto[]> {
