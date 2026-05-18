@@ -17,7 +17,7 @@ interface ActivityFeedProps {
  */
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
-    <div className="rounded-xl bg-surface border border-border-default p-5">
+    <div className="rounded-md bg-surface border border-border-default p-5">
       <h2 className="heading-2 mb-3">最近动态</h2>
 
       <div className="flex flex-col">

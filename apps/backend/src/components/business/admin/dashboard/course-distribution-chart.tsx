@@ -24,7 +24,7 @@ export function CourseDistributionChart({ data }: CourseDistributionChartProps) 
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="rounded-xl bg-surface border border-border-default p-5">
+    <div className="rounded-md bg-surface border border-border-default p-5">
       <h2 className="heading-2 mb-4">课程分类分布</h2>
 
       <div className="flex items-center gap-6">

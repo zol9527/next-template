@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
  * Description: 扁平化侧边栏导航列表（Paper Design SidebarNav FJ6-1）
  *   - 10 个导航项，无分组 label
  *   - 导航项尺寸: 204×36px (px-3 py-[9px])
- *   - 圆角: rounded-lg (8px)
+ *   - 圆角: rounded-sm (8px)
  *   - 间距: gap-0.5 (2px)
  *   - Active: accent-subtle 背景 + 左侧 3px accent 指示条
  */
@@ -47,7 +47,7 @@ export function AppSidebarMenu() {
             href={isLocked ? '#' : item.href}
             onClick={handleClick}
             className={cn(
-              'flex items-center rounded-lg py-[9px] px-3 gap-3 transition-colors relative',
+              'flex items-center rounded-sm py-[9px] px-3 gap-3 transition-colors relative',
               isActive
                 ? 'bg-ds-accent-subtle text-ds-accent'
                 : 'text-fg-secondary hover:bg-[rgba(38,37,30,0.04)]',

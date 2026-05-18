@@ -35,7 +35,7 @@ export function AppSidebarFooter() {
       <button
         type="button"
         onClick={handleLogout}
-        className="w-full flex items-center rounded-lg py-[9px] px-3 gap-2 border border-solid border-border-default transition-colors hover:bg-[rgba(38,37,30,0.04)]"
+        className="w-full flex items-center rounded-sm py-[9px] px-3 gap-2 border border-solid border-border-default transition-colors hover:bg-[rgba(38,37,30,0.04)]"
       >
         <LogOut className="size-[18px] shrink-0 text-fg-muted" strokeWidth={2} />
         <span className="font-body font-medium text-fg-muted text-[13px] leading-4">

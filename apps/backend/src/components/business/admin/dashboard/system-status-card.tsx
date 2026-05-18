@@ -13,7 +13,7 @@ interface SystemStatusCardProps {
  * Description: 系统状态指标卡片（Paper Design SystemCard 1RC-0）
  *   - 5 行指标: CPU, 内存, 磁盘, API 响应, 运行时间
  *   - 每行: label + 数值(JetBrains Mono 12.5px) + 进度条(90×5px, 3px 圆角)
- *   - 子卡片样式: rounded-xl + border + bg-surface + p-5
+ *   - 子卡片样式: rounded-md + border + bg-surface + p-5
  */
 export function SystemStatusCard({ data }: SystemStatusCardProps) {
   const metrics = [
@@ -25,7 +25,7 @@ export function SystemStatusCard({ data }: SystemStatusCardProps) {
   ]
 
   return (
-    <div className="rounded-xl bg-surface border border-border-default p-5">
+    <div className="rounded-md bg-surface border border-border-default p-5">
       {/* 标题行 — 图标 + "系统状态" */}
       <div className="flex items-center gap-1.5 mb-4">
         <Activity className="size-4 text-teal" strokeWidth={2} />

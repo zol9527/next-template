@@ -24,7 +24,7 @@ export function TransactionCard({ data }: TransactionCardProps) {
   ]
 
   return (
-    <div className="rounded-xl bg-surface border border-border-default p-5">
+    <div className="rounded-md bg-surface border border-border-default p-5">
       {/* 标题行 — 图标 + "交易数据" */}
       <div className="flex items-center gap-1.5 mb-4">
         <DollarSign className="size-4 text-ds-accent" strokeWidth={2} />

@@ -29,7 +29,7 @@ export function KpiCell({ item, isLast }: KpiCellProps) {
   return (
     <div className={`flex flex-col py-0 px-3.5 ${!isLast ? 'border-r border-border-default' : ''}`}>
       {/* 图标色块 */}
-      <div className={`flex items-center justify-center size-7 rounded-md ${colors.bg}`}>
+      <div className={`flex items-center justify-center size-7 rounded-sm ${colors.bg}`}>
         {IconComponent && <IconComponent className={`size-3.5 ${colors.text}`} strokeWidth={2} />}
       </div>
 

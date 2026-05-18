@@ -36,7 +36,7 @@ export function StudentTrendChart({ data }: StudentTrendChartProps) {
   ]
 
   return (
-    <div className="rounded-xl bg-surface border border-border-default p-5">
+    <div className="rounded-md bg-surface border border-border-default p-5">
       {/* 标题行 + Tab 切换 */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="heading-2">学员增长趋势</h2>

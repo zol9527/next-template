@@ -19,7 +19,7 @@ export function AppSidebarHeader() {
   return (
     <div className="flex items-center h-[52px] shrink-0 mb-2 py-2 px-4 gap-3">
       {/* BrandIcon: 对应 Paper FT8-1 — 36×36px 深色方块 */}
-      <div className="flex items-center justify-center shrink-0 rounded-lg bg-fg size-9">
+      <div className="flex items-center justify-center shrink-0 rounded-sm bg-fg size-9">
         <GraduationCap className="size-5 text-white" strokeWidth={2} />
       </div>
 

@@ -64,7 +64,7 @@ function AdminHeader({ pathname }: { pathname: string }) {
  * Description: 后台管理主框架布局（Paper Design AppShell FGC-1）
  *   - LayoutWrapper: flex, p-5, bg-bg, h-svh
  *   - Sidebar: w-56 (224px), 融入背景色
- *   - MainCard: grow, rounded-2xl, shadow-card, bg-surface
+ *   - MainCard: grow, rounded-lg, shadow-card, bg-surface
  *   - CardHeader: h-[60px], px-7, border-b
  *   - CardContent: py-6, px-7, gap-6, overflow-auto
  */
@@ -85,7 +85,7 @@ export function AdminShellClient({ children }: { children: ReactNode }) {
 
         {/* MainCard: 对应 Paper FIH-1 — 白色圆角卡片 + 阴影 */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
-          <div className="bg-surface shadow-card grow rounded-2xl overflow-hidden flex flex-col">
+          <div className="bg-surface shadow-card grow rounded-lg overflow-hidden flex flex-col">
             {/* CardHeader: 对应 Paper FII-1 — 固定 60px 高度 */}
             <header className="flex h-[60px] shrink-0 items-center justify-between px-7 border-b border-border-default">
               <AdminHeader pathname={pathname} />
