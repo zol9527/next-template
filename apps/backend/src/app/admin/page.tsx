@@ -52,19 +52,20 @@ async function getDashboardData(): Promise<DashboardData> {
   ])
 
   // 映射 systemStatus — 从 system-stats API 响应中提取
+  // 所有数值固定 2 位小数，避免超长小数
   const systemStatus = {
-    cpu: systemStats?.cpu?.usage ?? 0,
+    cpu: Number((systemStats?.cpu?.usage ?? 0).toFixed(2)),
     memory: {
-      used: Math.round((systemStats?.memory?.used ?? 0) / 1024 / 1024 / 1024 * 10) / 10,
-      total: Math.round((systemStats?.memory?.total ?? 0) / 1024 / 1024 / 1024 * 10) / 10,
+      used: Number(((systemStats?.memory?.used ?? 0) / 1024 / 1024 / 1024).toFixed(2)),
+      total: Number(((systemStats?.memory?.total ?? 0) / 1024 / 1024 / 1024).toFixed(2)),
       unit: 'GB' as const,
     },
     disk: {
-      used: Math.round((systemStats?.disk?.used ?? 0) / 1024 / 1024 / 1024 * 10) / 10,
-      total: Math.round((systemStats?.disk?.total ?? 0) / 1024 / 1024 / 1024 * 10) / 10,
+      used: Number(((systemStats?.disk?.used ?? 0) / 1024 / 1024 / 1024).toFixed(2)),
+      total: Number(((systemStats?.disk?.total ?? 0) / 1024 / 1024 / 1024).toFixed(2)),
       unit: 'GB' as const,
     },
-    apiResponseMs: systemStats?.database?.responseTime ?? 0,
+    apiResponseMs: Number((systemStats?.database?.responseTime ?? 0).toFixed(2)),
     uptime: systemStats?.uptime?.system
       ? `${Math.floor(systemStats.uptime.system / 86400)} 天 ${Math.floor((systemStats.uptime.system % 86400) / 3600)} 小时`
       : '加载中...',
