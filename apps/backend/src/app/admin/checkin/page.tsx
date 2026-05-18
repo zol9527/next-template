@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { CheckinStatsSchema, type CheckinStats } from '@/contracts/dtos/admin-checkin.dto'
 import type { ApiResponse } from '@/contracts/api-response.schema'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 
 /**
  * Component: StatCard
@@ -135,7 +136,9 @@ export default function AdminCheckinStatsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <>
+      <AdminPageHeader title="签到管理" description="查看用户签到统计" />
+      <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* 头部标题区 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -256,5 +259,6 @@ export default function AdminCheckinStatsPage() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }

@@ -33,6 +33,7 @@ import {
 import type { PaginationConfig } from '@/components/ui/data-table/pagination'
 import type { ColumnDef } from '@tanstack/react-table'
 
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import {
   FeedbackListResponseSchema,
 } from '@/contracts/dtos/feedback.dto'
@@ -304,7 +305,9 @@ export default function AdminFeedbackPage() {
   )
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+    <>
+      <AdminPageHeader title="用户反馈" description="查看和处理用户反馈" />
+      <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-lg">
@@ -389,5 +392,6 @@ export default function AdminFeedbackPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

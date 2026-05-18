@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BlogMainLayout, type BlogStats } from '@/components/business/admin/blog/blog-main-layout'
 import { parseApiResponse } from '@/lib/api/parse-response'
 import { AdminArticleListResponseSchema } from '@/contracts/dtos/admin/blog/articles.dto'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 
 // ==================== 辅助函数 ====================
 
@@ -96,11 +97,10 @@ export default function AdminBlogPage() {
   // ==================== 渲染 ====================
 
   return (
-    // flex-1 + min-h-0：在父级 flex-col 中填充可用高度
-    // w-full：确保宽度撑满父容器
-    // 负边距抵消 AdminShell main 的 py-6 px-7，实现全出血布局
-    <div className="min-h-0 flex-1 w-full animate-in fade-in duration-500 -mx-7 -my-6">
-      <BlogMainLayout
+    <>
+      <AdminPageHeader title="博客管理" description="管理所有博客文章和分类" />
+      <div className="min-h-0 flex-1 w-full animate-in fade-in duration-500 -mx-7 -my-6">
+        <BlogMainLayout
         stats={stats}
         keyword={keyword}
         onKeywordChange={handleKeywordChange}
@@ -111,5 +111,6 @@ export default function AdminBlogPage() {
         onWriteArticle={handleWriteArticle}
       />
     </div>
+    </>
   )
 }

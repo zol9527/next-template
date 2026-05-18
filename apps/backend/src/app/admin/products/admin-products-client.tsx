@@ -23,6 +23,7 @@ import type { ApiResponse } from "@/contracts/api-response.schema";
 import type { AdminProductStats } from "@/plugins/ecommerce/contracts/admin-products.dto";
 import { AdminProductStatsSchema } from "@/plugins/ecommerce/contracts/admin-products.dto";
 import { useQueryClient } from "@tanstack/react-query";
+import { AdminPageHeader } from "@/components/ui/admin-page-header";
 import { ShopMainCard } from "@/components/business/admin/shop/shop-main-card";
 import { ShopSearchInput } from "@/components/business/admin/shop/shop-search-input";
 import { ShopStatusFilter, type FilterItem } from "@/components/business/admin/shop/shop-status-filter";
@@ -117,8 +118,10 @@ export function AdminProductsClient() {
   ], [stats]);
 
   return (
-    <ShopMainCard
-      activeTab="products"
+    <>
+      <AdminPageHeader title="商城管理" description="管理商品和订单" />
+      <ShopMainCard
+        activeTab="products"
       headerRight={
         <>
           <ShopSearchInput
@@ -236,5 +239,6 @@ export function AdminProductsClient() {
         }}
       />
     </ShopMainCard>
+    </>
   );
 }

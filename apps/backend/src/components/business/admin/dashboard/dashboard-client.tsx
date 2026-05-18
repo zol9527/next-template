@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import type { DashboardData } from './types'
 import { SystemStatusCard } from './system-status-card'
 import { TransactionCard } from './transaction-card'
@@ -23,7 +24,9 @@ interface DashboardClientProps {
  */
 export function DashboardClient({ data }: DashboardClientProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <>
+      <AdminPageHeader title="仪表盘" description="数据概览和系统状态" />
+      <div className="flex flex-col gap-6">
       {/* 1. TopGrid — 系统状态 + 交易数据 */}
       <div className="grid grid-cols-2 gap-4">
         <SystemStatusCard data={data.systemStatus} />
@@ -42,5 +45,6 @@ export function DashboardClient({ data }: DashboardClientProps) {
         <CourseDistributionChart data={data.courseDistribution} />
       </div>
     </div>
+    </>
   )
 }

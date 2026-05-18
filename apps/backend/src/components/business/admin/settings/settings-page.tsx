@@ -12,6 +12,7 @@
  */
 
 import * as React from 'react'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import { AdminPageLayout } from '@/components/ui/admin-page-layout'
 import { SettingsTabBar } from './settings-tab-bar'
 import { SiteConfigTab } from './tabs/site-config-tab'
@@ -35,6 +36,7 @@ export function SettingsPage() {
 
   return (
     <AdminPageLayout>
+      <AdminPageHeader title="系统配置" description="管理系统设置和配置" />
       <SettingsTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="flex-1 min-h-0">

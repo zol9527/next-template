@@ -96,22 +96,14 @@ export default function AdminNotificationsPage() {
     : notifications
 
   return (
-    <AdminPageLayout>
+    <>
       <AdminPageHeader
-        title="通知管理"
+        title="通知中心"
         description="管理站点的通知信息"
-        actions={
-          <Link href="/admin/notifications/create">
-            <Button size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              新建通知
-            </Button>
-          </Link>
-        }
       />
-
-      {/* 搜索工具栏 */}
-      <AdminFilterBar>
+      <AdminPageLayout>
+        {/* 搜索工具栏 */}
+        <AdminFilterBar>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -129,5 +121,6 @@ export default function AdminNotificationsPage() {
         data={filteredNotifications}
       />
     </AdminPageLayout>
+    </>
   )
 }
