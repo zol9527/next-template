@@ -13,6 +13,7 @@ import type {
   AdminSortOrder,
 } from '@/contracts/dtos/admin/media-assets.dto'
 import type { AdminOssUploadPolicyResponse } from '@/contracts/dtos/admin/oss-upload-policy.dto'
+import { parseApiResponse } from '@/lib/api/parse-response'
 
 export interface AdminMediaUploadProgressInfo {
   percent: number
@@ -97,19 +98,9 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       credentials: 'include',
     })
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: { message: '操作失败' } }))
-      throw new Error(error.error?.message || '删除媒体失败')
-    }
-
-    const json = await res.json()
-    if (!json.success) {
-      throw new Error(json.error?.message || '删除媒体失败')
-    }
-
+    const data = await parseApiResponse<{ id: string }>(res)
     await invalidateList()
-
-    return json.data as { id: string }
+    return data
   }
 
   const uploadAsset = async (
@@ -128,17 +119,7 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       }),
     })
 
-    if (!policyRes.ok) {
-      const error = await policyRes.json().catch(() => ({ error: { message: '获取签名失败' } }))
-      throw new Error(error.error?.message || '获取上传签名失败')
-    }
-
-    const policyJson = await policyRes.json()
-    if (!policyJson.success) {
-      throw new Error(policyJson.error?.message || '获取上传签名失败')
-    }
-
-    const policy = policyJson.data as AdminOssUploadPolicyResponse
+    const policy = await parseApiResponse<AdminOssUploadPolicyResponse>(policyRes)
 
     const formFields = Object.fromEntries(
       Object.entries(policy.formFields).map(([k, v]) => [k, String(v)]),
@@ -167,19 +148,9 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       }),
     })
 
-    if (!registerRes.ok) {
-      const error = await registerRes.json().catch(() => ({ error: { message: '登记失败' } }))
-      throw new Error(error.error?.message || '登记媒体失败')
-    }
-
-    const registerJson = await registerRes.json()
-    if (!registerJson.success) {
-      throw new Error(registerJson.error?.message || '登记媒体失败')
-    }
-
+    const created = await parseApiResponse<AdminMediaAsset>(registerRes)
     await invalidateList()
-
-    return registerJson.data as AdminMediaAsset
+    return created
   }
 
   // 重命名媒体资产
@@ -191,16 +162,7 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       body: JSON.stringify({ name }),
     })
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: { message: '操作失败' } }))
-      throw new Error(error.error?.message || '重命名失败')
-    }
-
-    const json = await res.json()
-    if (!json.success) {
-      throw new Error(json.error?.message || '重命名失败')
-    }
-
+    await parseApiResponse(res)
     await invalidateList()
   }
 
@@ -210,17 +172,7 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       credentials: 'include',
     })
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: { message: '获取存储信息失败' } }))
-      throw new Error(error.error?.message || '获取存储信息失败')
-    }
-
-    const json = await res.json()
-    if (!json.success) {
-      throw new Error(json.error?.message || '获取存储信息失败')
-    }
-
-    return json.data as StorageUsage
+    return parseApiResponse<StorageUsage>(res)
   }
 
   const contextValue: AdminMediaAssetsContextValue = {
@@ -287,17 +239,7 @@ export function useAdminMediaAssets(params?: UseAdminMediaAssetsParams) {
         credentials: 'include',
       })
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: { message: '请求失败' } }))
-        throw new Error(error.error?.message || '获取媒体列表失败')
-      }
-
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error?.message || '获取媒体列表失败')
-      }
-
-      return json.data as AdminMediaAssetCursorListResponse
+      return parseApiResponse<AdminMediaAssetCursorListResponse>(res)
     },
     placeholderData: (prev) => prev,
     staleTime: 60 * 1000,
@@ -318,21 +260,11 @@ export function useAdminMediaAssets(params?: UseAdminMediaAssetsParams) {
         credentials: 'include',
       })
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          return { references: [], count: 0 }
-        }
-
-        const error = await res.json().catch(() => ({ error: { message: '查询失败' } }))
-        throw new Error(error.error?.message || '获取引用列表失败')
+      if (res.status === 404) {
+        return { references: [], count: 0 }
       }
 
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error?.message || '获取引用列表失败')
-      }
-
-      return json.data as AdminMediaAssetReferencesResponse
+      return parseApiResponse<AdminMediaAssetReferencesResponse>(res)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -405,17 +337,7 @@ export function useAdminMediaAssetsPaginated(params?: {
         credentials: 'include',
       })
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: { message: '请求失败' } }))
-        throw new Error(error.error?.message || '获取媒体列表失败')
-      }
-
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error?.message || '获取媒体列表失败')
-      }
-
-      return json.data as { items: AdminMediaAsset[]; pagination: MediaListPagination }
+      return parseApiResponse<{ items: AdminMediaAsset[]; pagination: MediaListPagination }>(res)
     },
     placeholderData: (prev) => prev,
     staleTime: 30 * 1000,
