@@ -48,7 +48,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { name: '通知中心', href: '/admin/notifications', icon: Bell, requiredAccess: { action: 'write', scope: 'notifications' } },
   { name: '签到管理', href: '/admin/checkin', icon: CalendarCheck, requiredAccess: { action: 'read', scope: 'checkin' } },
   { name: '用户反馈', href: '/admin/feedback', icon: MessageSquare, requiredAccess: { action: 'read', scope: 'feedback' } },
-  { name: '系统配置', href: '/admin/site-config', icon: Settings, requiredAccess: { action: 'write', scope: 'site-config' } },
+  { name: '系统配置', href: '/admin/settings', icon: Settings, requiredAccess: { action: 'write', scope: 'site-config' } },
   { name: '插件管理', href: '/admin/plugins', icon: Layers, requiredAccess: { action: 'read', scope: 'feature-flags' } },
 ]
 
