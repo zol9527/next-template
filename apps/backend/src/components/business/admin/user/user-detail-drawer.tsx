@@ -57,12 +57,15 @@ export function UserDetailDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[480px] max-w-[90vw] p-0 flex flex-col" style={{ borderRadius: '16px 0 0 16px' }}>
-        {/* Drawer 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+      <SheetContent
+        className="w-[480px] max-w-[90vw] p-0 flex flex-col"
+        style={{ boxShadow: 'rgba(38,37,30,0.1) -4px 0px 24px' }}
+      >
+        {/* Drawer 头部 — 固定 60px 高度 */}
+        <div className="flex items-center justify-between h-[60px] px-6 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
-            {/* 头像 */}
-            <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-[var(--ds-accent,#F54E00)]/20 to-[var(--ds-accent,#F54E00)]/10 flex items-center justify-center text-[10px] font-semibold text-[var(--ds-accent,#F54E00)] shrink-0">
+            {/* 头像 — 白色文字 11px */}
+            <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-[var(--ds-accent,#F54E00)]/20 to-[var(--ds-accent,#F54E00)]/10 flex items-center justify-center text-[11px] font-semibold text-white shrink-0">
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
               ) : (
@@ -70,34 +73,60 @@ export function UserDetailDrawer({
               )}
             </div>
             <div className="flex flex-col">
-              <SheetTitle className="text-sm font-semibold text-[var(--fg,#26251E)]">
-                {displayName}
-              </SheetTitle>
-              <span className="text-xs text-[var(--fg-faint,#9C9A91)]">
+              {/* 名字 + 角色 badge */}
+              <div className="flex items-center gap-2">
+                <SheetTitle
+                  className="text-[15px] font-semibold text-[var(--fg,#26251E)]"
+                  style={{ fontFamily: 'Outfit, sans-serif' }}
+                >
+                  {displayName}
+                </SheetTitle>
+                {/* 角色 badge */}
+                {'roles' in user && Array.isArray((user as Record<string, unknown>).roles) && ((user as Record<string, unknown>).roles as { name: string }[]).length > 0 && (
+                  <span
+                    className="rounded-full py-0.5 px-2 text-[11.5px] font-medium"
+                    style={{
+                      fontFamily: 'DM Sans, sans-serif',
+                      backgroundColor: 'rgba(245,78,0,0.08)',
+                      color: '#F54E00',
+                    }}
+                  >
+                    {((user as Record<string, unknown>).roles as { name: string }[])[0].name}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-[var(--fg-muted,#9C9A91)]">
                 {user.email || user.phone || '—'}
               </span>
             </div>
           </div>
+          {/* 关闭按钮 — 34×34 */}
           <button
             onClick={() => onOpenChange(false)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface)] transition-colors"
+            className="w-[34px] h-[34px] rounded-lg flex items-center justify-center hover:bg-[var(--surface)] transition-colors"
           >
-            <X className="h-4 w-4 text-[var(--fg-faint,#9C9A91)]" />
+            <X className="h-[18px] w-[18px]" style={{ color: '#6B6960' }} />
           </button>
         </div>
 
-        {/* Tab 栏 */}
-        <div className="flex items-center gap-1 px-6 py-3 border-b border-[var(--border)]">
+        {/* Tab 栏 — pill 形状，无底边框 */}
+        <div className="flex items-center gap-[3px] pt-3 px-6">
           {TAB_CONFIG.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
               className={cn(
-                'px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
+                'py-1.5 px-3.5 rounded-full text-[12.5px] font-medium transition-all duration-200',
                 activeTab === tab.value
-                  ? 'bg-[var(--ds-accent,#F54E00)] text-white'
-                  : 'text-[var(--fg-muted,#6B6960)] hover:bg-[var(--surface)]'
+                  ? 'text-white'
+                  : 'bg-white text-[#6B6960]'
               )}
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                ...(activeTab === tab.value
+                  ? { backgroundColor: '#F54E00' }
+                  : { border: '1px solid rgba(38,37,30,0.15)' }),
+              }}
             >
               {tab.label}
             </button>

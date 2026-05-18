@@ -449,6 +449,7 @@ export function createAdminMediaAssetService(
         contentType: sanitizedContentType,
         sizeBytes: params.sizeBytes,
         etag: params.etag ?? null,
+        metadata: params.metadata ?? undefined,
         createdBy: params.createdBy,
       })
 

@@ -101,11 +101,11 @@ export function CategoryItem({
     <div
       className={cn(
         'group flex cursor-pointer items-center gap-1 rounded-sm py-1.5 pr-1 text-sm transition-colors',
-        'hover:bg-accent/5',
-        // 选中状态：accent 背景和左侧边框
-        isSelected && 'border-l-2 border-accent bg-accent/10',
-        // 未选中时也保持左侧边框占位，避免布局跳动
-        !isSelected && 'border-l-2 border-transparent'
+        'hover:bg-ds-accent-subtle',
+        // 选中状态：accent 左侧指示条 (3px) + accent-subtle 背景 + accent 文字
+        isSelected
+          ? 'border-l-[3px] border-ds-accent bg-ds-accent-subtle text-ds-accent font-medium'
+          : 'border-l-[3px] border-transparent text-fg'
       )}
       style={{ paddingLeft: `${level * 12 + 8}px` }}
       onClick={handleClick}
@@ -124,7 +124,7 @@ export function CategoryItem({
       {hasChildren ? (
         <button
           type="button"
-          className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground"
+          className="flex h-4 w-4 shrink-0 items-center justify-center text-fg-muted"
           onClick={handleExpandClick}
         >
           {isExpanded ? (
@@ -140,9 +140,9 @@ export function CategoryItem({
 
       {/* 文件夹图标：展开时 FolderOpen，折叠时 FolderTree */}
       {isExpanded ? (
-        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
       ) : (
-        <FolderTree className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <FolderTree className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
       )}
 
       {/* 分类名称 */}
@@ -160,7 +160,7 @@ export function CategoryItem({
         <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
-            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex h-5 w-5 items-center justify-center rounded text-fg-muted transition-colors hover:bg-ds-accent-subtle hover:text-ds-accent"
             onClick={handleEditClick}
             title="编辑"
           >
@@ -168,7 +168,7 @@ export function CategoryItem({
           </button>
           <button
             type="button"
-            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="flex h-5 w-5 items-center justify-center rounded text-fg-muted transition-colors hover:bg-rose-subtle hover:text-rose"
             onClick={handleDeleteClick}
             title="删除"
           >

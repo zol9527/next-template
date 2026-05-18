@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { X, Camera, Loader2, Send, Shield } from 'lucide-react'
+import { X, Camera, Loader2, Send, Shield, Pencil } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -109,17 +109,18 @@ export function EditUserDrawer({ user, open, onOpenChange }: EditUserDrawerProps
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[480px] max-w-[90vw] p-0 flex flex-col" style={{ borderRadius: '16px 0 0 16px' }}>
+      <SheetContent className="w-[480px] max-w-[90vw] p-0 flex flex-col" style={{ boxShadow: 'rgba(38,37,30,0.1) -4px 0px 24px' }}>
         {/* 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-          <SheetTitle className="text-base font-semibold text-[var(--fg,#26251E)]" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            编辑用户
+        <div className="flex items-center justify-between px-6 h-[60px] border-b border-[var(--border)]">
+          <SheetTitle className="text-[15px] font-semibold text-[var(--fg,#26251E)] flex items-center gap-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <Pencil className="h-[18px] w-[18px]" style={{ color: '#F54E00' }} />
+            编辑用户信息
           </SheetTitle>
           <button
             onClick={() => onOpenChange(false)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface)] transition-colors"
+            className="w-[34px] h-[34px] rounded-lg flex items-center justify-center hover:bg-[var(--surface)] transition-colors"
           >
-            <X className="h-4 w-4 text-[var(--fg-faint,#9C9A91)]" />
+            <X className="h-[18px] w-[18px]" style={{ color: '#6B6960' }} />
           </button>
         </div>
 
@@ -129,22 +130,23 @@ export function EditUserDrawer({ user, open, onOpenChange }: EditUserDrawerProps
             {/* 头像编辑区 */}
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--ds-accent,#F54E00)]/20 to-[var(--ds-accent,#F54E00)]/10 flex items-center justify-center text-xl font-semibold text-[var(--ds-accent,#F54E00)]">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[var(--ds-accent,#F54E00)]/20 to-[var(--ds-accent,#F54E00)]/10 flex items-center justify-center text-base font-semibold text-[var(--ds-accent,#F54E00)]">
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     displayName.slice(0, 2).toUpperCase()
                   )}
                 </div>
-                <button className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[var(--fg,#26251E)] flex items-center justify-center border-2 border-white">
-                  <Camera className="h-3.5 w-3.5 text-white" />
+                <button className="absolute bottom-0 right-0 w-[22px] h-[22px] rounded-full flex items-center justify-center border-2 border-white" style={{ backgroundColor: '#F54E00' }}>
+                  <Camera className="h-[11px] w-[11px] text-white" />
                 </button>
               </div>
+              <span className="text-[11px]" style={{ fontFamily: 'DM Sans, sans-serif', color: '#9C9A91' }}>点击头像更换照片</span>
             </div>
 
             {/* 基本信息 */}
             <div className="flex flex-col gap-4">
-              <h3 className="text-sm font-semibold text-[var(--fg,#26251E)]">基本信息</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted,#9C9A91)] pb-2">基本信息</h3>
 
               <FormField label="姓名" required>
                 <Input
@@ -174,21 +176,42 @@ export function EditUserDrawer({ user, open, onOpenChange }: EditUserDrawerProps
                 />
               </FormField>
 
-              <FormField label="账户状态">
+              <FormField label="部门">
                 <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
                   className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--fg,#26251E)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-accent,#F54E00)]/20"
                 >
-                  <option value="active">活跃</option>
-                  <option value="disabled">禁用</option>
+                  <option value="">选择部门</option>
+                  <option value="engineering">工程部</option>
+                  <option value="marketing">市场部</option>
+                  <option value="operations">运营部</option>
+                  <option value="finance">财务部</option>
                 </select>
+              </FormField>
+
+              <FormField label="账户状态">
+                <div className="relative">
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-[var(--border)] bg-white pl-3 pr-8 text-sm text-[var(--fg,#26251E)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-accent,#F54E00)]/20 appearance-none"
+                  >
+                    <option value="active">
+                      {status === 'active' ? '🟢 ' : ''}活跃
+                    </option>
+                    <option value="disabled">
+                      禁用
+                    </option>
+                  </select>
+                  {status === 'active' && (
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 w-[7px] h-[7px] rounded-full bg-[var(--teal,#1F8A65)] pointer-events-none" style={{ marginLeft: '0px', marginTop: '-1px' }} />
+                  )}
+                </div>
               </FormField>
             </div>
 
             {/* 安全设置 */}
             <div className="flex flex-col gap-4 pt-4 border-t border-[var(--border)]">
-              <h3 className="text-sm font-semibold text-[var(--fg,#26251E)]">安全设置</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted,#9C9A91)] pb-2">安全设置</h3>
 
               {/* 重置密码 */}
               <div className="flex items-center justify-between py-2">
@@ -200,7 +223,7 @@ export function EditUserDrawer({ user, open, onOpenChange }: EditUserDrawerProps
                   variant="outline"
                   size="sm"
                   onClick={handleResetPassword}
-                  className="h-8 rounded-lg text-xs"
+                  className="h-[30px] rounded-lg text-[12px]"
                 >
                   <Send className="h-3.5 w-3.5 mr-1.5" />
                   发送
@@ -228,18 +251,18 @@ export function EditUserDrawer({ user, open, onOpenChange }: EditUserDrawerProps
         </ScrollArea>
 
         {/* 底部操作 */}
-        <div className="flex items-center gap-3 px-6 py-4 border-t border-[var(--border)]">
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-[var(--border)]">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1 h-10 rounded-lg text-sm"
+            className="flex-1 h-9 rounded-lg text-sm"
           >
             取消
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 h-10 rounded-lg bg-[var(--ds-accent,#F54E00)] hover:bg-[var(--ds-accent-hover,#D94400)] text-white font-medium text-sm"
+            className="flex-1 h-9 rounded-lg bg-[var(--ds-accent,#F54E00)] hover:bg-[var(--ds-accent-hover,#D94400)] text-white font-medium text-sm"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
             保存修改
@@ -264,7 +287,7 @@ function FormField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium text-[var(--fg-muted,#6B6960)]">
+      <label className="text-[12px] font-medium text-[var(--fg,#26251E)]">
         {label}
         {required && <span className="text-[var(--rose,#CF2D56)] ml-0.5">*</span>}
       </label>

@@ -422,7 +422,7 @@ export function ArticlePanel(props: ArticlePanelProps) {
   // 渲染
   // ------------------------------------------
   return (
-    <div className="flex-1 py-6 px-7 flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 py-5 px-6 [&_[data-radix-scroll-area-viewport]]:max-h-none">
       {/* ======================================
           筛选栏：状态标签组
           ====================================== */}
@@ -437,10 +437,10 @@ export function ArticlePanel(props: ArticlePanelProps) {
               variant="ghost"
               size="sm"
               className={cn(
-                'gap-1.5 rounded-full px-3 transition-colors',
+                'gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition-colors',
                 isActive
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-                  : 'bg-background border border-border text-muted-foreground hover:text-foreground'
+                  ? 'bg-ds-accent text-white hover:bg-ds-accent-hover hover:text-white'
+                  : 'bg-surface border border-border-default text-fg-secondary hover:text-fg'
               )}
               onClick={() => setStatusFilter(option.value)}
             >
@@ -469,16 +469,20 @@ export function ArticlePanel(props: ArticlePanelProps) {
       />
 
       {/* 首次加载时显示骨架屏，否则显示数据表格 */}
-      {isLoading && !data ? (
-        <TableSkeleton rowCount={10} columnCount={8} />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={data?.items ?? []}
-          pagination={pagination}
-          onSelectionChange={handleSelectionChange}
-        />
-      )}
+      {/* 表格区域：flex-1 min-h-0 填充剩余高度 */}
+      {/* 内部 DataTable 的 ScrollArea 使用了固定 h-150，通过 [&>div>div]:h-full 让其撑满此容器 */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden [&>div]:flex-1 [&>div]:min-h-0 [&>div]:flex [&>div]:flex-col">
+        {isLoading && !data ? (
+          <TableSkeleton rowCount={10} columnCount={8} />
+        ) : (
+          <DataTable
+            columns={columns}
+            data={data?.items ?? []}
+            pagination={pagination}
+            onSelectionChange={handleSelectionChange}
+          />
+        )}
+      </div>
 
       {/* ======================================
           文章详情抽屉

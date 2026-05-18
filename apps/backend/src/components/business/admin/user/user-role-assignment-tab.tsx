@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Shield, Loader2 } from 'lucide-react'
+import { Info, Shield, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
@@ -12,8 +12,8 @@ import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
  * 用户详情 — 角色分配 Tab
  *
  * Tab2: 角色分配
- * - 警告横幅: 黄色背景 "角色变更后，用户权限将立即生效"
- * - 角色卡片列表（Checkbox + 角色名 + 描述 + 权限数）
+ * - 提示横幅: "角色变更后，用户权限将立即生效"（Info 图标）
+ * - 角色卡片列表（Checkbox + 角色名 + 描述 + 权限计数）
  * - 保存/取消按钮
  */
 
@@ -109,10 +109,10 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 警告横幅 */}
-      <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--gold,#C08532)]/10 border border-[var(--gold,#C08532)]/20">
-        <AlertTriangle className="h-4 w-4 text-[var(--gold,#C08532)] shrink-0" />
-        <span className="text-xs font-medium text-[var(--gold,#C08532)]">
+      {/* 提示横幅 — Info 图标，更精致的样式 */}
+      <div className="flex items-center gap-2 py-2.5 px-3 rounded-lg bg-[var(--gold-subtle,rgba(192,133,50,0.1))] border border-[rgba(192,133,50,0.2)]">
+        <Info className="h-[14px] w-[14px] text-[var(--gold,#C08532)] shrink-0" />
+        <span className="text-[11.5px] font-medium text-[var(--gold,#C08532)]">
           角色变更后，用户权限将立即生效
         </span>
       </div>
@@ -123,15 +123,19 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
           const isSelected = selectedRoleIds.includes(role.id)
           const isAdmin = role.name === 'admin'
 
+          // 权限计数（暂用 role 上的 permissions 字段，若无则显示占位）
+          const permCount = (role as Record<string, unknown>).permissionsCount as number | undefined
+          const permTotal = (role as Record<string, unknown>).permissionsTotal as number | undefined
+
           return (
             <button
               key={role.id}
               onClick={() => toggleRole(role.id)}
               className={cn(
-                'flex items-start gap-3 p-4 rounded-xl border text-left transition-all duration-200',
+                'flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all duration-200',
                 isSelected
-                  ? 'border-[var(--ds-accent,#F54E00)]/40 bg-[var(--ds-accent,#F54E00)]/5'
-                  : 'border-[var(--border)] hover:border-[var(--fg-faint,#9C9A91)]/30',
+                  ? 'border-2 border-[var(--ds-accent,#F54E00)] bg-[rgba(245,78,0,0.03)]'
+                  : 'border-[rgba(38,37,30,0.08)] hover:border-[rgba(38,37,30,0.15)]',
               )}
             >
               {/* Checkbox */}
@@ -140,7 +144,7 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
                   'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors',
                   isSelected
                     ? 'bg-[var(--ds-accent,#F54E00)] border-[var(--ds-accent,#F54E00)]'
-                    : 'border-[var(--border)]',
+                    : 'border-[rgba(38,37,30,0.25)]',
                 )}
               >
                 {isSelected && (
@@ -171,7 +175,7 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
                   />
                   <span
                     className={cn(
-                      'text-sm font-semibold',
+                      'text-sm font-semibold flex-1',
                       isSelected ? 'text-[var(--fg,#26251E)]' : 'text-[var(--fg-muted,#6B6960)]',
                     )}
                   >
@@ -180,6 +184,15 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
                   {isAdmin && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--rose,#CF2D56)]/10 text-[var(--rose,#CF2D56)]">
                       高危
+                    </span>
+                  )}
+                  {/* 权限计数 */}
+                  {(permCount != null && permTotal != null) && (
+                    <span
+                      className="text-[11px] text-[var(--fg-muted,#9C9A91)]"
+                      style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                    >
+                      {permCount}/{permTotal}
                     </span>
                   )}
                 </div>
@@ -198,14 +211,14 @@ export function UserRoleAssignmentTab({ userId }: UserRoleAssignmentTabProps) {
           <Button
             variant="outline"
             onClick={() => setSelectedRoleIds([...initialRoleIds])}
-            className="flex-1 h-10 rounded-lg text-sm"
+            className="flex-1 h-9 rounded-lg text-sm"
           >
             取消
           </Button>
           <Button
             onClick={() => updateRoles.mutate(selectedRoleIds)}
             disabled={updateRoles.isPending}
-            className="flex-1 h-10 rounded-lg bg-[var(--ds-accent,#F54E00)] hover:bg-[var(--ds-accent-hover,#D94400)] text-white font-medium text-sm"
+            className="flex-1 h-9 rounded-lg bg-[var(--ds-accent,#F54E00)] hover:bg-[var(--ds-accent-hover,#D94400)] text-white font-medium text-sm"
           >
             {updateRoles.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
             保存角色

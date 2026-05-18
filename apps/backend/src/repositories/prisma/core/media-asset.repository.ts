@@ -62,6 +62,8 @@ function mapAsset(a: Record<string, unknown>): AdminMediaAsset {
     // 状态枚举值映射: 仅保留 'active' 和 'archived' 两种状态
     status: (a.status as string) === 'active' ? 'active' : 'archived',
     etag: a.etag as string | null,
+    // 元数据：存储图片分辨率、视频时长等信息（Json 字段，可为 null）
+    metadata: (a.metadata as Record<string, unknown> | null) ?? undefined,
     createdBy: a.createdById as string | null,
     // 日期时间字段转为 ISO 8601 格式字符串
     createdAt: (a.createdAt as Date)?.toISOString() ?? '',
@@ -283,7 +285,7 @@ export function createPrismaMediaAssetRepository(): MediaAssetRepository {
      * Returns:
      * 	AdminMediaAsset: 新创建的媒体资源对象（DTO 格式）
      */
-    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; createdBy: string }) {
+    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; metadata?: Record<string, unknown>; createdBy: string }) {
       const { logger } = ctx
       logger.info({ action: 'create_media_asset', provider: params.provider, objectKey: params.objectKey })
 
@@ -296,6 +298,7 @@ export function createPrismaMediaAssetRepository(): MediaAssetRepository {
           contentType: params.contentType,
           sizeBytes: params.sizeBytes,
           etag: params.etag,
+          metadata: params.metadata ?? undefined,
           createdById: params.createdBy,
           // 新创建的资源默认状态为 active
           status: 'active',

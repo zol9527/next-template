@@ -9,6 +9,8 @@ import { parseApiResponse } from '@/lib/api/parse-response'
 import { AdminArticleListResponseSchema } from '@/contracts/dtos/admin/blog/articles.dto'
 
 // ==================== 辅助函数 ====================
+
+/**
  * 获取各状态文章总数的辅助函数
  */
 async function fetchStatusCount(status?: string): Promise<number> {
@@ -43,7 +45,7 @@ export default function AdminBlogPage() {
 
   // 防抖搜索关键词
   const debouncedKeyword = React.useRef<string>('')
-  const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout>>()
+  const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleKeywordChange = React.useCallback((value: string) => {
     setKeyword(value)
@@ -94,7 +96,10 @@ export default function AdminBlogPage() {
   // ==================== 渲染 ====================
 
   return (
-    <div className="flex h-full animate-in fade-in duration-500">
+    // flex-1 + min-h-0：在父级 flex-col 中填充可用高度
+    // w-full：确保宽度撑满父容器
+    // 负边距抵消 AdminShell main 的 py-6 px-7，实现全出血布局
+    <div className="min-h-0 flex-1 w-full animate-in fade-in duration-500 -mx-7 -my-6">
       <BlogMainLayout
         stats={stats}
         keyword={keyword}

@@ -578,7 +578,7 @@ export function CategoryPanel({ onCategoryChange, selectedCategoryId }: Category
   const isFormSubmitting = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className="flex w-[260px] shrink-0 flex-col border-r">
+    <div className="flex w-[260px] shrink-0 flex-col border-r border-border-default overflow-hidden">
       {/* ---- 顶部标题栏 ---- */}
       <div className="flex items-center justify-between px-3 py-2.5">
         <span className="flex items-center gap-1.5 text-sm font-medium">
@@ -626,9 +626,10 @@ export function CategoryPanel({ onCategoryChange, selectedCategoryId }: Category
             <div
               className={cn(
                 'flex cursor-pointer items-center gap-1.5 rounded-sm py-1.5 px-2 text-sm transition-colors',
-                'hover:bg-accent/5',
-                selectedCategoryId === null && 'border-l-2 border-accent bg-accent/10',
-                selectedCategoryId !== null && 'border-l-2 border-transparent'
+                'hover:bg-ds-accent-subtle',
+                selectedCategoryId === null
+                  ? 'border-l-[3px] border-ds-accent bg-ds-accent-subtle text-ds-accent font-medium'
+                  : 'border-l-[3px] border-transparent text-fg'
               )}
               onClick={() => handleSelect(null)}
               role="button"
@@ -640,9 +641,9 @@ export function CategoryPanel({ onCategoryChange, selectedCategoryId }: Category
                 }
               }}
             >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <FileText className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
               <span className="flex-1 text-sm">全部文章</span>
-              <span className="text-xs text-muted-foreground">{categories.length}</span>
+              <span className="text-xs text-fg-muted">{categories.length}</span>
             </div>
 
             {/* 分类树 */}

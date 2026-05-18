@@ -56,28 +56,28 @@ export function MediaFilterBar({
 
   return (
     <div
-      className="flex items-center gap-2"
+      className="flex items-center"
       style={{
-        padding: 'var(--space-6, 24px) var(--space-7, 28px)',
-        borderTop: '1px solid var(--border)',
+        padding: '0 var(--space-7, 28px)',
+        height: '51px',
         borderBottom: '1px solid var(--border)',
       }}
     >
-      {/* 左侧：分类筛选标签 */}
-      <div className="flex items-center gap-2">
+      {/* 左侧：分类筛选标签 — Paper Design: inactive 白色背景+边框, 3px gap, pill 圆角 */}
+      <div className="flex items-center" style={{ gap: '3px' }}>
         {FILTER_OPTIONS.map((opt) => (
           <button
             key={opt.key}
             onClick={() => onFilterChange(opt.key)}
             className={cn(
-              'text-sm transition-colors cursor-pointer',
+              'text-[13px] transition-colors cursor-pointer',
             )}
             style={{
               padding: '4px 12px',
               borderRadius: 'var(--radius-pill, 9999px)',
-              backgroundColor: activeFilter === opt.key ? 'var(--ds-accent)' : 'transparent',
+              backgroundColor: activeFilter === opt.key ? 'var(--ds-accent)' : 'var(--surface, #ffffff)',
               color: activeFilter === opt.key ? '#ffffff' : 'var(--fg-secondary)',
-              border: activeFilter === opt.key ? '1px solid var(--ds-accent)' : '1px solid var(--border)',
+              border: '1px solid var(--border)',
               fontWeight: 500,
             }}
           >
@@ -89,23 +89,23 @@ export function MediaFilterBar({
       {/* 中间弹性占位 */}
       <div className="flex-1" />
 
-      {/* 中间偏右：统计信息 */}
-      <span className="text-sm" style={{ color: 'var(--fg-muted)' }}>
+      {/* 中间偏右：统计信息 — Paper Design: caption 11px */}
+      <span className="text-[11px]" style={{ color: 'var(--fg-muted)' }}>
         共 {totalCount} 个文件
       </span>
 
-      {/* 右侧：存储空间 */}
+      {/* 右侧：存储空间 — Paper Design: 80px 进度条, 5px 高 */}
       {storageUsage && (
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm" style={{ color: 'var(--fg-secondary)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--fg-muted)' }}>
             已用 {formatStorageBytes(storageUsage.used)} / {formatStorageBytes(storageUsage.total)}
           </span>
           <div
             style={{
-              width: '120px',
-              height: '6px',
+              width: '80px',
+              height: '5px',
               borderRadius: 'var(--radius-pill, 9999px)',
-              backgroundColor: 'var(--border)',
+              backgroundColor: 'var(--bg, #f2f1ed)',
               overflow: 'hidden',
             }}
           >

@@ -45,15 +45,15 @@ function getFileExtension(contentType: string): string {
   return parts[1]?.toUpperCase() || contentType.toUpperCase()
 }
 
-/** 根据文件类型获取图标颜色 */
+/** 根据文件类型获取图标颜色 — 使用设计系统令牌 */
 function getTypeColor(contentType: string): string {
-  if (contentType.startsWith('image/')) return '#f59e0b'  // 橙色 (JPG/PNG)
-  if (contentType.startsWith('video/')) return '#3b82f6'  // 蓝色 (MP4)
-  if (contentType.startsWith('audio/')) return '#8b5cf6'  // 紫色
-  if (contentType.includes('pdf')) return '#ef4444'       // 红色 (PDF)
-  if (contentType.includes('sheet') || contentType.includes('xlsx') || contentType.includes('excel')) return '#22c55e' // 绿色 (XLSX)
-  if (contentType.includes('word') || contentType.includes('doc')) return '#26251e'   // 黑色 (DOC)
-  if (contentType.includes('presentation') || contentType.includes('ppt')) return '#f97316' // 橙色 (PPT)
+  if (contentType.startsWith('image/')) return 'var(--ds-accent, #f54e00)'       // 暖橙 (JPG/PNG)
+  if (contentType.startsWith('video/')) return 'var(--teal, #1f8a65)'            // 青绿 (MP4)
+  if (contentType.startsWith('audio/')) return 'var(--gold, #c08532)'             // 金棕 (MP3)
+  if (contentType.includes('pdf')) return 'var(--rose, #cf2d56)'                  // 玫红 (PDF)
+  if (contentType.includes('sheet') || contentType.includes('xlsx') || contentType.includes('excel')) return 'var(--teal, #1f8a65)' // 青绿 (XLSX)
+  if (contentType.includes('word') || contentType.includes('doc')) return 'var(--fg)'   // 主色 (DOC)
+  if (contentType.includes('presentation') || contentType.includes('ppt')) return 'var(--ds-accent, #f54e00)' // 暖橙 (PPT)
   return 'var(--fg-muted)'
 }
 
@@ -99,6 +99,13 @@ export function MediaGridCard({
   const typeColor = getTypeColor(asset.contentType)
   const FileIcon = getFileIcon(asset.contentType)
 
+  // 解析 CSS 变量为 hex 值用于拼接透明度
+  const typeColorHex = React.useMemo(() => {
+    const cssVar = typeColor
+    if (cssVar.startsWith('var(')) return '' // 运行时无法解析，使用 fallback
+    return cssVar
+  }, [typeColor])
+
   return (
     <div
       className={cn(
@@ -120,7 +127,7 @@ export function MediaGridCard({
         el.style.boxShadow = 'none'
       }}
     >
-      {/* 左上角复选框 */}
+      {/* 左上角复选框 — Paper Design: 20px, 圆角 4px */}
       <div
         className="absolute top-2 left-2 z-10"
         onClick={(e) => e.stopPropagation()}
@@ -131,9 +138,9 @@ export function MediaGridCard({
           style={{
             width: '20px',
             height: '20px',
-            borderRadius: 'var(--radius-sm, 8px)',
-            border: selected ? 'none' : '1.5px solid var(--border-medium)',
-            backgroundColor: selected ? 'var(--ds-accent)' : 'rgba(255,255,255,0.9)',
+            borderRadius: '4px',
+            border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.6)',
+            backgroundColor: selected ? 'var(--ds-accent)' : 'rgba(0,0,0,0.15)',
           }}
         >
           {selected && (
@@ -183,7 +190,7 @@ export function MediaGridCard({
             </div>
           </div>
         ) : (
-          // 文件类型图标
+          // 文件类型图标 — Paper Design: 实色块 + 白色扩展名
           <div className="flex flex-col items-center gap-2">
             <div
               className="flex items-center justify-center"
@@ -191,13 +198,13 @@ export function MediaGridCard({
                 width: '48px',
                 height: '48px',
                 borderRadius: 'var(--radius-md, 12px)',
-                backgroundColor: `${typeColor}15`,
+                backgroundColor: typeColor,
               }}
             >
-              <FileIcon style={{ width: '24px', height: '24px', color: typeColor }} />
+              <FileIcon style={{ width: '24px', height: '24px', color: 'rgba(255,255,255,0.8)' }} />
             </div>
             <span
-              className="text-xs font-medium"
+              className="text-xs font-bold"
               style={{ color: typeColor }}
             >
               {ext}
@@ -205,45 +212,24 @@ export function MediaGridCard({
           </div>
         )}
 
-        {/* Hover 操作覆盖层 */}
-        <div
-          className="absolute inset-0 flex items-center justify-end p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ backgroundColor: 'rgba(0,0,0,0.1)' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onDeleteClick && (
-            <button
-              onClick={() => onDeleteClick(asset.id)}
-              className="flex items-center justify-center"
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: 'var(--radius-sm, 8px)',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              <span style={{ fontSize: '14px', color: 'var(--error)' }}>×</span>
-            </button>
-          )}
-        </div>
+        {/* Paper Design: 网格卡片不显示 hover 删除按钮，操作通过详情面板进行 */}
       </div>
 
-      {/* 底部文件信息区 */}
+      {/* 底部文件信息区 — Paper Design: 10px padding, 12px/500 文件名, 10px meta */}
       <div
-        className="flex flex-col gap-0.5 px-3 py-2"
+        className="flex flex-col gap-0.5 px-3 py-2.5"
         style={{
           borderTop: '1px solid var(--border)',
         }}
       >
         <p
-          className="truncate text-[13px] font-medium"
-          style={{ color: 'var(--fg)' }}
+          className="truncate font-medium"
+          style={{ color: 'var(--fg)', fontSize: '12px' }}
           title={fileName}
         >
           {fileName}
         </p>
-        <p className="text-[11px]" style={{ color: 'var(--fg-muted)' }}>
+        <p style={{ color: 'var(--fg-muted)', fontSize: '10px' }}>
           {formatBytes(asset.sizeBytes)} · {formatDate(asset.createdAt)}
         </p>
       </div>

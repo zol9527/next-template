@@ -7,7 +7,7 @@ import type {
 import type { RepoContext } from '@/types/repo/repo-context'
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/client'
 
-const ASSET_SELECT = 'id,provider,bucket,object_key,url,content_type,size_bytes,status,etag,created_by,created_at,updated_at'
+const ASSET_SELECT = 'id,provider,bucket,object_key,url,content_type,size_bytes,status,etag,metadata,created_by,created_at,updated_at'
 
 function getString(row: Record<string, unknown>, key: string): string | null {
   const value = row[key]
@@ -30,6 +30,8 @@ function mapAsset(row: Record<string, unknown>) {
     sizeBytes: getNumber(row, 'size_bytes') ?? 0,
     status: getString(row, 'status') as 'active' | 'archived',
     etag: getString(row, 'etag'),
+    // 元数据：存储图片分辨率、视频时长等信息（Json 字段，可为 null）
+    metadata: (row.metadata as Record<string, unknown> | null) ?? undefined,
     createdBy: getString(row, 'created_by'),
     createdAt: getString(row, 'created_at')!,
     updatedAt: getString(row, 'updated_at')!,
@@ -216,7 +218,7 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
       return (data ?? []).map((r) => mapAsset(r as unknown as Record<string, unknown>))
     },
 
-    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; createdBy: string }) {
+    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; metadata?: Record<string, unknown>; createdBy: string }) {
       const { logger } = ctx
       logger.info({ action: 'create_media_asset', provider: params.provider, objectKey: params.objectKey })
 
@@ -230,6 +232,7 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
           content_type: params.contentType,
           size_bytes: params.sizeBytes,
           etag: params.etag,
+          metadata: params.metadata ?? undefined,
           created_by: params.createdBy,
           status: 'active',
         })

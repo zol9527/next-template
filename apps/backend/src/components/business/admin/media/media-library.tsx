@@ -171,15 +171,10 @@ export function MediaLibrary() {
   }, [items, typeFilter])
 
   return (
-    <div
-      className="flex flex-col"
-      style={{
-        backgroundColor: 'var(--surface)',
-        borderRadius: 'var(--radius-lg, 16px)',
-        boxShadow: 'var(--shadow-card)',
-      }}
-    >
-      {/* 工具栏 */}
+    // 负边距抵消 AdminShell CardContent 的 py-6 px-7，
+    // 让 MediaLibrary 完全接管自己的布局（与 Paper Design MainCard 对齐）
+    <div className="flex flex-col flex-1 min-h-0 -mx-7 -my-6">
+      {/* 工具栏 — 对应 Paper Design CardHeader 内的面包屑+工具 */}
       <MediaToolbar
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}

@@ -38,12 +38,12 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
-/** 获取文件类型颜色 */
+/** 获取文件类型颜色 — 使用设计系统令牌 */
 function getFileTypeColor(contentType: string): string {
-  if (contentType.startsWith('image/')) return '#f59e0b'
-  if (contentType.startsWith('video/')) return '#3b82f6'
-  if (contentType.startsWith('audio/')) return '#8b5cf6'
-  if (contentType.includes('pdf')) return '#ef4444'
+  if (contentType.startsWith('image/')) return 'var(--ds-accent, #f54e00)'
+  if (contentType.startsWith('video/')) return 'var(--teal, #1f8a65)'
+  if (contentType.startsWith('audio/')) return 'var(--gold, #c08532)'
+  if (contentType.includes('pdf')) return 'var(--rose, #cf2d56)'
   return 'var(--fg-muted)'
 }
 
@@ -172,35 +172,24 @@ export function UploadDialog({
         style={{
           maxWidth: '560px',
           borderRadius: 'var(--radius-lg, 16px)',
-          boxShadow: 'var(--shadow-modal)',
+          boxShadow: '0 2px 6px rgba(38,37,30,0.06), 0 12px 32px rgba(38,37,30,0.08)',
         }}
       >
-        {/* 头部 */}
+        {/* 头部 — Paper Design: 高度 71px, 底部边框, padding 20px 24px */}
         <DialogHeader
-          className="flex flex-row items-center justify-between shrink-0 px-6"
+          className="flex flex-row items-center justify-between shrink-0 !pt-0 px-6"
           style={{
             height: '71px',
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <DialogTitle className="text-lg font-semibold" style={{ color: 'var(--fg)' }}>
+          <DialogTitle style={{ color: 'var(--fg)' }}>
             上传文件
           </DialogTitle>
-          <button
-            onClick={handleClose}
-            className="flex items-center justify-center transition-colors"
-            style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: 'var(--radius-sm, 8px)',
-              color: 'var(--fg-secondary)',
-            }}
-          >
-            <X style={{ width: '18px', height: '18px' }} />
-          </button>
+          {/* 关闭按钮由 DialogContent 的 showCloseButton 默认渲染，此处不重复 */}
         </DialogHeader>
 
-        {/* 拖拽上传区 */}
+        {/* 拖拽上传区 — Paper Design: 背景 surface-alt, 虚线边框 */}
         <div className="px-6 pt-4">
           <div
             className={cn(
@@ -210,7 +199,7 @@ export function UploadDialog({
               height: '192px',
               border: `2px dashed ${isDragOver ? 'var(--ds-accent)' : 'var(--border-medium)'}`,
               borderRadius: 'var(--radius-md, 12px)',
-              backgroundColor: isDragOver ? 'var(--ds-accent-subtle)' : 'transparent',
+              backgroundColor: isDragOver ? 'var(--ds-accent-subtle)' : 'var(--surface-alt, #f7f7f4)',
             }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -229,18 +218,29 @@ export function UploadDialog({
               }}
             />
 
-            <Upload
+            {/* Paper Design: 48px 圆形图标容器, accent-subtle 背景 */}
+            <div
+              className="flex items-center justify-center"
               style={{
                 width: '48px',
                 height: '48px',
-                color: 'var(--ds-accent)',
+                borderRadius: '50%',
+                backgroundColor: 'var(--ds-accent-subtle)',
                 marginBottom: '12px',
               }}
-            />
-            <p className="text-sm font-medium" style={{ color: 'var(--fg)' }}>
+            >
+              <Upload
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  color: 'var(--ds-accent)',
+                }}
+              />
+            </div>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--fg)' }}>
               拖拽文件到此处，或点击上传
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--fg-muted)' }}>
+            <p className="text-[11px] mt-1" style={{ color: 'var(--fg-muted)' }}>
               支持 JPG、PNG、GIF、MP4、PDF、DOCX 等格式，单文件最大 200 MB
             </p>
           </div>
@@ -253,11 +253,13 @@ export function UploadDialog({
               {files.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 px-3"
+                  className="flex items-center gap-3 px-4 py-3"
                   style={{
                     height: '62px',
                     borderRadius: 'var(--radius-sm, 8px)',
-                    backgroundColor: 'var(--surface-alt)',
+                    border: '1px solid var(--border)',
+                    backgroundColor: 'var(--surface)',
+                    opacity: item.status === 'pending' ? 0.6 : 1,
                   }}
                 >
                   {/* 文件图标 */}
@@ -282,14 +284,14 @@ export function UploadDialog({
                       {formatBytes(item.file.size)}
                     </p>
 
-                    {/* 进度条 */}
+                    {/* 进度条 — Paper Design: 4px 高, accent 色 */}
                     {item.status === 'uploading' && (
                       <div className="mt-1">
                         <div
                           style={{
                             height: '4px',
                             borderRadius: 'var(--radius-pill, 9999px)',
-                            backgroundColor: 'var(--border)',
+                            backgroundColor: 'var(--bg, #f2f1ed)',
                             overflow: 'hidden',
                           }}
                         >
@@ -298,12 +300,12 @@ export function UploadDialog({
                               height: '100%',
                               width: `${item.progress}%`,
                               borderRadius: 'var(--radius-pill, 9999px)',
-                              backgroundColor: '#f59e0b',
+                              backgroundColor: 'var(--ds-accent, #f54e00)',
                               transition: 'width 0.3s ease',
                             }}
                           />
                         </div>
-                        <span className="text-xs" style={{ color: '#f59e0b' }}>
+                        <span className="text-[11px] font-mono" style={{ color: 'var(--ds-accent)' }}>
                           {item.progress}%
                         </span>
                       </div>
@@ -322,7 +324,7 @@ export function UploadDialog({
                       <CheckCircle2 style={{ width: '20px', height: '20px', color: 'var(--teal)' }} />
                     )}
                     {item.status === 'uploading' && (
-                      <Loader2 className="animate-spin" style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                      <Loader2 className="animate-spin" style={{ width: '20px', height: '20px', color: 'var(--ds-accent)' }} />
                     )}
                     {item.status === 'pending' && (
                       <div className="flex items-center gap-2">
@@ -344,20 +346,23 @@ export function UploadDialog({
           </div>
         )}
 
-        {/* 底部 */}
+        {/* 底部 — Paper Design: 高度 66px, border-top, 按钮右对齐, 8px gap */}
         <div
-          className="flex items-center justify-end gap-3 px-6 shrink-0"
+          className="flex items-center justify-end px-6 shrink-0"
           style={{
             height: '66px',
             borderTop: '1px solid var(--border)',
+            gap: '8px',
           }}
         >
           <Button
             variant="outline"
             onClick={handleClose}
             disabled={isUploading}
+            className="text-[13px] font-medium"
             style={{
               borderRadius: 'var(--radius-sm, 8px)',
+              padding: '7px 14px',
             }}
           >
             取消
@@ -365,13 +370,14 @@ export function UploadDialog({
           <Button
             onClick={uploadAll}
             disabled={pendingCount === 0 || isUploading}
-            className="text-white"
+            className="text-white text-[13px] font-medium"
             style={{
               backgroundColor: 'var(--ds-accent)',
               borderRadius: 'var(--radius-sm, 8px)',
+              padding: '7px 14px',
             }}
           >
-            {isUploading ? '上传中...' : `全部上传 (${pendingCount})`}
+            {isUploading ? '上传中...' : '全部上传'}
           </Button>
         </div>
       </DialogContent>

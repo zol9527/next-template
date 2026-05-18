@@ -74,6 +74,7 @@ export interface MediaAssetRepository {
     contentType: string
     sizeBytes: number
     etag?: string | null
+    metadata?: Record<string, unknown>
     createdBy: string
   }): Promise<AdminMediaAsset>
 

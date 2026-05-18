@@ -7,7 +7,7 @@
  */
 
 import * as React from 'react'
-import { ImageIcon, Video, FileText, Music, Loader2 } from 'lucide-react'
+import { ImageIcon, Video, FileText, Music, Loader2, MoreHorizontal } from 'lucide-react'
 import type { AdminMediaAsset } from '@/contracts/dtos/admin/media-assets.dto'
 
 /** 格式化文件大小 */
@@ -30,12 +30,13 @@ function getExtension(contentType: string): string {
   return contentType.split('/')[1]?.toUpperCase() || contentType.toUpperCase()
 }
 
-/** 根据文件类型获取图标颜色 */
+/** 根据文件类型获取图标颜色 — 使用设计系统令牌 */
 function getTypeColor(contentType: string): string {
-  if (contentType.startsWith('image/')) return '#f59e0b'
-  if (contentType.startsWith('video/')) return '#3b82f6'
-  if (contentType.startsWith('audio/')) return '#8b5cf6'
-  if (contentType.includes('pdf')) return '#ef4444'
+  if (contentType.startsWith('image/')) return 'var(--ds-accent, #f54e00)'
+  if (contentType.startsWith('video/')) return 'var(--teal, #1f8a65)'
+  if (contentType.startsWith('audio/')) return 'var(--gold, #c08532)'
+  if (contentType.includes('pdf')) return 'var(--rose, #cf2d56)'
+  if (contentType.includes('sheet') || contentType.includes('xlsx') || contentType.includes('excel')) return 'var(--teal, #1f8a65)'
   return 'var(--fg-muted)'
 }
 
@@ -175,21 +176,21 @@ export function MediaListView({
               />
             </div>
 
-            {/* 文件名列 */}
+            {/* 文件名列 — Paper Design: 32px 缩略图 + 文件名 */}
             <div className="flex items-center gap-2.5 min-w-0" style={{ flex: 1 }}>
               <div
                 className="flex items-center justify-center shrink-0"
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: 'var(--radius-sm, 8px)',
-                  backgroundColor: `${typeColor}15`,
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  backgroundColor: typeColor,
                 }}
               >
-                <FileIcon style={{ width: '18px', height: '18px', color: typeColor }} />
+                <FileIcon style={{ width: '16px', height: '16px', color: 'rgba(255,255,255,0.8)' }} />
               </div>
               <span
-                className="text-sm truncate"
+                className="text-[13px] truncate"
                 style={{ color: 'var(--fg)', fontWeight: 500 }}
                 title={fileName}
               >
@@ -197,14 +198,13 @@ export function MediaListView({
               </span>
             </div>
 
-            {/* 类型列 */}
+            {/* 类型列 — Paper Design: 状态药丸 */}
             <div style={{ width: '80px', paddingRight: '8px' }}>
               <span
-                className="inline-block text-xs font-medium"
+                className="inline-flex items-center text-[11.5px] font-medium"
                 style={{
                   padding: '2px 8px',
                   borderRadius: 'var(--radius-pill, 9999px)',
-                  backgroundColor: `${typeColor}15`,
                   color: typeColor,
                 }}
               >
@@ -212,33 +212,36 @@ export function MediaListView({
               </span>
             </div>
 
-            {/* 大小列 */}
+            {/* 大小列 — Paper Design: mono 字体 */}
             <div
-              className="text-sm"
-              style={{ width: '90px', paddingRight: '8px', color: 'var(--fg-secondary)' }}
+              style={{ width: '90px', paddingRight: '8px', color: 'var(--fg-secondary)', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}
             >
               {formatBytes(asset.sizeBytes)}
             </div>
 
-            {/* 上传时间列 */}
+            {/* 上传时间列 — Paper Design: 12px, fg-muted */}
             <div
-              className="text-sm"
-              style={{ width: '110px', paddingRight: '8px', color: 'var(--fg-secondary)' }}
+              style={{ width: '110px', paddingRight: '8px', color: 'var(--fg-muted)', fontSize: '12px' }}
             >
               {formatDate(asset.createdAt)}
             </div>
 
-            {/* 操作列 */}
+            {/* 操作列 — Paper Design: MoreHorizontal 三点图标 */}
             <div style={{ width: '50px', paddingRight: '8px' }}>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  onDeleteClick(asset.id)
+                  onDetailClick(asset.id)
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-sm"
-                style={{ color: 'var(--error)' }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  color: 'var(--fg-muted)',
+                }}
               >
-                删除
+                <MoreHorizontal style={{ width: '16px', height: '16px' }} />
               </button>
             </div>
           </div>

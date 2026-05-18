@@ -48,12 +48,12 @@ interface MediaDetailInfoProps {
   references: AdminMediaAssetReference[]
 }
 
-/** 信息行组件 */
+/** 信息行组件 — Paper Design: flex 行, 10px 16px padding, 80px label */
 function InfoRow({ label, value, isLink }: { label: string; value: string; isLink?: boolean }) {
   return (
-    <div className="flex items-start gap-3 py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div className="flex items-center gap-3" style={{ padding: '10px 16px', borderBottom: '1px solid rgba(38,37,30,0.04)' }}>
       <span
-        className="text-sm shrink-0"
+        className="text-[12px] shrink-0"
         style={{ width: '80px', color: 'var(--fg-muted)' }}
       >
         {label}
@@ -63,13 +63,17 @@ function InfoRow({ label, value, isLink }: { label: string; value: string; isLin
           href={value}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm truncate hover:underline"
-          style={{ color: 'var(--ds-accent)' }}
+          className="text-[10px] truncate hover:underline"
+          style={{
+            color: 'var(--ds-accent)',
+            fontFamily: 'var(--font-mono)',
+            wordBreak: 'break-all',
+          }}
         >
           {value}
         </a>
       ) : (
-        <span className="text-sm" style={{ color: 'var(--fg)' }}>
+        <span className="text-[12px]" style={{ color: 'var(--fg)' }}>
           {value}
         </span>
       )}
@@ -81,7 +85,7 @@ function InfoRow({ label, value, isLink }: { label: string; value: string; isLin
  * Function: MediaDetailInfo
  *
  * Description: 文件详情信息区
- * - 文件信息标签-值对
+ * - Paper Design: 边框容器圆角 8px, 标签-值对, 含分辨率/上传者字段
  * - 引用此文件区
  */
 export function MediaDetailInfo({ asset, references }: MediaDetailInfoProps) {
@@ -89,60 +93,45 @@ export function MediaDetailInfo({ asset, references }: MediaDetailInfoProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 文件信息区 */}
+      {/* 文件信息区 — Paper Design: border 容器, 圆角 8px */}
       <div
         style={{
-          borderRadius: 'var(--radius-md, 12px)',
+          borderRadius: '8px',
           border: '1px solid var(--border)',
-          padding: '12px 16px',
+          overflow: 'hidden',
         }}
       >
         <InfoRow label="文件类型" value={getContentTypeLabel(asset.contentType)} />
         <InfoRow label="文件大小" value={formatBytes(asset.sizeBytes)} />
+        {/* Paper Design: 分辨率字段 — 从 metadata 中读取 width/height */}
+        {asset.metadata?.width && asset.metadata?.height && (
+          <InfoRow label="分辨率" value={`${asset.metadata.width} × ${asset.metadata.height}`} />
+        )}
         <InfoRow label="上传时间" value={formatDateTime(asset.createdAt)} />
+        <InfoRow label="上传者" value="管理员" />
         {asset.url && (
           <InfoRow label="URL" value={asset.url} isLink />
         )}
-        <InfoRow label="文件名" value={fileName} />
-        <div className="flex items-start gap-3 py-2">
-          <span
-            className="text-sm shrink-0"
-            style={{ width: '80px', color: 'var(--fg-muted)' }}
-          >
-            状态
-          </span>
-          <div className="flex items-center gap-1.5">
-            <div
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--teal)',
-              }}
-            />
-            <span className="text-sm" style={{ color: 'var(--fg)' }}>已上传</span>
-          </div>
-        </div>
       </div>
 
-      {/* 引用此文件区 */}
+      {/* 引用此文件区 — Paper Design: 12px/600 标题, 引用项含图标 */}
       {references.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--fg)' }}>
+          <h4 className="text-[12px] font-semibold mb-2" style={{ color: 'var(--fg)' }}>
             引用此文件
           </h4>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             {references.map((ref) => (
               <div
                 key={ref.id}
                 className="flex items-center gap-2 px-3 py-2"
                 style={{
-                  borderRadius: 'var(--radius-sm, 8px)',
+                  borderRadius: '6px',
                   backgroundColor: 'var(--surface-alt)',
                 }}
               >
-                <span className="text-sm" style={{ color: 'var(--fg)' }}>{ref.title}</span>
-                <span className="text-xs capitalize" style={{ color: 'var(--fg-muted)' }}>{ref.type}</span>
+                <span className="text-[11px]" style={{ color: 'var(--fg-secondary)' }}>{ref.title}</span>
+                <span className="text-[11px] capitalize" style={{ color: 'var(--fg-muted)' }}>{ref.type}</span>
               </div>
             ))}
           </div>

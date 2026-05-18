@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Search, Package, CheckCircle, AlertCircle, Star, TrendingUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
-import { AdminProductForm } from "@/components/business/admin/product/admin-product-form";
 import { AdminProductList } from "@/components/business/admin/product/admin-product-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { AdminCategory } from "@/plugins/ecommerce/contracts/admin-categories.dto";
 import type { ApiResponse } from "@/contracts/api-response.schema";
 import type { AdminProductStats } from "@/plugins/ecommerce/contracts/admin-products.dto";
 import { AdminProductStatsSchema } from "@/plugins/ecommerce/contracts/admin-products.dto";
-import { Separator } from "@/components/ui/separator";
 import { useQueryClient } from "@tanstack/react-query";
 import { ShopMainCard } from "@/components/business/admin/shop/shop-main-card";
 import { ShopSearchInput } from "@/components/business/admin/shop/shop-search-input";
@@ -32,13 +32,14 @@ import { ShopStatusFilter, type FilterItem } from "@/components/business/admin/s
  *
  * Description: 后台商品管理页面：使用 ShopMainCard 统一容器 + Tab 导航。
  * 支持关键词搜索、状态/类型/分类筛选。使用 TanStack Query 管理数据获取。
+ * 点击"添加商品"跳转到独立创建页面；点击商品项跳转到独立编辑页面。
  *
  * 设计规范:
  *   - TabBar 右侧: 搜索框 (220px) + 「添加商品」按钮 (橙色实心)
  *   - 内容区:
  *     1. 状态筛选行: 全部 | 上架中 | 低库存 | 草稿 | 已下架
  *     2. 右侧辅助筛选: 「全部分类」下拉 + 「按销量」下拉
- *     3. 商品列表（保留原有 AdminProductList 组件）
+ *     3. 商品列表
  *
  * Parameters:
  *
@@ -46,9 +47,8 @@ import { ShopStatusFilter, type FilterItem } from "@/components/business/admin/s
  * 	element(React.ReactElement): 商品管理页面
  */
 export function AdminProductsClient() {
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeProductId, setActiveProductId] = React.useState<string | null>(null);
-  const [mode, setMode] = React.useState<"idle" | "create" | "edit" | "view">("idle");
 
   // 筛选状态
   const [keyword, setKeyword] = React.useState("");
@@ -104,10 +104,6 @@ export function AdminProductsClient() {
     staleTime: 60 * 1000,
   });
 
-  function refreshList() {
-    queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
-  }
-
   /**
    * 状态筛选项配置
    * 与 Paper Design 规范对齐：全部 | 上架中 | 低库存 | 草稿 | 已下架
@@ -133,10 +129,7 @@ export function AdminProductsClient() {
           <Button
             type="button"
             className="gap-2 shadow-lg shadow-primary/20"
-            onClick={() => {
-              setActiveProductId(null);
-              setMode("create");
-            }}
+            onClick={() => router.push('/admin/products/create')}
           >
             <Plus className="h-4 w-4" />
             添加商品
@@ -236,31 +229,12 @@ export function AdminProductsClient() {
       <AdminProductList
         filters={filters}
         onSelect={(productId) => {
-          setActiveProductId(productId);
-          setMode("edit");
+          router.push(`/admin/products/${productId}/edit`)
         }}
         onView={(productId) => {
-          setActiveProductId(productId);
-          setMode("view");
+          router.push(`/admin/products/${productId}/edit`)
         }}
       />
-
-      {/* 新建/编辑表单弹窗 */}
-      {mode !== "idle" && (
-        <AdminProductForm
-          productId={activeProductId}
-          mode={mode}
-          onSaved={() => {
-            refreshList();
-            setMode("idle");
-            setActiveProductId(null);
-          }}
-          onCancel={() => {
-            setMode("idle");
-            setActiveProductId(null);
-          }}
-        />
-      )}
     </ShopMainCard>
   );
 }

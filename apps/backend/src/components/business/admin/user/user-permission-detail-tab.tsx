@@ -2,7 +2,19 @@
 
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Shield, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import {
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Users,
+  GraduationCap,
+  BookOpen,
+  Wallet,
+  ShoppingCart,
+  Settings,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ScopeEntry } from '@/contracts/dtos/admin/rbac/permissions.dto'
 
@@ -10,13 +22,52 @@ import type { ScopeEntry } from '@/contracts/dtos/admin/rbac/permissions.dto'
  * 用户详情 — 权限详情 Tab
  *
  * Tab3: 权限详情
- * - 继承横幅: 盾牌图标 + "通过「角色名」角色继承全部权限" + "共 X 项权限 · Y 个模块"
- * - 手风琴模块列表: 图标 + 模块名 + "X/Y" 计数 + 展开箭头
+ * - 继承横幅: 图标容器 + "通过「角色名」角色继承全部权限" + "共 X 项权限 · Y 个模块"
+ * - 手风琴模块列表: 图标色块 + 模块名 + "X / Y" 计数 + 展开箭头
  * - 展开内容: 绿色圆点(已授权) + 中文名 + 英文 code (JetBrains Mono)
  */
 
 interface UserPermissionDetailTabProps {
   userId: string
+}
+
+// 模块配置 — 根据 scope 名称匹配对应模块图标和颜色
+const MODULE_CONFIG: Record<string, { icon: LucideIcon; bg: string; color: string }> = {
+  // 用户管理
+  'admin.users': { icon: Users, bg: 'rgba(245,78,0,0.08)', color: '#F54E00' },
+  'users': { icon: Users, bg: 'rgba(245,78,0,0.08)', color: '#F54E00' },
+  // 学员管理
+  'admin.students': { icon: GraduationCap, bg: 'rgba(31,138,101,0.10)', color: '#1F8A65' },
+  'students': { icon: GraduationCap, bg: 'rgba(31,138,101,0.10)', color: '#1F8A65' },
+  // 课程管理
+  'admin.courses': { icon: BookOpen, bg: 'rgba(192,133,50,0.10)', color: '#C08532' },
+  'courses': { icon: BookOpen, bg: 'rgba(192,133,50,0.10)', color: '#C08532' },
+  // 财务管理
+  'admin.finance': { icon: Wallet, bg: 'rgba(139,111,71,0.10)', color: '#8B6F47' },
+  'finance': { icon: Wallet, bg: 'rgba(139,111,71,0.10)', color: '#8B6F47' },
+  'admin.orders': { icon: Wallet, bg: 'rgba(139,111,71,0.10)', color: '#8B6F47' },
+  'orders': { icon: Wallet, bg: 'rgba(139,111,71,0.10)', color: '#8B6F47' },
+  // 电商管理
+  'admin.shop': { icon: ShoppingCart, bg: 'rgba(223,168,143,0.12)', color: '#DFA88F' },
+  'shop': { icon: ShoppingCart, bg: 'rgba(223,168,143,0.12)', color: '#DFA88F' },
+  'admin.products': { icon: ShoppingCart, bg: 'rgba(223,168,143,0.12)', color: '#DFA88F' },
+  'products': { icon: ShoppingCart, bg: 'rgba(223,168,143,0.12)', color: '#DFA88F' },
+  // 系统配置
+  'admin.system': { icon: Settings, bg: 'rgba(207,45,86,0.08)', color: '#CF2D56' },
+  'system': { icon: Settings, bg: 'rgba(207,45,86,0.08)', color: '#CF2D56' },
+  'admin.rbac': { icon: Settings, bg: 'rgba(207,45,86,0.08)', color: '#CF2D56' },
+  'rbac': { icon: Settings, bg: 'rgba(207,45,86,0.08)', color: '#CF2D56' },
+}
+
+// 获取模块配置，未匹配时使用默认
+function getModuleConfig(scope: string) {
+  // 精确匹配
+  if (MODULE_CONFIG[scope]) return MODULE_CONFIG[scope]
+  // 模糊匹配：scope 包含关键词
+  const key = Object.keys(MODULE_CONFIG).find((k) => scope.includes(k.replace('admin.', '')))
+  if (key) return MODULE_CONFIG[key]
+  // 默认：灰色 Shield
+  return { icon: Shield, bg: 'rgba(38,37,30,0.06)', color: '#9C9A91' }
 }
 
 export function UserPermissionDetailTab({ userId }: UserPermissionDetailTabProps) {
@@ -131,16 +182,19 @@ export function UserPermissionDetailTab({ userId }: UserPermissionDetailTabProps
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 继承横幅 */}
-      <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-[var(--teal,#1F8A65)]/5 border border-[var(--teal,#1F8A65)]/20">
-        <Shield className="h-4 w-4 text-[var(--teal,#1F8A65)] shrink-0 mt-0.5" />
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-[var(--teal,#1F8A65)]">
+      {/* 继承横幅 — surface-alt 背景，水平布局 */}
+      <div className="flex items-center gap-3 py-3 px-3.5 rounded-xl bg-[var(--surface-alt,#F7F7F4)]">
+        {/* 图标容器 */}
+        <div className="w-8 h-8 rounded-lg bg-[rgba(245,78,0,0.08)] flex items-center justify-center shrink-0">
+          <Shield className="h-4 w-4 text-[var(--ds-accent,#F54E00)]" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-medium text-[var(--fg,#26251E)]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
             {roleNames
               ? `通过「${roleNames}」角色继承全部权限`
               : '暂无角色分配'}
           </span>
-          <span className="text-[11px] text-[var(--fg-faint,#9C9A91)]">
+          <span className="text-[11px] text-[var(--fg-muted,#9C9A91)]">
             共 {totalGrants} 项权限 · {totalModules} 个模块
           </span>
         </div>
@@ -171,7 +225,7 @@ export function UserPermissionDetailTab({ userId }: UserPermissionDetailTabProps
 
 /**
  * Scope 手风琴组件
- * - 展开标题: 箭头 + 模块名 + "X/Y" 计数
+ * - 展开标题: 模块图标色块 + 箭头 + 模块名 + "X / Y" 计数
  * - 展开内容: 绿色圆点 + 中文名 + 英文 code (JetBrains Mono)
  */
 function ScopeAccordion({
@@ -186,38 +240,57 @@ function ScopeAccordion({
   totalActions: number
 }) {
   const [expanded, setExpanded] = React.useState(false)
+  const moduleConfig = getModuleConfig(scope)
+  const ModuleIcon = moduleConfig.icon
 
   return (
-    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+    <div className="rounded-[10px] border border-[rgba(38,37,30,0.08)] overflow-hidden">
       {/* 标题行 */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors"
+        className="w-full flex items-center gap-2.5 py-2.5 px-3.5 hover:bg-[var(--surface)] transition-colors"
       >
+        {/* 模块图标色块 */}
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: moduleConfig.bg }}
+        >
+          <ModuleIcon className="h-4 w-4" style={{ color: moduleConfig.color }} />
+        </div>
+
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-[var(--fg-faint,#9C9A91)] shrink-0" />
+          <ChevronDown className="h-[14px] w-[14px] text-[var(--fg-faint,#9C9A91)] shrink-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-[var(--fg-faint,#9C9A91)] shrink-0" />
+          <ChevronRight className="h-[14px] w-[14px] text-[var(--fg-faint,#9C9A91)] shrink-0" />
         )}
-        <span className="text-sm font-medium text-[var(--fg,#26251E)] flex-1 text-left">
+
+        <span className="text-[13px] font-semibold text-[var(--fg,#26251E)] flex-1 text-left" style={{ fontFamily: 'DM Sans, sans-serif' }}>
           {description}
         </span>
-        <span className="text-xs text-[var(--fg-faint,#9C9A91)]">
-          {actions.length}/{totalActions}
+
+        {/* 权限计数 — JetBrains Mono */}
+        <span
+          className="text-[11px] font-medium text-[var(--fg-muted,#9C9A91)]"
+          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+        >
+          {actions.length} / {totalActions}
         </span>
       </button>
 
       {/* 展开内容 */}
       {expanded && (
-        <div className="px-4 pb-3 flex flex-col gap-1.5">
+        <div className="flex flex-col">
           {actions.map((action) => (
-            <div key={action} className="flex items-center gap-2 py-1">
+            <div key={action} className="flex items-center gap-2 py-[7px] pr-3.5 pl-[38px]">
+              {/* 绿色圆点 5px */}
               <div className="w-[5px] h-[5px] rounded-full bg-[var(--teal,#1F8A65)] shrink-0" />
-              <span className="text-xs text-[var(--fg,#26251E)] flex-1">
+              {/* 权限名 */}
+              <span className="text-[12px] text-[var(--fg,#26251E)] flex-1">
                 {action === 'read' ? '读取' : action === 'write' ? '写入' : '执行'}
               </span>
+              {/* 权限代码 — JetBrains Mono */}
               <span
-                className="text-[11px] text-[var(--fg-faint,#9C9A91)]"
+                className="text-[10px] text-[var(--fg-muted,#9C9A91)]"
                 style={{ fontFamily: 'JetBrains Mono, monospace' }}
               >
                 {action}:{scope}

@@ -33,6 +33,21 @@ export const AdminMediaAssetTypeSchema = z
 
 export type AdminMediaAssetType = z.infer<typeof AdminMediaAssetTypeSchema>
 
+/**
+ * 媒体资源元数据 Schema
+ * 用于存储图片分辨率、视频时长等信息
+ */
+export const AdminMediaAssetMetadataSchema = z
+  .object({
+    width: z.number().int().positive().optional().openapi({ description: '图片/视频宽度 (px)' }),
+    height: z.number().int().positive().optional().openapi({ description: '图片/视频高度 (px)' }),
+    duration: z.number().positive().optional().openapi({ description: '视频时长 (秒)' }),
+  })
+  .passthrough()
+  .openapi({ description: '媒体资源元数据（分辨率、时长等）' })
+
+export type AdminMediaAssetMetadata = z.infer<typeof AdminMediaAssetMetadataSchema>
+
 export const AdminMediaAssetSchema = z
   .object({
     id: z.string().uuid().openapi({ description: '媒体 ID' }),
@@ -44,6 +59,7 @@ export const AdminMediaAssetSchema = z
     sizeBytes: z.number().int().openapi({ description: '大小（字节）' }),
     etag: z.string().nullable().openapi({ description: 'ETag（可选）' }),
     status: AdminMediaAssetStatusSchema.openapi({ description: '状态' }),
+    metadata: AdminMediaAssetMetadataSchema.nullable().optional().openapi({ description: '媒体元数据（分辨率、时长等）' }),
     createdBy: z.string().uuid().nullable().optional().openapi({ description: '创建者 ID' }),
     createdAt: z.string().datetime().openapi({ description: '创建时间' }),
     updatedAt: z.string().datetime().openapi({ description: '更新时间' }),
@@ -135,6 +151,7 @@ export const AdminCreateMediaAssetRequestSchema = z
     contentType: z.string().min(1).openapi({ description: 'Content-Type' }),
     sizeBytes: z.number().int().nonnegative().openapi({ description: '大小（字节）' }),
     etag: z.string().nullable().optional().openapi({ description: 'ETag（可选）' }),
+    metadata: AdminMediaAssetMetadataSchema.optional().openapi({ description: '媒体元数据（可选）' }),
   })
   .openapi({ description: '登记媒体资源请求（上传成功后写入元数据）' })
 

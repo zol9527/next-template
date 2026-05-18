@@ -52,14 +52,22 @@ interface BlogMainLayoutProps {
 /**
  * 状态药丸组件
  * 用于标题旁显示各状态的文章计数
+ * 映射到 Badge 的 ColorRole：published → success, draft → warning, archived → neutral
  */
 function StatusPill({ label, count, variant }: {
   label: string
   count: number
   variant: 'published' | 'draft' | 'archived'
 }) {
+  // 将博客状态映射到系统语义色
+  const colorMap: Record<typeof variant, 'success' | 'warning' | 'neutral'> = {
+    published: 'success',
+    draft: 'warning',
+    archived: 'neutral',
+  }
+
   return (
-    <Badge variant={variant} className="gap-1 text-xs font-normal">
+    <Badge variant={colorMap[variant]} className="gap-1 text-xs font-normal">
       {label}
       <span className="font-medium">{count}</span>
     </Badge>
@@ -108,35 +116,37 @@ export function BlogMainLayout({
   )
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-card">
-      {/* ==================== 卡片头部 ==================== */}
-      <div className="flex h-[60px] shrink-0 items-center justify-between border-b px-7">
-        {/* 左侧：标题 + 状态药丸 */}
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">博客管理</h2>
+    // 不使用独立卡片壳 — 已在 AdminShell 的白色卡片内
+    // h-full w-full 撑满父容器的宽高，flex-col 让工具栏固定、双栏自适应
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* ==================== 工具栏：状态药丸 + 搜索 + 写文章 ==================== */}
+      {/* 不重复"博客管理"标题 — AdminShell 的 CardHeader 已显示页面标题 */}
+      <div className="flex shrink-0 items-center justify-between border-b border-border-default px-7 py-3">
+        {/* 左侧：状态药丸 */}
+        <div className="flex items-center gap-1.5">
           {stats && (
-            <div className="flex items-center gap-1.5">
+            <>
               <StatusPill label="已发布" count={stats.publishedCount} variant="published" />
               <StatusPill label="草稿" count={stats.draftCount} variant="draft" />
               <StatusPill label="归档" count={stats.archivedCount} variant="archived" />
-            </div>
+            </>
           )}
         </div>
 
         {/* 右侧：搜索框 + 写文章按钮 */}
         <div className="flex items-center gap-3">
-          {/* 搜索框：pill 圆角样式 */}
+          {/* 搜索框：pill 圆角，匹配设计规范 */}
           <div className="relative w-60">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" strokeWidth={2} />
             <Input
               placeholder="搜索文章标题..."
               value={keyword}
               onChange={(e) => onKeywordChange(e.target.value)}
-              className="h-9 rounded-full border-border/30 bg-muted/5 pl-9 text-sm shadow-none"
+              className="h-9 rounded-full border-border-default/30 bg-bg/50 pl-9 text-sm shadow-none"
             />
           </div>
 
-          {/* 写文章按钮 */}
+          {/* 写文章按钮：主色 accent，匹配设计规范 */}
           <Button
             type="button"
             className="gap-2 shadow-lg shadow-primary/20"
@@ -148,8 +158,8 @@ export function BlogMainLayout({
         </div>
       </div>
 
-      {/* ==================== 卡片内容区：双栏布局 ==================== */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* ==================== 双栏布局：分类面板 + 文章面板 ==================== */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* 左栏：分类管理面板 */}
         <CategoryPanel
           onCategoryChange={onCategoryChange}
