@@ -33,22 +33,22 @@ async function safeFetch<T>(url: string): Promise<T | null> {
  *
  * Description: 获取 Dashboard 所有数据（Server Component 端）
  *
- * 数据来源策略:
- *   1. systemStatus → GET /api/v1/admin/dashboard/system-stats（已有）
- *   2. transactionData → GET /api/v1/admin/dashboard/stats（已有，依赖 ecommerce 插件）
- *   3. 其余数据（KPI、活动、趋势、分布）→ 临时 mock，后续新增 API 端点
- *
- * TODO(bd): 新增以下 API 端点
- *   - GET /api/v1/admin/dashboard/kpi
- *   - GET /api/v1/admin/dashboard/activities
- *   - GET /api/v1/admin/dashboard/student-trend
- *   - GET /api/v1/admin/dashboard/course-distribution
+ * 数据来源:
+ *   1. systemStatus → GET /api/v1/admin/dashboard/system-stats
+ *   2. transactionData → GET /api/v1/admin/dashboard/stats（依赖 ecommerce 插件）
+ *   3. KPI + 活动 + 趋势 + 分布 → GET /api/v1/admin/dashboard/overview（聚合 API）
  */
 async function getDashboardData(): Promise<DashboardData> {
-  // 并行请求已有 API
-  const [systemStats, dashboardStats] = await Promise.all([
+  // 并行请求 3 个 API
+  const [systemStats, dashboardStats, overview] = await Promise.all([
     safeFetch<Record<string, any>>(`${API_BASE}/system-stats`),
     safeFetch<Record<string, any>>(`${API_BASE}/stats`),
+    safeFetch<{
+      kpiItems: KpiItem[]
+      activities: ActivityItem[]
+      studentTrend: TrendDataPoint[]
+      courseDistribution: DistributionItem[]
+    }>(`${API_BASE}/overview`),
   ])
 
   // 映射 systemStatus — 从 system-stats API 响应中提取
@@ -75,7 +75,7 @@ async function getDashboardData(): Promise<DashboardData> {
   const transactionData = {
     todayAmount: dashboardStats?.dailyRevenue ?? 0,
     pendingOrders: dashboardStats?.totalOrders ?? 0,
-    refunding: 0, // TODO: 需要新增退款统计字段
+    refunding: 0,
     conversionRate: dashboardStats?.successRate
       ? Math.round(dashboardStats.successRate * 10) / 10
       : 0,
@@ -84,11 +84,11 @@ async function getDashboardData(): Promise<DashboardData> {
       : 0,
   }
 
-  // TODO: 以下数据需对接真实 API，当前使用 mock 数据
-  const kpiItems: KpiItem[] = []
-  const activities: ActivityItem[] = []
-  const studentTrend: TrendDataPoint[] = []
-  const courseDistribution: DistributionItem[] = []
+  // 从 overview API 获取 KPI、活动、趋势、分布
+  const kpiItems = overview?.kpiItems ?? []
+  const activities = overview?.activities ?? []
+  const studentTrend = overview?.studentTrend ?? []
+  const courseDistribution = overview?.courseDistribution ?? []
 
   return {
     systemStatus,
