@@ -306,6 +306,7 @@
   --font-display: "Outfit", var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: "DM Sans", var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-body: var(--font-sans);
 
   /* Z-Index — NextAdmin 规范 */
   /* 命名型令牌：业务代码使用 z-dropdown、z-modal 等语义化类名 */
@@ -390,9 +391,11 @@
   .heading-4 {
     font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
     color: var(--fg-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .heading-5 {
@@ -454,10 +457,62 @@
     text-transform: uppercase;
   }
 
+  /* ── 组件专用样式 ── */
+
+  /* 按钮 */
+  .text-button {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  /* 状态药丸 */
+  .text-pill {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-weight: 500;
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+
+  /* 趋势标签 */
+  .text-trend {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  /* 导航项 */
+  .text-nav {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-weight: 500;
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  /* 环形图中心值 / 品牌Logo */
+  .text-display {
+    font-family: "Outfit", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .text-brand {
+    font-family: "Outfit", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
   /* ── 数值型数据 — 等宽数字 ── */
   .text-tabular {
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
   }
 }
 

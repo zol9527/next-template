@@ -1,5 +1,6 @@
 'use client'
 
+/** @deprecated 使用 MediaLibrary 替代。此组件将在后续版本中移除。 */
 /**
  * File: admin-media-uploader.tsx
  * Description: 媒体资产管理主页面，双列布局（左侧上传 + 右侧列表）
