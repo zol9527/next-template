@@ -4,6 +4,7 @@ import type { UserRepository } from '@/repositories/interfaces/core/user.interfa
 import type { SessionRepository } from '@/repositories/interfaces/core/session.interface'
 import type { ServiceContext } from '@/types/service/service-context'
 import type { RepoContext } from '@/types/repo/repo-context'
+import { ConflictError } from '@/lib/errors/app-error'
 
 /**
  * 管理员用户服务错误类
@@ -34,12 +35,14 @@ export function createAdminUserService(
       cursor?: string | null
       keyword?: string
       status?: string
+      role?: string
     }): Promise<{ users: AdminUserListItem[]; total: number; offset: number; limit: number; nextCursor: string | null }> {
       const limit = Math.max(1, Math.min(params?.limit ?? 50, 50))
       const offset = Math.max(0, params?.offset ?? 0)
       const cursor = params?.cursor ?? null
       const keyword = params?.keyword?.trim() || undefined
       const status = params?.status?.trim() || undefined
+      const role = params?.role?.trim() || undefined
 
       // 游标分页优先
       if (cursor) {
@@ -48,6 +51,7 @@ export function createAdminUserService(
           cursor,
           keyword,
           status,
+          role,
         })
 
         return {
@@ -63,6 +67,8 @@ export function createAdminUserService(
             canUpload: u.canUpload,
             lockedUntil: u.lockedUntil,
             createdAt: u.createdAt,
+            lastLoginAt: u.lastLoginAt,
+            lastDevice: u.lastDevice,
           })),
           total: totalCount,
           offset: 0,
@@ -77,6 +83,7 @@ export function createAdminUserService(
         offset,
         keyword,
         status,
+        role,
       })
 
       return {
@@ -92,6 +99,8 @@ export function createAdminUserService(
           canUpload: u.canUpload,
           lockedUntil: u.lockedUntil,
           createdAt: u.createdAt,
+          lastLoginAt: u.lastLoginAt,
+          lastDevice: u.lastDevice,
         })),
         total,
         offset,
@@ -184,6 +193,56 @@ export function createAdminUserService(
 
       await deps.users.updateUploadPermission(repoCtx, { userId, canUpload })
       return { userId, canUpload }
+    },
+
+    /**
+     * 管理员更新用户基本信息
+     * 
+     * 业务规则：
+     * - 管理员不能修改自己的任何信息（IDOR 防护在 route 层已处理）
+     * - 管理员不能修改自己的账户状态
+     * - email 和 phone 修改时需校验唯一性
+     */
+    async updateUser(userId: string, updates: { nickname?: string; email?: string; phone?: string; status?: string }): Promise<SafeAdminUserDetail> {
+      ctx.logger.info({
+        audit: true,
+        actorId: currentUserId ?? 'unknown',
+        action: 'admin.update_user',
+        target: userId,
+        // 审计日志仅记录变更的字段名，避免泄露 PII
+        details: { updatedFields: Object.keys(updates) },
+      }, '管理员更新用户信息')
+
+      const user = await deps.users.getUserAdminById(repoCtx, { userId })
+      if (!user) {
+        throw new AdminUserServiceError('NOT_FOUND', '用户不存在')
+      }
+
+      // 管理员不能修改自己的状态
+      if (currentUserId && userId === currentUserId && updates.status) {
+        throw new AdminUserServiceError('CANNOT_DISABLE_SELF', '管理员不能修改自己的账户状态')
+      }
+
+      // 邮箱唯一性校验：确保新邮箱不被其他用户占用
+      if (updates.email && updates.email !== user.email) {
+        const existingUser = await deps.users.findByEmail(repoCtx, { email: updates.email })
+        if (existingUser && existingUser.id !== userId) {
+          throw new ConflictError('该邮箱已被其他用户使用')
+        }
+      }
+
+      // 手机号唯一性校验：通过 getUserByIdentifier 检查
+      if (updates.phone && updates.phone !== user.phone) {
+        const existingUser = await deps.users.getUserByIdentifier(repoCtx, { identifier: updates.phone })
+        if (existingUser && existingUser.id !== userId) {
+          throw new ConflictError('该手机号已被其他用户使用')
+        }
+      }
+
+      const updated = await deps.users.updateUserAdmin(repoCtx, { userId, ...updates })
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, mfaSecret, mfaBackupCodes, ...safeUser } = updated
+      return safeUser
     },
   }
 }

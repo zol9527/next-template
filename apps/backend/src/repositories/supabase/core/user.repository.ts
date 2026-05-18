@@ -429,18 +429,48 @@ export function createSupabaseUserRepository(): UserRepository {
      * Returns:
      *   void: 无返回值
      */
-    async updateUserPhone(ctx: RepoContext, params: { userId: string; phone: string }) {
-      const { logger } = ctx
-      logger.info({ action: 'update_user_phone', userId: params.userId })
+     async updateUserPhone(ctx: RepoContext, params: { userId: string; phone: string }) {
+       const { logger } = ctx
+       logger.info({ action: 'update_user_phone', userId: params.userId })
 
-      const { error } = await supabase
-        .from('users')
-        .update({
-          phone: params.phone,
-        })
-        .eq('id', params.userId)
+       const { error } = await supabase
+         .from('users')
+         .update({
+           phone: params.phone,
+         })
+         .eq('id', params.userId)
 
-      if (error) throw error
-    },
-  }
-}
+       if (error) throw error
+     },
+
+     async updateUserAdmin(
+       ctx: RepoContext,
+       params: {
+         userId: string
+         nickname?: string
+         email?: string
+         phone?: string
+         status?: string
+       }
+     ) {
+       const { logger } = ctx
+       logger.info({ action: 'update_user_admin', userId: params.userId })
+
+       const data: Record<string, unknown> = {}
+       if (params.nickname !== undefined) data.nickname = params.nickname
+       if (params.email !== undefined) data.email = params.email
+       if (params.phone !== undefined) data.phone = params.phone
+       if (params.status !== undefined) data.status = params.status
+
+       const { data: user, error } = await supabase
+         .from('users')
+         .update(data)
+         .eq('id', params.userId)
+         .select(USER_SELECT)
+         .single()
+
+       if (error) throw error
+       return mapUser(user)
+     },
+   }
+ }
