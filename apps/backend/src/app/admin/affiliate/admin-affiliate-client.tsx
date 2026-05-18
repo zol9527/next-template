@@ -11,7 +11,8 @@ import {
   CommissionSettingsModal,
   CommissionSettingsTrigger,
 } from "@/components/business/admin/promotion/admin-commission-settings-modal";
-import { ShopMainCard } from "@/components/business/admin/shop/shop-main-card";
+import { ShopMainCard, ShopTabBar } from "@/components/business/admin/shop/shop-main-card";
+import { AdminPageHeader } from "@/components/ui/admin-page-header";
 import { ShopSearchInput } from "@/components/business/admin/shop/shop-search-input";
 import { ShopKPICards, type KPICard } from "@/components/business/admin/shop/shop-kpi-cards";
 import { Button } from "@/components/ui/button";
@@ -80,25 +81,28 @@ export function AdminAffiliateClient() {
   ];
 
   return (
-    <ShopMainCard
-      activeTab="affiliate"
-      headerRight={
-        <>
-          <ShopSearchInput
-            value={keyword}
-            onChange={setKeyword}
-            placeholder="搜索推广员..."
-          />
-          <Button
-            variant="outline"
-            className="gap-2 border-border-default rounded-lg h-8 text-body-sm"
-          >
-            <Download className="h-4 w-4" />
-            导出数据
-          </Button>
-        </>
-      }
-    >
+    <>
+      <AdminPageHeader
+        title="商城管理"
+        tabs={<ShopTabBar activeTab="affiliate" />}
+        actions={
+          <>
+            <ShopSearchInput
+              value={keyword}
+              onChange={setKeyword}
+              placeholder="搜索推广员..."
+            />
+            <Button
+              variant="outline"
+              className="gap-2 border-border-default rounded-lg h-8 text-body-sm"
+            >
+              <Download className="h-4 w-4" />
+              导出数据
+            </Button>
+          </>
+        }
+      />
+      <ShopMainCard>
       {/* KPI 卡片行 */}
       <ShopKPICards cards={kpiCards} className="mb-6" />
 
@@ -168,5 +172,6 @@ export function AdminAffiliateClient() {
       {/* 佣金设置按钮（浮在 Tabs 外部） */}
       <CommissionSettingsTrigger onClick={() => setSettingsOpen(true)} />
     </ShopMainCard>
+    </>
   );
 }

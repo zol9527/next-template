@@ -27,7 +27,8 @@ import type { Coupon } from '@/plugins/ecommerce/contracts/coupons.dto'
 import type { ListCouponsResponse } from '@/plugins/ecommerce/contracts/admin-coupons.dto'
 import { ListCouponsResponseSchema } from '@/plugins/ecommerce/contracts/admin-coupons.dto'
 import { cn } from '@/lib/utils'
-import { ShopMainCard } from '@/components/business/admin/shop/shop-main-card'
+import { ShopMainCard, ShopTabBar } from '@/components/business/admin/shop/shop-main-card'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import { ShopSearchInput } from '@/components/business/admin/shop/shop-search-input'
 import { ShopKPICards, type KPICard } from '@/components/business/admin/shop/shop-kpi-cards'
 import { ShopStatusFilter, type FilterItem } from '@/components/business/admin/shop/shop-status-filter'
@@ -136,23 +137,26 @@ export function AdminCouponsClient() {
   ]
 
   return (
-    <ShopMainCard
-      activeTab="coupons"
-      headerRight={
-        <>
-          <ShopSearchInput value={keyword} onChange={setKeyword} placeholder="搜索优惠券名称..." />
-          <Button
-            type="button"
-            className="gap-2 shadow-lg shadow-primary/20"
-            onClick={() => { setActiveCouponId(null); setFormMode('create') }}
-            aria-label="创建新优惠券"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            创建优惠券
-          </Button>
-        </>
-      }
-    >
+    <>
+      <AdminPageHeader
+        title="商城管理"
+        tabs={<ShopTabBar activeTab="coupons" />}
+        actions={
+          <>
+            <ShopSearchInput value={keyword} onChange={setKeyword} placeholder="搜索优惠券名称..." />
+            <Button
+              type="button"
+              className="gap-2 shadow-lg shadow-primary/20"
+              onClick={() => { setActiveCouponId(null); setFormMode('create') }}
+              aria-label="创建新优惠券"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              创建优惠券
+            </Button>
+          </>
+        }
+      />
+      <ShopMainCard>
       {/* KPI 卡片行 */}
       <ShopKPICards cards={kpiCards} className="mb-6" />
 
@@ -267,6 +271,7 @@ export function AdminCouponsClient() {
         />
       )}
     </ShopMainCard>
+    </>
   )
 }
 

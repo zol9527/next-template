@@ -3,7 +3,8 @@
 import * as React from 'react'
 
 import { AdminOrderList } from '@/components/business/admin/order/admin-order-list'
-import { ShopMainCard } from '@/components/business/admin/shop/shop-main-card'
+import { ShopMainCard, ShopTabBar } from '@/components/business/admin/shop/shop-main-card'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import { ShopSearchInput } from '@/components/business/admin/shop/shop-search-input'
 import { ShopStatusFilter, type FilterItem } from '@/components/business/admin/shop/shop-status-filter'
 
@@ -43,16 +44,19 @@ export function AdminOrdersClient() {
   ]
 
   return (
-    <ShopMainCard
-      activeTab="orders"
-      headerRight={
-        <ShopSearchInput
-          value={keyword}
-          onChange={setKeyword}
-          placeholder="搜索订单号..."
-        />
-      }
-    >
+    <>
+      <AdminPageHeader
+        title="商城管理"
+        tabs={<ShopTabBar activeTab="orders" />}
+        actions={
+          <ShopSearchInput
+            value={keyword}
+            onChange={setKeyword}
+            placeholder="搜索订单号..."
+          />
+        }
+      />
+      <ShopMainCard>
       {/* 状态筛选行 */}
       <div className="mb-4">
         <ShopStatusFilter
@@ -65,5 +69,6 @@ export function AdminOrdersClient() {
       {/* 订单列表 */}
       <AdminOrderList refreshKey={refreshKey} />
     </ShopMainCard>
+    </>
   )
 }

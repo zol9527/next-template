@@ -24,7 +24,7 @@ import type { AdminProductStats } from "@/plugins/ecommerce/contracts/admin-prod
 import { AdminProductStatsSchema } from "@/plugins/ecommerce/contracts/admin-products.dto";
 import { useQueryClient } from "@tanstack/react-query";
 import { AdminPageHeader } from "@/components/ui/admin-page-header";
-import { ShopMainCard } from "@/components/business/admin/shop/shop-main-card";
+import { ShopMainCard, ShopTabBar } from "@/components/business/admin/shop/shop-main-card";
 import { ShopSearchInput } from "@/components/business/admin/shop/shop-search-input";
 import { ShopStatusFilter, type FilterItem } from "@/components/business/admin/shop/shop-status-filter";
 
@@ -119,27 +119,28 @@ export function AdminProductsClient() {
 
   return (
     <>
-      <AdminPageHeader title="商城管理" description="管理商品和订单" />
-      <ShopMainCard
-        activeTab="products"
-      headerRight={
-        <>
-          <ShopSearchInput
-            value={keyword}
-            onChange={setKeyword}
-            placeholder="搜索商品名称..."
-          />
-          <Button
-            type="button"
-            className="gap-2 shadow-lg shadow-primary/20"
-            onClick={() => router.push('/admin/products/create')}
-          >
-            <Plus className="h-4 w-4" />
-            添加商品
-          </Button>
-        </>
-      }
-    >
+      <AdminPageHeader
+        title="商城管理"
+        tabs={<ShopTabBar activeTab="products" />}
+        actions={
+          <>
+            <ShopSearchInput
+              value={keyword}
+              onChange={setKeyword}
+              placeholder="搜索商品名称..."
+            />
+            <Button
+              type="button"
+              className="gap-2 shadow-lg shadow-primary/20"
+              onClick={() => router.push('/admin/products/create')}
+            >
+              <Plus className="h-4 w-4" />
+              添加商品
+            </Button>
+          </>
+        }
+      />
+      <ShopMainCard>
       {/* 状态筛选行 */}
       <div className="flex items-center justify-between mb-4">
         <ShopStatusFilter

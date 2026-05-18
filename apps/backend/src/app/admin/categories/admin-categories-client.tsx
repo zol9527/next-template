@@ -6,7 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AdminCategory, AdminCategoryStatus } from '@/plugins/ecommerce/contracts/admin-categories.dto'
 import type { ApiResponse } from '@/contracts/api-response.schema'
 import { cn } from '@/lib/utils'
-import { ShopMainCard } from '@/components/business/admin/shop/shop-main-card'
+import { ShopMainCard, ShopTabBar } from '@/components/business/admin/shop/shop-main-card'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import { ShopSearchInput } from '@/components/business/admin/shop/shop-search-input'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
@@ -143,25 +144,28 @@ export function AdminCategoriesClient() {
   }
 
   return (
-    <ShopMainCard
-      activeTab="categories"
-      headerRight={
-        <>
-          <ShopSearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="搜索分类名称..."
-          />
-          <Button
-            className="gap-2 shadow-lg shadow-primary/20"
-            onClick={() => setCreateSheetOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            添加分类
-          </Button>
-        </>
-      }
-    >
+    <>
+      <AdminPageHeader
+        title="商城管理"
+        tabs={<ShopTabBar activeTab="categories" />}
+        actions={
+          <>
+            <ShopSearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="搜索分类名称..."
+            />
+            <Button
+              className="gap-2 shadow-lg shadow-primary/20"
+              onClick={() => setCreateSheetOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              添加分类
+            </Button>
+          </>
+        }
+      />
+      <ShopMainCard>
       {/* 双栏布局 */}
       <div className="flex gap-6 min-h-0">
         {/* 左栏：分类树面板 */}
@@ -227,5 +231,6 @@ export function AdminCategoriesClient() {
         isSubmitting={createChildMutation.isPending}
       />
     </ShopMainCard>
+    </>
   )
 }

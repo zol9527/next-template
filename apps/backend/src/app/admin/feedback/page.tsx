@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  MessageSquare,
   Search,
   Filter,
   Loader2,
@@ -306,17 +305,8 @@ export default function AdminFeedbackPage() {
 
   return (
     <>
-      <AdminPageHeader title="用户反馈" description="查看和处理用户反馈" />
+      <AdminPageHeader title="反馈管理" description="查看和处理用户反馈" />
       <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <MessageSquare className="h-5 w-5 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">反馈管理</h1>
-        </div>
-      </div>
-
       <div className="space-y-6">
         <AdminFilterBar>
           <div className="relative w-full md:w-96">

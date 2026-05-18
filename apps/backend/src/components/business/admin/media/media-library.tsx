@@ -8,12 +8,16 @@
 import * as React from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 
+import { Search, LayoutGrid, List, Upload } from 'lucide-react'
 import { useAdminMediaAssetsPaginated } from '@/components/context/admin-media-assets-context'
 import { useToast } from '@/components/ui/toast'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { AdminMediaAsset } from '@/contracts/dtos/admin/media-assets.dto'
 import type { AdminMediaAssetType } from '@/contracts/dtos/admin/media-assets.dto'
 import type { StorageUsage } from '@/components/context/admin-media-assets-context'
-import { MediaToolbar, type ViewMode } from './media-toolbar'
+import type { ViewMode } from './media-toolbar'
 import { MediaFilterBar, type TypeFilter } from './media-filter-bar'
 import { MediaGridView } from './media-grid-view'
 import { MediaListView } from './media-list-view'
@@ -170,29 +174,103 @@ export function MediaLibrary() {
     })
   }, [items, typeFilter])
 
-  return (
-    // 负边距抵消 AdminShell CardContent 的 py-6 px-7，
-    // 让 MediaLibrary 完全接管自己的布局（与 Paper Design MainCard 对齐）
-    <div className="flex flex-col flex-1 min-h-0 -mx-7 -my-6">
-      {/* 工具栏 — 对应 Paper Design CardHeader 内的面包屑+工具 */}
-      <MediaToolbar
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        onUploadClick={() => setIsUploadDialogOpen(true)}
-      />
+  // 注入到 AdminShell CardHeader 的操作区：搜索框 + 视图切换 + 上传按钮
+  const headerActions = (
+    <div className="flex items-center shrink-0" style={{ gap: '8px' }}>
+      {/* 搜索框 — pill 圆角, bg 背景 */}
+      <div className="relative" style={{ width: '220px' }}>
+        <Search
+          className="absolute left-2.5 top-1/2 -translate-y-1/2"
+          style={{ width: '16px', height: '16px', color: 'var(--fg-muted)' }}
+        />
+        <Input
+          placeholder="搜索文件..."
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-8 h-[33px] border-0 shadow-none"
+          style={{
+            borderRadius: 'var(--radius-pill, 9999px)',
+            backgroundColor: 'var(--bg, #f2f1ed)',
+            color: 'var(--fg)',
+            fontSize: '12px',
+          }}
+        />
+      </div>
 
-      {/* 筛选栏 */}
-      <MediaFilterBar
-        activeFilter={typeFilter}
-        onFilterChange={handleFilterChange}
-        totalCount={pagination?.totalCount ?? 0}
-        storageUsage={storageUsage}
+      {/* 视图切换 — bg 色底, active 白色+阴影 */}
+      <div
+        className="flex items-center gap-0.5 p-0.5"
+        style={{
+          borderRadius: 'var(--radius-sm, 8px)',
+          backgroundColor: 'var(--bg, #f2f1ed)',
+        }}
+      >
+        <button
+          onClick={() => handleViewModeChange('grid')}
+          className="flex items-center justify-center transition-all"
+          style={{
+            width: '32px',
+            height: '30px',
+            borderRadius: '6px',
+            backgroundColor: viewMode === 'grid' ? 'var(--surface, #ffffff)' : 'transparent',
+            color: viewMode === 'grid' ? 'var(--fg)' : 'var(--fg-muted, #9c9a91)',
+            boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(38,37,30,0.08)' : 'none',
+          }}
+        >
+          <LayoutGrid style={{ width: '18px', height: '18px' }} />
+        </button>
+        <button
+          onClick={() => handleViewModeChange('list')}
+          className="flex items-center justify-center transition-all"
+          style={{
+            width: '32px',
+            height: '30px',
+            borderRadius: '6px',
+            backgroundColor: viewMode === 'list' ? 'var(--surface, #ffffff)' : 'transparent',
+            color: viewMode === 'list' ? 'var(--fg)' : 'var(--fg-muted, #9c9a91)',
+            boxShadow: viewMode === 'list' ? '0 1px 3px rgba(38,37,30,0.08)' : 'none',
+          }}
+        >
+          <List style={{ width: '18px', height: '18px' }} />
+        </button>
+      </div>
+
+      {/* 上传按钮 */}
+      <Button
+        onClick={() => setIsUploadDialogOpen(true)}
+        className="text-white text-sm font-medium flex items-center gap-1.5"
+        style={{
+          backgroundColor: 'var(--ds-accent)',
+          borderRadius: 'var(--radius-sm, 8px)',
+          height: '31px',
+          width: '102px',
+        }}
+      >
+        <Upload style={{ width: '16px', height: '16px' }} />
+        上传文件
+      </Button>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* 通过 context 注入标题、面包屑、操作和筛选栏到 CardHeader */}
+      <AdminPageHeader
+        title="媒体库"
+        breadcrumbs={[{ label: '内容管理' }, { label: '媒体库' }]}
+        actions={headerActions}
+        filterBar={
+          <MediaFilterBar
+            activeFilter={typeFilter}
+            onFilterChange={handleFilterChange}
+            totalCount={pagination?.totalCount ?? 0}
+            storageUsage={storageUsage}
+          />
+        }
       />
 
       {/* 内容区 */}
-      <div className="flex-1" style={{ padding: 'var(--space-6, 24px) var(--space-7, 28px)' }}>
+      <div className="flex-1" style={{ padding: '24px 28px' }}>
         {viewMode === 'grid' ? (
           <MediaGridView
             items={filteredItems}
