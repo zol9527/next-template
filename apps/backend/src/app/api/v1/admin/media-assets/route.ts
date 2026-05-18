@@ -39,17 +39,17 @@ function getQueryObject(req: NextRequest): Record<string, string | string[]> {
  *
  * Description: 获取媒体资产列表
  *
- * Query Parameters (游标分页):
- *   cursor: string - 游标值（可选）
- *   pageSize: number - 每页数量（默认 12，最大 50）
+ * Query Parameters (传统分页，默认):
+ *   page: number - 页码（从 1 开始）
+ *   pageSize: number - 每页数量
  *   status: string - 状态筛选（可选）
  *   provider: string - 提供商筛选（可选）
  *   contentType: string - 内容类型筛选（可选）
  *   sortBy: string - 排序字段（可选，默认 createdAt）
  *   sortOrder: 'asc' | 'desc' - 排序方向（可选，默认 desc）
  *
- * Query Parameters (传统分页，保留向后兼容):
- *   page: number - 页码（从 1 开始）
+ * Query Parameters (游标分页，保留向后兼容):
+ *   cursor: string - 游标值
  *   pageSize: number - 每页数量
  *   ... 其他筛选参数同上
  *
@@ -69,11 +69,11 @@ export const GET = withV1Route({
       storage: getStorageProvider(),
     }, serviceContext)
 
-    // 默认使用游标分页；仅当显式传入 page 时走传统分页（向后兼容）
-    const isPageMode = req.nextUrl.searchParams.has('page')
+    // 判断分页模式：显式传入 cursor 时走游标分页；否则默认传统分页
+    const isCursorMode = req.nextUrl.searchParams.has('cursor')
 
-    if (!isPageMode) {
-      // 游标分页模式（cursor 可不传，表示第一页）
+    if (isCursorMode) {
+      // 游标分页模式（保留向后兼容）
       const data = await service.listMediaAssetsCursor({
         cursor: query.cursor ?? null,
         limit: query.pageSize,
@@ -92,7 +92,7 @@ export const GET = withV1Route({
         totalRecords: data.total,
       }))
     } else {
-      // 传统分页模式（向后兼容）
+      // 传统分页模式（默认）
       const legacyQuery = AdminMediaAssetListQuerySchema.parse(getQueryObject(req))
       const page = legacyQuery.page
       const pageSize = legacyQuery.pageSize
@@ -111,9 +111,12 @@ export const GET = withV1Route({
 
       return createJsonApiResponse(req, ok({
         items: data.items,
-        total: data.total,
-        page,
-        pageSize,
+        pagination: {
+          page,
+          pageSize,
+          totalCount: data.total,
+          totalPages: Math.ceil(data.total / pageSize),
+        },
       }))
     }
   },

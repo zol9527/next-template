@@ -521,5 +521,83 @@ export function createAdminMediaAssetService(
 
       return { id: params.assetId }
     },
+
+    /**
+     * Function: renameMediaAsset
+     *
+     * Description: 重命名指定的媒体资源（更新 objectKey 的文件名部分）
+     *              保留原有的目录前缀，仅替换最后一个 / 之后的文件名部分
+     *
+     * Parameters:
+     * 	params(object): 参数对象
+     * 		assetId(string): 媒体资源 ID
+     * 		name(string): 新文件名
+     *
+     * Returns:
+     * 	AdminMediaAsset: 更新后的媒体资源对象
+     *
+     * Throws:
+     * 	Error(code: 'NOT_FOUND'): 媒体资源不存在
+     * 	Error(code: 'INVALID_INPUT'): 文件名为空或包含非法字符
+     */
+    async renameMediaAsset(params: { assetId: string; name: string }): Promise<AdminMediaAsset> {
+      // 参数校验
+      const nameTrimmed = params.name.trim()
+      if (!nameTrimmed || nameTrimmed.length > 255) {
+        throw makeInvalidInputError('文件名不能为空且不超过 255 个字符')
+      }
+      // 简单安全校验：不允许路径分隔符
+      if (nameTrimmed.includes('/') || nameTrimmed.includes('\\') || nameTrimmed.includes('..')) {
+        throw makeInvalidInputError('文件名包含非法字符')
+      }
+
+      // 查询现有资产
+      const asset = await deps.media.getMediaAssetById(repoCtx, { assetId: params.assetId })
+      if (!asset) throw makeNotFoundError('媒体不存在')
+
+      // 构造新的 objectKey：保留目录前缀，替换文件名
+      const lastSlash = asset.objectKey.lastIndexOf('/')
+      const prefix = lastSlash >= 0 ? asset.objectKey.substring(0, lastSlash + 1) : ''
+      const newObjectKey = `${prefix}${nameTrimmed}`
+
+      // 调用 Repository 更新
+      const updated = await deps.media.updateMediaAsset(repoCtx, {
+        assetId: params.assetId,
+        objectKey: newObjectKey,
+      })
+
+      logger.info({
+        action: 'admin_media.rename',
+        assetId: params.assetId,
+        oldObjectKey: asset.objectKey,
+        newObjectKey,
+      })
+
+      return updated
+    },
+
+    /**
+     * Function: getStorageUsage
+     *
+     * Description: 获取存储空间使用情况统计
+     *              按 contentType 前缀分组统计已用空间，返回总量、配额及各类型占比
+     *
+     * Returns:
+     * 	object: 存储使用情况统计
+     * 		used(number): 已用空间（字节）
+     * 		total(number): 总配额（字节），通过环境变量 STORAGE_LIMIT_BYTES 配置，默认 10 GB
+     * 		breakdown(Record<string, number>): 按类型分组的已用空间（image/video/document/audio）
+     */
+    async getStorageUsage(): Promise<{ used: number; total: number; breakdown: Record<string, number> }> {
+      // 总配额通过环境变量配置，默认 10 GB
+      const totalBytes = parseInt(env.STORAGE_LIMIT_BYTES ?? String(10 * 1024 * 1024 * 1024), 10)
+
+      // 调用 Repository 聚合查询
+      const breakdown = await deps.media.getStorageBreakdown(repoCtx)
+
+      const used = Object.values(breakdown).reduce((sum, bytes) => sum + bytes, 0)
+
+      return { used, total: totalBytes, breakdown }
+    },
   }
 }

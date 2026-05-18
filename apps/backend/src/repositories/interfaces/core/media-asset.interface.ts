@@ -78,6 +78,30 @@ export interface MediaAssetRepository {
   }): Promise<AdminMediaAsset>
 
   /**
+   * Function: updateMediaAsset
+   *
+   * Description: 更新媒体资源记录（部分字段）
+   */
+  updateMediaAsset(ctx: RepoContext, params: {
+    assetId: string
+    objectKey?: string
+    url?: string | null
+    contentType?: string
+    sizeBytes?: number
+    status?: string
+  }): Promise<AdminMediaAsset>
+
+  /**
+   * Function: getStorageBreakdown
+   *
+   * Description: 按 contentType 前缀分组统计存储空间使用量
+   *
+   * Returns:
+   *   Record<string, number>: 按类型分组的字节数（key 为 image/video/document/audio）
+   */
+  getStorageBreakdown(ctx: RepoContext): Promise<Record<string, number>>
+
+  /**
    * Function: deleteMediaAsset
    *
    * Description: 删除指定的媒体资源记录

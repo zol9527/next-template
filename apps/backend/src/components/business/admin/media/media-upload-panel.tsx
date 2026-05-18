@@ -1,5 +1,6 @@
 "use client";
 
+/** @deprecated 使用 UploadDialog 替代。此组件将在后续版本中移除。 */
 /**
  * File: media-upload-panel.tsx
  * Description: 媒体上传面板组件，支持拖拽上传和进度显示

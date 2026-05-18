@@ -240,6 +240,74 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
       return mapAsset(data as unknown as Record<string, unknown>)
     },
 
+    /**
+     * Function: updateMediaAsset
+     *
+     * Description: 更新媒体资源记录（部分字段）
+     */
+    async updateMediaAsset(ctx: RepoContext, params: {
+      assetId: string
+      objectKey?: string
+      url?: string | null
+      contentType?: string
+      sizeBytes?: number
+      status?: string
+    }) {
+      const { logger } = ctx
+      logger.info({ action: 'update_media_asset', assetId: params.assetId })
+
+      // 构建动态更新数据对象，仅包含传入的字段（Supabase 使用 snake_case 列名）
+      const data: Record<string, unknown> = {}
+      if (params.objectKey !== undefined) data.object_key = params.objectKey
+      if (params.url !== undefined) data.url = params.url
+      if (params.contentType !== undefined) data.content_type = params.contentType
+      if (params.sizeBytes !== undefined) data.size_bytes = params.sizeBytes
+      if (params.status !== undefined) data.status = params.status
+
+      const { data: updated, error } = await supabase
+        .from('media_assets')
+        .update(data)
+        .eq('id', params.assetId)
+        .select(ASSET_SELECT)
+        .single()
+
+      if (error) throw error
+      return mapAsset(updated as unknown as Record<string, unknown>)
+    },
+
+    /**
+     * Function: getStorageBreakdown
+     *
+     * Description: 按 contentType 前缀分组统计存储空间使用量
+     */
+    async getStorageBreakdown(ctx: RepoContext): Promise<Record<string, number>> {
+      const { logger } = ctx
+      logger.info({ action: 'get_storage_breakdown' })
+
+      const { data, error } = await supabase
+        .from('media_assets')
+        .select('content_type, size_bytes')
+        .eq('status', 'active')
+
+      if (error) throw error
+
+      const breakdown: Record<string, number> = {}
+      for (const row of data ?? []) {
+        const r = row as unknown as Record<string, unknown>
+        const ct = (r.content_type as string) ?? ''
+        let category: string
+        if (ct.startsWith('image/')) category = 'image'
+        else if (ct.startsWith('video/')) category = 'video'
+        else if (ct.startsWith('audio/')) category = 'audio'
+        else category = 'document'
+
+        const bytes = (r.size_bytes as number) ?? 0
+        breakdown[category] = (breakdown[category] ?? 0) + bytes
+      }
+
+      return breakdown
+    },
+
     async deleteMediaAsset(ctx: RepoContext, params: { assetId: string }) {
       const { logger } = ctx
       logger.info({ action: 'delete_media_asset', assetId: params.assetId })

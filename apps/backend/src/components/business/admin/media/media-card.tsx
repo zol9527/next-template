@@ -1,5 +1,6 @@
 'use client'
 
+/** @deprecated 使用 MediaGridCard 替代。此组件将在后续版本中移除。 */
 /**
  * File: media-card.tsx
  * Description: 媒体卡片组件，显示媒体缩略图和操作按钮
