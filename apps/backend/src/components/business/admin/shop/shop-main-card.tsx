@@ -1,0 +1,201 @@
+'use client'
+
+import * as React from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+
+/**
+ * 商城管理页面 Tab 定义
+ *
+ * 每个 Tab 对应一个路由，通过 router.push() 实现页面切换
+ */
+const SHOP_TABS = [
+  { value: 'products', label: '商品管理', href: '/admin/products' },
+  { value: 'categories', label: '分类管理', href: '/admin/categories' },
+  { value: 'orders', label: '订单管理', href: '/admin/orders' },
+  { value: 'coupons', label: '优惠券', href: '/admin/coupons' },
+  { value: 'affiliate', label: '分销管理', href: '/admin/affiliate' },
+] as const
+
+export type ShopTab = (typeof SHOP_TABS)[number]['value']
+
+interface ShopMainCardProps {
+  /** 当前激活的 Tab */
+  activeTab: ShopTab
+  /** 页面内容区域 */
+  children: React.ReactNode
+  /** TabBar 右侧自定义区域（搜索框、操作按钮等） */
+  headerRight?: React.ReactNode
+  /** 额外的 CSS 类名 */
+  className?: string
+}
+
+/**
+ * Function: ShopMainCard
+ *
+ * Description: 商城管理模块的统一容器组件
+ *
+ * 结构:
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │  TabBar: [商品管理 | 分类管理 | 订单管理 | 优惠券 | 分销管理]  [右侧区域]
+ *   │─────────────────────────────────────────────────────────│
+ *   │  Content Area (由各页面自行渲染)                           │
+ *   │                                                          │
+ *   └─────────────────────────────────────────────────────────┘
+ *
+ * 设计规范:
+ *   - 外壳: 白色卡片，border-radius: 16px (rounded-2xl)
+ *   - 阴影: shadow-md (0 1px 3px + 8px 24px)
+ *   - TabBar: 高度 60px，底部 1px border 分割线
+ *   - Tab 选中: color #F54E00 (text-primary), font-weight 600, 底部 2px 橙色下划线
+ *   - Tab 非选中: color #6B6960 (text-fg-secondary), font-weight 500
+ *   - Tab 间距: padding 8px 16px
+ *   - Tab 分隔: 1px × 20px 竖线 #26251E14
+ *   - Content: padding 24px 28px, flex: 1
+ *
+ * Parameters:
+ *   activeTab(ShopTab): 当前激活的 Tab 标识
+ *   children(React.ReactNode): 内容区域子元素
+ *   headerRight(React.ReactNode): TabBar 右侧自定义内容
+ *   className(string): 额外 CSS 类名
+ *
+ * Returns:
+ *   element(React.ReactElement): 商城管理主卡片容器
+ */
+export function ShopMainCard({
+  activeTab,
+  children,
+  headerRight,
+  className,
+}: ShopMainCardProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+
+  /**
+   * Tab 切换处理
+   *
+   * 通过 router.push() 实现路由跳转（非 SPA 状态切换），
+   * 确保每个 Tab 对应独立的 URL，支持浏览器前进/后退和 SEO
+   */
+  const handleTabClick = React.useCallback(
+    (href: string) => {
+      // 如果当前已经在目标页面，不重复跳转
+      if (pathname !== href) {
+        router.push(href)
+      }
+    },
+    [router, pathname]
+  )
+
+  return (
+    <div
+      className={cn(
+        // 外壳：白色卡片 + 圆角 + 阴影
+        'bg-surface rounded-2xl shadow-md',
+        // flex 布局，让 content 区域撑满
+        'flex flex-col',
+        // 最小高度保证视觉一致性
+        'min-h-0',
+        className
+      )}
+    >
+      {/* TabBar 区域 */}
+      <div
+        className={cn(
+          // 高度 60px
+          'h-[60px]',
+          // 水平布局：左侧 Tabs + 右侧自定义区域
+          'flex items-center justify-between',
+          // 水平内边距
+          'px-7',
+          // 底部分割线
+          'border-b border-border-default'
+        )}
+      >
+        {/* 左侧 Tab 导航 */}
+        <nav className="flex items-center h-full" role="tablist" aria-label="商城管理导航">
+          {SHOP_TABS.map((tab, index) => {
+            const isActive = activeTab === tab.value
+
+            return (
+              <React.Fragment key={tab.value}>
+                {/* Tab 按钮 */}
+                <button
+                  id={`shop-tab-${tab.value}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`shop-panel-${tab.value}`}
+                  onClick={() => handleTabClick(tab.href)}
+                  className={cn(
+                    // 文字样式：text-nav (DM Sans, 13.5px, 500)
+                    'text-nav',
+                    // 间距
+                    'px-4 py-2',
+                    // 相对定位（用于底部下划线指示器）
+                    'relative',
+                    // 过渡动画
+                    'motion-safe:transition-colors motion-safe:duration-150',
+                    // 聚焦样式
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                    // 悬停效果
+                    'hover:text-fg',
+                    // 选中/非选中状态
+                    isActive
+                      ? 'text-primary font-semibold'
+                      : 'text-fg-secondary font-medium'
+                  )}
+                >
+                  {tab.label}
+
+                  {/* 选中态底部下划线指示器 */}
+                  {isActive && (
+                    <span
+                      className={cn(
+                        // 定位在底部
+                        'absolute bottom-0 left-4 right-4',
+                        // 2px 高度橙色下划线
+                        'h-[2px] bg-primary',
+                        // 圆角
+                        'rounded-full'
+                      )}
+                    />
+                  )}
+                </button>
+
+                {/* Tab 之间的竖线分隔符（最后一个 Tab 后不加） */}
+                {index < SHOP_TABS.length - 1 && (
+                  <span
+                    className="w-px h-5 bg-border-default mx-1"
+                    aria-hidden="true"
+                  />
+                )}
+              </React.Fragment>
+            )
+          })}
+        </nav>
+
+        {/* 右侧自定义区域（搜索框、操作按钮等） */}
+        {headerRight && (
+          <div className="flex items-center gap-3">{headerRight}</div>
+        )}
+      </div>
+
+      {/* Content 区域 */}
+      <div
+        id={`shop-panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`shop-tab-${activeTab}`}
+        className={cn(
+          // 内容区内边距
+          'py-6 px-7',
+          // 占满剩余空间
+          'flex-1',
+          // 允许内容滚动
+          'overflow-auto'
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
