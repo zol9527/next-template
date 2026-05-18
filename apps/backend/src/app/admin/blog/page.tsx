@@ -1,315 +1,110 @@
 'use client'
 
 import * as React from 'react'
-import { CheckCircle, FileText, Layers, Plus, Search } from 'lucide-react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 
-import { AdminBlogArticleForm } from '@/components/business/admin/blog/admin-blog-article-form'
-import { AdminBlogArticleList } from '@/components/business/admin/blog/admin-blog-article-list'
-import { AdminFilterBar } from '@/components/ui/admin-filter-bar'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { KpiCard } from '@/components/business/ui/kpi-card'
-import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import type { ApiResponse } from '@/contracts/api-response.schema'
-import {
-  AdminArticleListResponseSchema,
-  type AdminArticleListResponse,
-  type AdminArticleStatus,
-} from '@/contracts/dtos/admin/blog/articles.dto'
-import {
-  AdminBlogCategoryTreeResponseSchema,
-  type AdminBlogCategory,
-} from '@/contracts/dtos/admin/blog/categories.dto'
-import { useDebounce } from '@/hooks/use-debounce'
+import { BlogMainLayout, type BlogStats } from '@/components/business/admin/blog/blog-main-layout'
+import { parseApiResponse } from '@/lib/api/parse-response'
+import { AdminArticleListResponseSchema } from '@/contracts/dtos/admin/blog/articles.dto'
 
-type ArticleFormMode = 'idle' | 'create' | 'edit' | 'view'
-
-type BlogArticleKpiStats = {
-  totalArticles: number
-  publishedCount: number
-  draftCount: number
-  archivedCount: number
-  totalViews: number
-}
-
-async function fetchApiData<T>(url: string, schema?: { safeParse: (input: unknown) => { success: true; data: T } | { success: false } }) {
-  const response = await fetch(url, {
-    credentials: 'include',
-  })
-
-  const json = (await response.json()) as ApiResponse<unknown>
-
-  if (!response.ok) {
-    throw new Error(json.success === false ? json.error.message : response.statusText)
-  }
-
-  if (!json.success) {
-    throw new Error(json.error.message)
-  }
-
-  if (!schema) {
-    return json.data as T
-  }
-
-  const parsed = schema.safeParse(json.data)
-  if (!parsed.success) {
-    throw new Error('响应数据格式不符合预期')
-  }
-
-  return parsed.data
-}
-
-async function fetchArticleListTotalCount(status?: AdminArticleStatus): Promise<number> {
+// ==================== 辅助函数 ====================
+ * 获取各状态文章总数的辅助函数
+ */
+async function fetchStatusCount(status?: string): Promise<number> {
   const params = new URLSearchParams({ limit: '1' })
-
   if (status) {
     params.set('status', status)
   }
-
-  const data = await fetchApiData<AdminArticleListResponse>(
-    `/api/v1/admin/blog/articles?${params.toString()}`,
-    AdminArticleListResponseSchema,
-  )
-
+  const response = await fetch(`/api/v1/admin/blog/articles?${params.toString()}`, { credentials: 'include' })
+  const data = await parseApiResponse<{ totalCount: number }>(response, AdminArticleListResponseSchema)
   return data.totalCount
 }
 
+// ==================== 页面组件 ====================
+
 /**
-Function: AdminBlogArticlesPage
+ * Function: AdminBlogPage
+ *
+ * Description: 博客管理主页。
+ *              采用双栏布局：左侧为分类管理面板，右侧为文章列表面板。
+ *              替代旧版的 KPI 卡片 + 筛选条 + Dialog 弹窗模式。
+ *              文章详情通过右侧抽屉查看，编辑/新建跳转独立路由页面。
+ *
+ * Returns:
+ *   element(React.ReactElement): 博客管理主页
+ */
+export default function AdminBlogPage() {
+  const router = useRouter()
 
-Description: 后台博客文章管理首页，整合 KPI 指标、关键词/状态/分类筛选、文章列表与文章表单弹窗。
-
-Returns:
-	element(React.ReactElement): 博客文章管理页面
-*/
-export default function AdminBlogArticlesPage() {
-  const queryClient = useQueryClient()
-  const [activeArticleId, setActiveArticleId] = React.useState<string | null>(null)
-  const [mode, setMode] = React.useState<ArticleFormMode>('idle')
-
+  // ==================== 状态管理 ====================
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string | null>(null)
   const [keyword, setKeyword] = React.useState('')
-  const [status, setStatus] = React.useState<string>('all')
-  const [categoryId, setCategoryId] = React.useState<string>('all')
 
-  const [statusSelectOpen, setStatusSelectOpen] = React.useState(false)
-  const [categorySelectOpen, setCategorySelectOpen] = React.useState(false)
-  const isSelectingRef = React.useRef(false)
+  // 防抖搜索关键词
+  const debouncedKeyword = React.useRef<string>('')
+  const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout>>()
 
-  const debouncedKeyword = useDebounce(keyword, 500)
+  const handleKeywordChange = React.useCallback((value: string) => {
+    setKeyword(value)
+    // 清除之前的定时器
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    // 300ms 防抖
+    debounceTimerRef.current = setTimeout(() => {
+      debouncedKeyword.current = value
+    }, 300)
+  }, [])
 
-  const filters = React.useMemo(
-    () => ({
-      keyword: debouncedKeyword || undefined,
-      status: status === 'all' ? undefined : status,
-      categoryId: categoryId === 'all' ? undefined : categoryId,
-    }),
-    [categoryId, debouncedKeyword, status],
-  )
+  // ==================== 数据查询 ====================
 
-  const { data: categoriesData } = useQuery<{ items: AdminBlogCategory[] }>({
-    queryKey: ['admin', 'blog-categories'],
-    queryFn: async () => fetchApiData('/api/v1/admin/blog/categories', AdminBlogCategoryTreeResponseSchema),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const { data: stats } = useQuery<BlogArticleKpiStats>({
-    queryKey: ['admin', 'blog-articles', 'kpis'],
+  /** 文章状态统计 */
+  const { data: stats } = useQuery<BlogStats>({
+    queryKey: ['admin', 'blog-articles', 'stats'],
     queryFn: async () => {
-      const [totalArticles, publishedCount, draftCount, archivedCount] = await Promise.all([
-        fetchArticleListTotalCount(),
-        fetchArticleListTotalCount('PUBLISHED'),
-        fetchArticleListTotalCount('DRAFT'),
-        fetchArticleListTotalCount('ARCHIVED'),
+      const [publishedCount, draftCount, archivedCount] = await Promise.all([
+        fetchStatusCount('PUBLISHED'),
+        fetchStatusCount('DRAFT'),
+        fetchStatusCount('ARCHIVED'),
       ])
-
-      return {
-        totalArticles,
-        publishedCount,
-        draftCount,
-        archivedCount,
-        totalViews: 0,
-      }
+      return { publishedCount, draftCount, archivedCount }
     },
-    staleTime: 60 * 1000,
+    staleTime: 60 * 1000, // 统计数据缓存 1 分钟
   })
 
-  const categories = categoriesData?.items ?? []
+  // ==================== 事件处理 ====================
 
-  // 使用 useCallback 稳定化回调引用，防止子组件 columns useMemo 无限重建导致重渲染循环
-  const refreshList = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'blog-articles'] })
-  }, [queryClient])
+  /** 点击"写文章"按钮 → 跳转到写文章页面 */
+  const handleWriteArticle = React.useCallback(() => {
+    router.push('/admin/blog/write')
+  }, [router])
 
-  const handleSelectArticle = React.useCallback((articleId: string) => {
-    setActiveArticleId(articleId)
-    setMode('edit')
+  /** 查看文章详情 → 由 ArticlePanel 内部的 ArticleDetailDrawer 处理 */
+  const handleViewArticle = React.useCallback((_articleId: string) => {
+    // ArticlePanel 内部集成了 ArticleDetailDrawer，无需额外处理
+    // 此回调保留供将来扩展使用（如需要页面级别感知查看事件）
   }, [])
 
-  const handleViewArticle = React.useCallback((articleId: string) => {
-    setActiveArticleId(articleId)
-    setMode('view')
-  }, [])
+  /** 编辑文章 → 跳转到编辑页面 */
+  const handleEditArticle = React.useCallback((articleId: string) => {
+    router.push(`/admin/blog/${articleId}/edit`)
+  }, [router])
 
-  const handleFormSaved = React.useCallback(() => {
-    refreshList()
-    setMode('idle')
-    setActiveArticleId(null)
-  }, [refreshList])
-
-  const handleFormCancel = React.useCallback(() => {
-    setMode('idle')
-    setActiveArticleId(null)
-  }, [])
+  // ==================== 渲染 ====================
 
   return (
-    <div className="flex animate-in fade-in duration-500 flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiCard label="总文章数" value={stats?.totalArticles ?? 0} icon={<FileText className="h-4 w-4" />} />
-        <KpiCard label="已发布数" value={stats?.publishedCount ?? 0} icon={<CheckCircle className="h-4 w-4" />} />
-        <KpiCard label="草稿数" value={stats?.draftCount ?? 0} icon={<FileText className="h-4 w-4" />} />
-        <KpiCard label="总阅读量" value={stats?.totalViews ?? 0} icon={<Layers className="h-4 w-4" />} />
-      </div>
-
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div />
-
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            className="gap-2 shadow-lg shadow-primary/20"
-            onClick={() => {
-              setActiveArticleId(null)
-              setMode('create')
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            新建文章
-          </Button>
-        </div>
-      </div>
-
-      <AdminFilterBar>
-        <div className="relative min-w-60 max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
-          <Input
-            placeholder="搜索文章标题..."
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            className="h-10 border-none bg-muted/5 pl-10 shadow-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Select
-            value={status}
-            onValueChange={(value) => {
-              isSelectingRef.current = true
-              setStatus(value)
-              setStatusSelectOpen(true)
-              setTimeout(() => {
-                isSelectingRef.current = false
-              }, 0)
-            }}
-            open={statusSelectOpen}
-            onOpenChange={(open) => {
-              if (!open && isSelectingRef.current) {
-                return
-              }
-              setStatusSelectOpen(open)
-            }}
-          >
-            <SelectTrigger className="h-10 w-32 border-border/30 bg-muted/20 hover:bg-muted/10 data-[state=open]:bg-muted/10">
-              <SelectValue placeholder="所有状态" />
-            </SelectTrigger>
-            <SelectContent className="border border-border/40 bg-card">
-              <SelectGroup>
-                <SelectLabel>状态</SelectLabel>
-                <Separator className="my-1" />
-                <SelectItem value="all">所有状态</SelectItem>
-                <SelectItem value="DRAFT">草稿</SelectItem>
-                <SelectItem value="PUBLISHED">已发布</SelectItem>
-                <SelectItem value="ARCHIVED">已归档</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={categoryId}
-            onValueChange={(value) => {
-              isSelectingRef.current = true
-              setCategoryId(value)
-              setCategorySelectOpen(true)
-              setTimeout(() => {
-                isSelectingRef.current = false
-              }, 0)
-            }}
-            open={categorySelectOpen}
-            onOpenChange={(open) => {
-              if (!open && isSelectingRef.current) {
-                return
-              }
-              setCategorySelectOpen(open)
-            }}
-          >
-            <SelectTrigger className="h-10 w-40 border-border/30 bg-muted/20 hover:bg-muted/10 data-[state=open]:bg-muted/10">
-              <SelectValue placeholder="所有分类" />
-            </SelectTrigger>
-            <SelectContent className="border border-border/40 bg-card">
-              <SelectGroup>
-                <SelectLabel>分类</SelectLabel>
-                <Separator className="my-1" />
-                <SelectItem value="all">所有分类</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          {(keyword || status !== 'all' || categoryId !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setKeyword('')
-                setStatus('all')
-                setCategoryId('all')
-              }}
-              className="h-10 whitespace-nowrap text-foreground/40 hover:bg-muted/20 hover:text-foreground"
-              style={{ writingMode: 'horizontal-tb' }}
-            >
-              重置
-            </Button>
-          )}
-        </div>
-      </AdminFilterBar>
-
-      <AdminBlogArticleList
-        filters={filters}
-        onSelect={handleSelectArticle}
-        onView={handleViewArticle}
+    <div className="flex h-full animate-in fade-in duration-500">
+      <BlogMainLayout
+        stats={stats}
+        keyword={keyword}
+        onKeywordChange={handleKeywordChange}
+        selectedCategoryId={selectedCategoryId}
+        onCategoryChange={setSelectedCategoryId}
+        onViewArticle={handleViewArticle}
+        onEditArticle={handleEditArticle}
+        onWriteArticle={handleWriteArticle}
       />
-
-      {mode !== 'idle' && (
-        <AdminBlogArticleForm
-          articleId={activeArticleId}
-          mode={mode}
-          onSaved={handleFormSaved}
-          onCancel={handleFormCancel}
-        />
-      )}
     </div>
   )
 }

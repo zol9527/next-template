@@ -36,6 +36,8 @@ export interface SidebarItem {
  *
  * Description: Paper Design 定义的 10 项扁平菜单列表
  * 来源: Paper Design "Dashboard — 数据面板" 侧边栏导航 (FJ6-1)
+ *
+ * Note: "博客分类" 菜单项已移除，分类管理已内嵌到博客管理页面左侧面板
  */
 export const SIDEBAR_ITEMS: SidebarItem[] = [
   { name: '仪表盘', href: '/admin', icon: LayoutGrid, requiredAccess: { action: 'read', scope: 'dashboard' } },

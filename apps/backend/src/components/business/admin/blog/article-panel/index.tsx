@@ -1,14 +1,29 @@
 'use client'
 
+/**
+ * File: index.tsx
+ * Description: 文章面板主组件，整合状态筛选标签组 + 数据表格 + 批量操作
+ * 替代旧版 AdminBlogArticleList 和 AdminBlogArticleColumns，适配新的双栏布局面板
+ *
+ * 功能：
+ *   - 状态筛选标签组（全部 / 已发布 / 草稿 / 已归档），内部管理状态并与外部 filters 合并
+ *   - 游标分页的数据表格
+ *   - 批量操作（批量发布、批量下线、批量删除）
+ *   - 文章详情抽屉（查看、编辑、发布/下线、归档）
+ */
+
 import * as React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getArticleColumns } from './admin-blog-article-columns'
+import { Archive, Eye, FileText, Pencil, Send } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { BatchActionBar } from '@/components/ui/data-table/batch-action-bar'
 import { DataTable } from '@/components/ui/data-table/index'
 import type { PaginationConfig } from '@/components/ui/data-table/pagination'
 import { TableSkeleton } from '@/components/ui/data-table/table-skeleton'
 import { useToast } from '@/components/ui/toast'
-import type { ApiResponse } from '@/contracts/api-response.schema'
+import { cn } from '@/lib/utils'
+import { buildBatchOperationToast } from '@/lib/utils/batch-operation-toast'
+import type { AdminArticle } from '@/contracts/dtos/admin/blog/articles.dto'
 import type {
   AdminArticleListResponse,
   AdminBatchUpdateArticleStatusResponse,
@@ -19,96 +34,102 @@ import {
   AdminBatchUpdateArticleStatusResponseSchema,
   BatchDeleteArticlesResponseSchema,
 } from '@/contracts/dtos/admin/blog/articles.dto'
-import { buildBatchOperationToast } from '@/lib/utils/batch-operation-toast'
+import { parseApiResponse } from '@/lib/api/parse-response'
+import { getArticleColumns } from './article-columns'
+import { ArticleDetailDrawer } from './article-detail-drawer'
 
-interface AdminBlogArticleListProps {
-  onSelect: (articleId: string) => void
-  onView: (articleId: string) => void
-  filters?: {
+// ============================================
+// 类型定义（Type Definitions）
+// ============================================
+
+/** 文章面板组件 props */
+interface ArticlePanelProps {
+  /** 外部筛选条件（关键字、状态、分类 ID） */
+  filters: {
     keyword?: string
     status?: string
     categoryId?: string
   }
+  /** 查看文章详情回调（由父组件处理导航或其他逻辑） */
+  onView: (articleId: string) => void
+  /** 编辑文章回调（由父组件处理跳转到编辑页） */
+  onEdit: (articleId: string) => void
 }
 
-/**
- * Function: parseApiResponse
- *
- * Description: 解析统一 API 响应并使用 Zod 校验 data 字段
- *
- * Parameters:
- *   response(Response): fetch 返回对象
- *   schema(z.ZodType<T>): 用于校验响应数据的 schema
- *
- * Returns:
- *   data(T): 校验通过后的响应数据
- */
-async function parseApiResponse<T>(
-  response: Response,
-  schema?: { safeParse: (input: unknown) => { success: true; data: T } | { success: false } }
-) {
-  const json = (await response.json()) as ApiResponse<unknown>
+/** 状态筛选选项 */
+type StatusFilter = 'all' | 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'
 
-  if (!response.ok) {
-    throw new Error(json.success === false ? json.error.message : response.statusText)
-  }
+/** 状态筛选配置 */
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string; icon: React.ReactNode }[] = [
+  { value: 'all', label: '全部', icon: <FileText className="h-3.5 w-3.5" /> },
+  { value: 'PUBLISHED', label: '已发布', icon: <Send className="h-3.5 w-3.5" /> },
+  { value: 'DRAFT', label: '草稿', icon: <Pencil className="h-3.5 w-3.5" /> },
+  { value: 'ARCHIVED', label: '已归档', icon: <Archive className="h-3.5 w-3.5" /> },
+]
 
-  if (!json.success) {
-    throw new Error(json.error.message)
-  }
-
-  if (!schema) {
-    return json.data as T
-  }
-
-  const parsed = schema.safeParse(json.data)
-  if (!parsed.success) {
-    throw new Error('响应数据格式不符合预期')
-  }
-
-  return parsed.data
-}
+// ============================================
+// 组件实现（Component Implementation）
+// ============================================
 
 /**
- * Function: AdminBlogArticleList
+ * Function: ArticlePanel
  *
- * Description: 管理后台博客文章列表组件，支持游标分页、查看、编辑、发布、下线、归档与批量操作
+ * Description: 文章管理面板主组件，包含：
+ *   1. 状态筛选标签组（全部/已发布/草稿/已归档）
+ *   2. 数据表格（带分页）
+ *   3. 批量操作栏（发布/下线/删除）
+ *   4. 文章详情抽屉
  *
  * Parameters:
- *   onSelect(function): 选择某篇文章进入编辑
- *   onView(function): 选择某篇文章进入查看
- *   filters(object): 列表筛选条件
+ *   filters(object): 外部筛选条件
+ *   onView(function): 查看文章回调
+ *   onEdit(function): 编辑文章回调
  *
  * Returns:
- *   element(React.ReactElement): 文章列表 UI
+ *   element(React.ReactElement): 文章面板 UI
  */
-export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
+export function ArticlePanel(props: ArticlePanelProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
+  // ------------------------------------------
+  // 内部状态：状态筛选、分页游标、选择
+  // ------------------------------------------
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all')
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [currentCursor, setCurrentCursor] = React.useState<string | null>(null)
   const [nextCursor, setNextCursor] = React.useState<string | null>(null)
   const [prevCursors, setPrevCursors] = React.useState<string[]>([])
   const [pageSize, setPageSize] = React.useState(20)
 
-  const handleSelectionChange = React.useCallback((ids: string[]) => {
-    setSelectedIds(ids)
-  }, [])
+  // 详情抽屉状态
+  const [drawerArticleId, setDrawerArticleId] = React.useState<string | null>(null)
+  const [drawerOpen, setDrawerOpen] = React.useState(false)
 
+  // ------------------------------------------
+  // 合并筛选条件：内部状态筛选优先于外部 status
+  // ------------------------------------------
+  const combinedFilters = React.useMemo(() => ({
+    ...props.filters,
+    status: statusFilter === 'all' ? props.filters?.status : statusFilter,
+  }), [props.filters, statusFilter])
+
+  // ------------------------------------------
+  // 数据获取：文章列表（游标分页）
+  // ------------------------------------------
   const { data, isLoading } = useQuery<AdminArticleListResponse>({
-    queryKey: ['admin', 'blog-articles', { filters: props.filters, pageSize, cursor: currentCursor }],
+    queryKey: ['admin', 'blog-articles', { filters: combinedFilters, pageSize, cursor: currentCursor }],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: String(pageSize) })
 
-      if (props.filters?.keyword) {
-        params.set('keyword', props.filters.keyword)
+      if (combinedFilters.keyword) {
+        params.set('keyword', combinedFilters.keyword)
       }
-      if (props.filters?.status) {
-        params.set('status', props.filters.status)
+      if (combinedFilters.status) {
+        params.set('status', combinedFilters.status)
       }
-      if (props.filters?.categoryId) {
-        params.set('categoryId', props.filters.categoryId)
+      if (combinedFilters.categoryId) {
+        params.set('categoryId', combinedFilters.categoryId)
       }
       if (currentCursor) {
         params.set('cursor', currentCursor)
@@ -123,22 +144,26 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     placeholderData: (previousData) => previousData,
   })
 
+  // 更新下一页游标
   React.useEffect(() => {
     setNextCursor(data?.nextCursor ?? null)
   }, [data?.nextCursor])
 
+  // 筛选条件或每页条数变化时重置分页状态
   React.useEffect(() => {
     setSelectedIds([])
     setCurrentCursor(null)
     setNextCursor(null)
     setPrevCursors([])
-  }, [props.filters, pageSize])
+  }, [combinedFilters, pageSize])
 
+  // ------------------------------------------
+  // 分页处理
+  // ------------------------------------------
   const handleNextPage = React.useCallback(() => {
     if (!nextCursor || isLoading) {
       return
     }
-
     setPrevCursors((previous) => [...previous, currentCursor ?? ''])
     setCurrentCursor(nextCursor)
   }, [currentCursor, isLoading, nextCursor])
@@ -147,28 +172,28 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     if (prevCursors.length === 0 || isLoading) {
       return
     }
-
     const previousCursor = prevCursors[prevCursors.length - 1]
     setPrevCursors((previous) => previous.slice(0, -1))
     setCurrentCursor(previousCursor || null)
   }, [isLoading, prevCursors])
 
+  // ------------------------------------------
+  // 操作 mutations
+  // ------------------------------------------
+
+  // 单篇发布
   const publishMutation = useMutation({
     mutationFn: async (articleId: string) => {
       const response = await fetch(`/api/v1/admin/blog/articles/${articleId}/publish`, {
         method: 'POST',
         credentials: 'include',
       })
-
       return parseApiResponse(response)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'blog-articles'] })
-      toast({
-        title: '操作成功',
-        description: '文章已发布',
-        variant: 'default',
-      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'blog-article-detail', drawerArticleId] })
+      toast({ title: '操作成功', description: '文章已发布', variant: 'default' })
     },
     onError: (error) => {
       toast({
@@ -179,22 +204,19 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     },
   })
 
+  // 单篇下线
   const unpublishMutation = useMutation({
     mutationFn: async (articleId: string) => {
       const response = await fetch(`/api/v1/admin/blog/articles/${articleId}/unpublish`, {
         method: 'POST',
         credentials: 'include',
       })
-
       return parseApiResponse(response)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'blog-articles'] })
-      toast({
-        title: '操作成功',
-        description: '文章已下线',
-        variant: 'default',
-      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'blog-article-detail', drawerArticleId] })
+      toast({ title: '操作成功', description: '文章已下线', variant: 'default' })
     },
     onError: (error) => {
       toast({
@@ -205,6 +227,7 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     },
   })
 
+  // 批量更新状态（发布/下线/归档）
   const batchStatusMutation = useMutation({
     mutationFn: async (params: { articleIds: string[]; status: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED' }): Promise<AdminBatchUpdateArticleStatusResponse> => {
       const response = await fetch('/api/v1/admin/blog/articles/batch', {
@@ -213,12 +236,12 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
         credentials: 'include',
         body: JSON.stringify(params),
       })
-
       return parseApiResponse(response, AdminBatchUpdateArticleStatusResponseSchema)
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'blog-articles'] })
 
+      // 多篇文章：使用批量操作 toast
       if (variables.articleIds.length > 1) {
         setSelectedIds([])
         const actionLabelMap = {
@@ -237,6 +260,7 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
         return
       }
 
+      // 单篇文章：使用简单 toast
       const singleActionMap = {
         PUBLISHED: '文章已发布',
         DRAFT: '文章已下线',
@@ -264,6 +288,7 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     },
   })
 
+  // 批量删除
   const batchDeleteMutation = useMutation({
     mutationFn: async (articleIds: string[]): Promise<BatchDeleteArticlesResponse> => {
       const response = await fetch('/api/v1/admin/blog/articles/batch', {
@@ -272,7 +297,6 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
         credentials: 'include',
         body: JSON.stringify({ articleIds }),
       })
-
       return parseApiResponse(response, BatchDeleteArticlesResponseSchema)
     },
     onSuccess: (result) => {
@@ -294,49 +318,91 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     },
   })
 
-  const handleBatchPublish = React.useCallback(() => {
-    if (selectedIds.length === 0) {
-      return
-    }
+  // ------------------------------------------
+  // 事件处理函数
+  // ------------------------------------------
 
+  /** 打开详情抽屉 */
+  const handleView = React.useCallback((articleId: string) => {
+    setDrawerArticleId(articleId)
+    setDrawerOpen(true)
+  }, [])
+
+  /** 编辑文章（通知父组件跳转编辑页） */
+  const handleEdit = React.useCallback((articleId: string) => {
+    // 关闭详情抽屉（如果打开的话）
+    setDrawerOpen(false)
+    props.onEdit(articleId)
+  }, [props])
+
+  /** 发布文章 */
+  const handlePublish = React.useCallback((articleId: string) => {
+    publishMutation.mutate(articleId)
+  }, [publishMutation])
+
+  /** 下线文章 */
+  const handleUnpublish = React.useCallback((articleId: string) => {
+    unpublishMutation.mutate(articleId)
+  }, [unpublishMutation])
+
+  /** 归档文章 */
+  const handleArchive = React.useCallback((articleId: string) => {
+    batchStatusMutation.mutate({ articleIds: [articleId], status: 'ARCHIVED' })
+  }, [batchStatusMutation])
+
+  /** 选择变化回调 */
+  const handleSelectionChange = React.useCallback((ids: string[]) => {
+    setSelectedIds(ids)
+  }, [])
+
+  /** 批量发布 */
+  const handleBatchPublish = React.useCallback(() => {
+    if (selectedIds.length === 0) return
     batchStatusMutation.mutate({ articleIds: selectedIds, status: 'PUBLISHED' })
   }, [batchStatusMutation, selectedIds])
 
+  /** 批量下线 */
   const handleBatchUnpublish = React.useCallback(() => {
-    if (selectedIds.length === 0) {
-      return
-    }
-
+    if (selectedIds.length === 0) return
     batchStatusMutation.mutate({ articleIds: selectedIds, status: 'DRAFT' })
   }, [batchStatusMutation, selectedIds])
 
+  /** 批量删除（需确认） */
   const handleBatchDelete = React.useCallback(() => {
-    if (selectedIds.length === 0) {
-      return
-    }
-
+    if (selectedIds.length === 0) return
     if (!confirm(`确定要删除选中的 ${selectedIds.length} 篇文章吗？此操作不可恢复。`)) {
       return
     }
-
     batchDeleteMutation.mutate(selectedIds)
   }, [batchDeleteMutation, selectedIds])
 
+  /** 清除选择 */
   const handleClearSelection = React.useCallback(() => {
     setSelectedIds([])
   }, [])
 
+  /** 详情抽屉编辑按钮回调 */
+  const handleDrawerEdit = React.useCallback((articleId: string) => {
+    handleEdit(articleId)
+  }, [handleEdit])
+
+  // ------------------------------------------
+  // 生成列定义
+  // ------------------------------------------
   const columns = React.useMemo(
     () => getArticleColumns({
-      onSelect: props.onSelect,
-      onView: props.onView,
-      onPublish: (id) => publishMutation.mutate(id),
-      onUnpublish: (id) => unpublishMutation.mutate(id),
-      onArchive: (id) => batchStatusMutation.mutate({ articleIds: [id], status: 'ARCHIVED' }),
+      onView: handleView,
+      onEdit: handleEdit,
+      onPublish: handlePublish,
+      onUnpublish: handleUnpublish,
+      onArchive: handleArchive,
     }),
-    [batchStatusMutation, props.onSelect, props.onView, publishMutation, unpublishMutation]
+    [handleView, handleEdit, handlePublish, handleUnpublish, handleArchive]
   )
 
+  // ------------------------------------------
+  // 分页配置
+  // ------------------------------------------
   const pagination = React.useMemo<PaginationConfig>(
     () => ({
       nextCursor,
@@ -352,8 +418,42 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
     [data?.items.length, data?.totalCount, handleNextPage, handlePrevPage, isLoading, nextCursor, pageSize, prevCursors]
   )
 
+  // ------------------------------------------
+  // 渲染
+  // ------------------------------------------
   return (
-    <div>
+    <div className="flex-1 py-6 px-7 flex flex-col gap-4">
+      {/* ======================================
+          筛选栏：状态标签组
+          ====================================== */}
+      <div className="flex items-center gap-2">
+        {STATUS_FILTER_OPTIONS.map((option) => {
+          const isActive = statusFilter === option.value
+
+          return (
+            <Button
+              key={option.value}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'gap-1.5 rounded-full px-3 transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                  : 'bg-background border border-border text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setStatusFilter(option.value)}
+            >
+              {option.icon}
+              {option.label}
+            </Button>
+          )
+        })}
+      </div>
+
+      {/* ======================================
+          数据表格 + 批量操作栏
+          ====================================== */}
       <BatchActionBar
         selectedCount={selectedIds.length}
         onPublish={handleBatchPublish}
@@ -368,6 +468,7 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
         }
       />
 
+      {/* 首次加载时显示骨架屏，否则显示数据表格 */}
       {isLoading && !data ? (
         <TableSkeleton rowCount={10} columnCount={8} />
       ) : (
@@ -378,6 +479,16 @@ export function AdminBlogArticleList(props: AdminBlogArticleListProps) {
           onSelectionChange={handleSelectionChange}
         />
       )}
+
+      {/* ======================================
+          文章详情抽屉
+          ====================================== */}
+      <ArticleDetailDrawer
+        articleId={drawerArticleId}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onEdit={handleDrawerEdit}
+      />
     </div>
   )
 }
