@@ -73,7 +73,7 @@ const coreSidebarGroups: SidebarGroupConfig[] = [
     items: [
       { name: '媒体管理', href: '/admin/media', icon: ImageIcon, requiredAccess: { action: 'read', scope: 'media' } },
       { name: '博客文章', href: '/admin/blog', icon: FileText, requiredAccess: { action: 'read', scope: 'blog.articles' } },
-      { name: '博客分类', href: '/admin/blog/categories', icon: Layers, requiredAccess: { action: 'read', scope: 'blog.categories' } },
+      // 博客分类已内嵌到博客管理页面左侧面板，不再需要独立菜单项
     ],
   },
   {
