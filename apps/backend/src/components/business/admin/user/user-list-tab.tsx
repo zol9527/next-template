@@ -2,12 +2,11 @@
 
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, UserX, Search, Plus } from 'lucide-react'
+import { Loader2, UserX } from 'lucide-react'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useToast } from '@/components/ui/toast'
 import { DataTable } from '@/components/ui/data-table/index'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import type { PaginationConfig } from '@/components/ui/data-table/pagination'
 
 import type {
@@ -228,41 +227,6 @@ export function UserListTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 搜索框 + 操作按钮行（参考商城管理内容区布局） */}
-      <div className="flex items-center justify-between">
-        {/* 左侧：总数统计 */}
-        <p className="text-body-sm text-fg-secondary">
-          共 <span className="text-tabular font-medium text-fg">{data?.total ?? 0}</span> 位用户
-        </p>
-
-        {/* 右侧：搜索框 + 添加按钮 */}
-        <div className="flex items-center gap-3">
-          <div className="relative w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-fg-muted" />
-            <input
-              type="text"
-              placeholder="搜索用户..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className={cn(
-                'w-full h-8 pl-9 pr-3',
-                'bg-bg border border-border-default rounded-lg',
-                'text-body-sm text-fg placeholder:text-fg-muted',
-                'focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'transition-colors duration-150'
-              )}
-            />
-          </div>
-          <Button
-            className="gap-1.5 shadow-lg shadow-primary/20"
-            onClick={() => toast({ title: '功能开发中', description: '添加用户功能正在开发中' })}
-          >
-            <Plus className="h-4 w-4" />
-            添加用户
-          </Button>
-        </div>
-      </div>
-
       {/* 状态药丸行 */}
       <div className="flex items-center justify-between">
         <UserStatusPills
@@ -270,7 +234,7 @@ export function UserListTab() {
           activeValue={statusFilter}
           onChange={handleStatusFilterChange}
         />
-        {/* 右侧下拉按钮占位 */}
+        {/* 筛选下拉按钮 */}
         <div className="flex items-center gap-2">
           <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default text-body-sm text-fg-muted hover:bg-white/50 transition-colors">
             全部角色 ▾

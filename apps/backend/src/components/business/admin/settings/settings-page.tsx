@@ -12,6 +12,8 @@
  */
 
 import * as React from 'react'
+import { Save } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { AdminPageHeader } from '@/components/ui/admin-page-header'
 import { AdminPageLayout } from '@/components/ui/admin-page-layout'
 import { SettingsTabBar } from './settings-tab-bar'
@@ -36,7 +38,21 @@ export function SettingsPage() {
 
   return (
     <AdminPageLayout>
-      <AdminPageHeader title="系统配置" description="管理系统设置和配置" />
+      <AdminPageHeader
+        title="系统配置"
+        description="管理系统设置和配置"
+        actions={
+          <div className="flex items-center gap-3">
+            <span className="text-caption text-fg-muted">
+              最后更新: {new Date().toLocaleDateString('zh-CN')}
+            </span>
+            <Button size="sm" className="gap-2">
+              <Save className="size-4" strokeWidth={2} />
+              保存配置
+            </Button>
+          </div>
+        }
+      />
       <SettingsTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="flex-1 min-h-0">

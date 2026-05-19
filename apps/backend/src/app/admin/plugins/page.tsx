@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { MessageCircle, ShoppingBag, TrendingUp, Info } from 'lucide-react'
+import { MessageCircle, ShoppingBag, TrendingUp, Info, Settings } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
@@ -73,7 +73,18 @@ export default function AdminPluginsPage() {
 
   return (
     <>
-      <AdminPageHeader title="插件管理" description="管理系统插件和功能开关" />
+      <AdminPageHeader 
+        title="插件管理" 
+        description="管理系统插件和功能开关"
+        actions={
+          <button
+            className="flex items-center justify-center size-[34px] rounded-lg hover:bg-bg transition-colors duration-150"
+            aria-label="插件设置"
+          >
+            <Settings className="size-4 text-fg-secondary" strokeWidth={2} />
+          </button>
+        }
+      />
       <AdminPageLayout>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plugins?.map((plugin) => {

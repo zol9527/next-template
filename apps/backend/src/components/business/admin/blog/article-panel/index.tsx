@@ -16,6 +16,7 @@ import * as React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, Eye, FileText, Pencil, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { BatchActionBar } from '@/components/ui/data-table/batch-action-bar'
 import { DataTable } from '@/components/ui/data-table/index'
 import type { PaginationConfig } from '@/components/ui/data-table/pagination'
@@ -34,6 +35,7 @@ import {
   AdminBatchUpdateArticleStatusResponseSchema,
   BatchDeleteArticlesResponseSchema,
 } from '@/contracts/dtos/admin/blog/articles.dto'
+import type { BlogStats } from '../blog-main-layout'
 import { parseApiResponse } from '@/lib/api/parse-response'
 import { getArticleColumns } from './article-columns'
 import { ArticleDetailDrawer } from './article-detail-drawer'
@@ -44,6 +46,8 @@ import { ArticleDetailDrawer } from './article-detail-drawer'
 
 /** 文章面板组件 props */
 interface ArticlePanelProps {
+  /** 文章状态统计（用于筛选栏中的状态药丸） */
+  stats?: BlogStats
   /** 外部筛选条件（关键字、状态、分类 ID） */
   filters: {
     keyword?: string
@@ -89,6 +93,7 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string; icon: React.R
  *   element(React.ReactElement): 文章面板 UI
  */
 export function ArticlePanel(props: ArticlePanelProps) {
+  const { stats, filters: externalFilters, onView, onEdit } = props
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -110,9 +115,9 @@ export function ArticlePanel(props: ArticlePanelProps) {
   // 合并筛选条件：内部状态筛选优先于外部 status
   // ------------------------------------------
   const combinedFilters = React.useMemo(() => ({
-    ...props.filters,
-    status: statusFilter === 'all' ? props.filters?.status : statusFilter,
-  }), [props.filters, statusFilter])
+    ...externalFilters,
+    status: statusFilter === 'all' ? externalFilters?.status : statusFilter,
+  }), [externalFilters, statusFilter])
 
   // ------------------------------------------
   // 数据获取：文章列表（游标分页）
@@ -332,8 +337,8 @@ export function ArticlePanel(props: ArticlePanelProps) {
   const handleEdit = React.useCallback((articleId: string) => {
     // 关闭详情抽屉（如果打开的话）
     setDrawerOpen(false)
-    props.onEdit(articleId)
-  }, [props])
+    onEdit(articleId)
+  }, [onEdit])
 
   /** 发布文章 */
   const handlePublish = React.useCallback((articleId: string) => {
@@ -422,33 +427,48 @@ export function ArticlePanel(props: ArticlePanelProps) {
   // 渲染
   // ------------------------------------------
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 py-5 px-6 [&_[data-radix-scroll-area-viewport]]:max-h-none">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 py-5 px-7 [&_[data-radix-scroll-area-viewport]]:max-h-none">
       {/* ======================================
-          筛选栏：状态标签组
+          筛选栏：状态药丸 + 状态筛选标签组
           ====================================== */}
-      <div className="flex items-center gap-2">
-        {STATUS_FILTER_OPTIONS.map((option) => {
-          const isActive = statusFilter === option.value
+      <div className="flex items-center gap-3">
+        {/* 状态统计药丸（由父组件传递的 stats 数据驱动） */}
+        {stats && (
+          <div className="flex items-center gap-1.5">
+            <StatusPill label="已发布" count={stats.publishedCount} variant="published" />
+            <StatusPill label="草稿" count={stats.draftCount} variant="draft" />
+            <StatusPill label="归档" count={stats.archivedCount} variant="archived" />
+          </div>
+        )}
 
-          return (
-            <Button
-              key={option.value}
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition-colors',
-                isActive
-                  ? 'bg-ds-accent text-white hover:bg-ds-accent-hover hover:text-white'
-                  : 'bg-surface border border-border-default text-fg-secondary hover:text-fg'
-              )}
-              onClick={() => setStatusFilter(option.value)}
-            >
-              {option.icon}
-              {option.label}
-            </Button>
-          )
-        })}
+        {/* 分隔线 */}
+        {stats && <div className="h-4 w-px bg-border-default" />}
+
+        {/* 状态筛选标签组 */}
+        <div className="flex items-center gap-2">
+          {STATUS_FILTER_OPTIONS.map((option) => {
+            const isActive = statusFilter === option.value
+
+            return (
+              <Button
+                key={option.value}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition-colors',
+                  isActive
+                    ? 'bg-ds-accent text-white hover:bg-ds-accent-hover hover:text-white'
+                    : 'bg-surface border border-border-default text-fg-secondary hover:text-fg'
+                )}
+                onClick={() => setStatusFilter(option.value)}
+              >
+                {option.icon}
+                {option.label}
+              </Button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ======================================
@@ -494,5 +514,31 @@ export function ArticlePanel(props: ArticlePanelProps) {
         onEdit={handleDrawerEdit}
       />
     </div>
+  )
+}
+
+// ==================== 辅助组件 ====================
+
+/**
+ * 状态药丸组件
+ * 用于筛选栏中显示各状态的文章计数
+ * 映射到 Badge 的 ColorRole：published → success, draft → warning, archived → neutral
+ */
+function StatusPill({ label, count, variant }: {
+  label: string
+  count: number
+  variant: 'published' | 'draft' | 'archived'
+}) {
+  const colorMap: Record<typeof variant, 'success' | 'warning' | 'neutral'> = {
+    published: 'success',
+    draft: 'warning',
+    archived: 'neutral',
+  }
+
+  return (
+    <Badge variant={colorMap[variant]} className="gap-1 text-xs font-normal">
+      {label}
+      <span className="font-medium">{count}</span>
+    </Badge>
   )
 }

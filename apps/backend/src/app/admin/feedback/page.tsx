@@ -305,7 +305,29 @@ export default function AdminFeedbackPage() {
 
   return (
     <>
-      <AdminPageHeader title="反馈管理" description="查看和处理用户反馈" />
+      <AdminPageHeader
+        title="反馈管理"
+        description="查看和处理用户反馈"
+        actions={
+          <div className="flex items-center gap-3">
+            {/* 搜索框 */}
+            <div className="flex items-center h-9 min-w-[200px] rounded-full px-3.5 gap-2 bg-bg border border-border-default">
+              <Search className="size-4 shrink-0 text-fg-muted" strokeWidth={2} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="搜索反馈..."
+                className="flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-muted"
+              />
+            </div>
+            {/* 筛选按钮 */}
+            <button className="flex items-center justify-center size-[34px] rounded-lg hover:bg-bg transition-colors duration-150">
+              <Filter className="size-4 text-fg-secondary" strokeWidth={2} />
+            </button>
+          </div>
+        }
+      />
       <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="space-y-6">
         <AdminFilterBar>

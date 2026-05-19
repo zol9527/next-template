@@ -69,24 +69,26 @@ function AdminHeaderLeft({ fallbackTitle }: { fallbackTitle: string | null }) {
  * Component: AdminHeaderRight
  *
  * Description: CardHeader 右侧内容区域
- *   - 页面注册了 actions: 渲染页面 actions
- *   - 否则: 渲染共享元素（搜索框 + 更新日志 + 用户头像）
+ *   - 页面注册了 actions: 仅渲染页面专属操作（无全局元素）
+ *   - 否则（Dashboard/默认）: 渲染全局共享元素（搜索框 + 更新日志 + 用户头像）
+ *
+ * Paper Design 规则:
+ *   - Dashboard: 全局搜索 + 更新日志铃铛 + 用户头像
+ *   - 其他页面: 仅页面专属操作，不显示全局搜索/更新日志/头像
  */
 function AdminHeaderRight() {
   const { headerContent } = useAdminHeader()
 
-  // 页面提供了自定义 actions → 渲染 actions + 共享元素
+  // 页面提供了自定义 actions → 仅渲染页面专属操作（与 Paper Design 一致）
   if (headerContent?.actions) {
     return (
       <div className="flex items-center gap-3 shrink-0">
         {headerContent.actions}
-        <ChangelogDropdown />
-        <AdminHeaderUser />
       </div>
     )
   }
 
-  // 默认: 共享元素
+  // 默认（Dashboard 等）: 全局共享元素 — 搜索框 + 更新日志 + 用户头像
   return (
     <div className="flex items-center gap-3 shrink-0">
       {/* 搜索框 */}

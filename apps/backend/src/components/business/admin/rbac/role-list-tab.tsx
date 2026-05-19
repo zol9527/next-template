@@ -1,10 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Loader2, Plus, Shield } from 'lucide-react'
+import { Loader2, Shield } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
 import { RoleCard } from './role-card'
 import { EditRoleDrawer } from './edit-role-drawer'
 import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
@@ -15,7 +13,6 @@ import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
  * 2×3 卡片网格 + 编辑角色 Drawer
  */
 export function RoleListTab() {
-  const { toast } = useToast()
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null)
   const [editOpen, setEditOpen] = React.useState(false)
 
@@ -86,10 +83,6 @@ export function RoleListTab() {
     setEditOpen(true)
   }
 
-  const handleCreateRole = () => {
-    toast({ title: '功能开发中', description: '创建角色功能正在开发中' })
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48 text-[var(--fg-muted,#6B6960)]">
@@ -101,28 +94,6 @@ export function RoleListTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 头部 */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <h2
-            className="text-lg font-semibold tracking-tight"
-            style={{ fontFamily: 'Outfit, sans-serif' }}
-          >
-            角色管理
-          </h2>
-          <p className="text-sm text-[var(--fg-muted,#6B6960)]">
-            {roles.length} 个角色
-          </p>
-        </div>
-        <Button
-          onClick={handleCreateRole}
-          className="h-9 rounded-lg bg-[var(--ds-accent,#F54E00)] hover:bg-[var(--ds-accent-hover,#D94400)] text-white font-medium text-sm"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          创建角色
-        </Button>
-      </div>
-
       {/* 卡片网格: 2 列(移动端) / 3 列(大屏) */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {roles.map((role) => (

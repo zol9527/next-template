@@ -31,10 +31,17 @@ import type { ScopeEntry } from '@/contracts/dtos/admin/rbac/permissions.dto'
  */
 
 interface EditRoleDrawerProps {
+  /** 角色 ID，传 '__new__' 表示新建模式，null 表示关闭 */
   roleId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
+
+/** 新建角色的特殊标记 */
+export const NEW_ROLE_ID = '__new__'
+
+/** 判断是否为新建模式 */
+const isCreateMode = (roleId: string | null) => roleId === NEW_ROLE_ID
 
 // Grant 类型
 interface GrantItem {
@@ -54,17 +61,18 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
   const [initialGrants, setInitialGrants] = React.useState<GrantItem[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
 
-  // 获取角色详情
+  // 获取角色详情（新建模式下跳过）
+  const creating = isCreateMode(roleId)
   const { data: roleDetail, isLoading: isLoadingDetail } = useQuery({
     queryKey: ['admin', 'rbac', 'roles', roleId, 'detail'],
     queryFn: async () => {
-      if (!roleId) return null
+      if (!roleId || isCreateMode(roleId)) return null
       const res = await fetch(`/api/v1/admin/rbac/roles/${roleId}`, { credentials: 'include' })
       if (!res.ok) throw new Error('获取角色详情失败')
       const json = await res.json()
       return json.data?.role
     },
-    enabled: !!roleId && open,
+    enabled: !!roleId && !isCreateMode(roleId) && open,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -110,48 +118,80 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
     return grants.some((g) => g.action === action && g.scope === scope)
   }
 
-  // 保存
+  // 保存（编辑用 PUT，新建用 POST）
   const handleSave = async () => {
     if (!roleId) return
 
     setIsSaving(true)
     try {
-      // 1. 更新角色信息
-      const infoRes = await fetch(`/api/v1/admin/rbac/roles/${roleId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: roleName,
-          description: roleDescription,
-        }),
-      })
+      if (creating) {
+        // 新建角色
+        const createRes = await fetch('/api/v1/admin/rbac/roles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name: roleName, description: roleDescription }),
+        })
 
-      if (!infoRes.ok) {
-        const error = await infoRes.json().catch(() => ({ error: { message: '保存失败' } }))
-        throw new Error(error.error?.message || '保存角色信息失败')
+        if (!createRes.ok) {
+          const error = await createRes.json().catch(() => ({ error: { message: '创建失败' } }))
+          throw new Error(error.error?.message || '创建角色失败')
+        }
+
+        const created = await createRes.json()
+        const newRoleId = created?.data?.id
+
+        // 如果有权限配置，更新新建角色的权限
+        if (newRoleId && grants.length > 0) {
+          await fetch(`/api/v1/admin/rbac/roles/${newRoleId}/permissions`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ grants }),
+          })
+        }
+
+        toast({ title: '角色已创建' })
+      } else {
+        // 编辑角色
+        // 1. 更新角色信息
+        const infoRes = await fetch(`/api/v1/admin/rbac/roles/${roleId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: roleName,
+            description: roleDescription,
+          }),
+        })
+
+        if (!infoRes.ok) {
+          const error = await infoRes.json().catch(() => ({ error: { message: '保存失败' } }))
+          throw new Error(error.error?.message || '保存角色信息失败')
+        }
+
+        // 2. 更新权限
+        const grantsRes = await fetch(`/api/v1/admin/rbac/roles/${roleId}/permissions`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ grants }),
+        })
+
+        if (!grantsRes.ok) {
+          const error = await grantsRes.json().catch(() => ({ error: { message: '保存失败' } }))
+          throw new Error(error.error?.message || '保存权限失败')
+        }
+
+        toast({ title: '角色已更新' })
+        setInitialGrants([...grants])
       }
 
-      // 2. 更新权限
-      const grantsRes = await fetch(`/api/v1/admin/rbac/roles/${roleId}/permissions`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ grants }),
-      })
-
-      if (!grantsRes.ok) {
-        const error = await grantsRes.json().catch(() => ({ error: { message: '保存失败' } }))
-        throw new Error(error.error?.message || '保存权限失败')
-      }
-
-      toast({ title: '角色已更新' })
       queryClient.invalidateQueries({ queryKey: ['admin', 'rbac', 'roles'] })
-      setInitialGrants([...grants])
       onOpenChange(false)
     } catch (error) {
       toast({
-        title: '保存失败',
+        title: creating ? '创建失败' : '保存失败',
         description: error instanceof Error ? error.message : '未知错误',
         variant: 'destructive',
       })
@@ -160,9 +200,9 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
     }
   }
 
-  // 删除
+  // 删除（新建模式下不可用）
   const handleDelete = async () => {
-    if (!roleId) return
+    if (!roleId || creating) return
 
     try {
       const res = await fetch(`/api/v1/admin/rbac/roles/${roleId}`, {
@@ -202,10 +242,11 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
   const totalActions = scopes.reduce((sum, s) => sum + s.actions.length, 0)
   const enabledCount = grants.length
 
-  const hasChanges =
-    roleName !== (roleDetail?.name ?? '') ||
-    roleDescription !== (roleDetail?.description ?? '') ||
-    JSON.stringify(grants.sort()) !== JSON.stringify(initialGrants.sort())
+  const hasChanges = creating
+    ? roleName.trim().length > 0 || roleDescription.trim().length > 0 || grants.length > 0
+    : roleName !== (roleDetail?.name ?? '') ||
+      roleDescription !== (roleDetail?.description ?? '') ||
+      JSON.stringify(grants.sort()) !== JSON.stringify(initialGrants.sort())
 
   if (!roleId) return null
 
@@ -217,11 +258,11 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
           <div className="flex items-center gap-2">
             <Edit3 className="h-4 w-4 text-[var(--ds-accent,#F54E00)]" />
             <SheetTitle className="text-base font-semibold text-[var(--fg,#26251E)]">
-              编辑角色
+              {creating ? '创建角色' : '编辑角色'}
             </SheetTitle>
           </div>
           <div className="flex items-center gap-2">
-            {roleDetail?.name !== 'admin' && (
+            {!creating && roleDetail?.name !== 'admin' && (
               <button
                 onClick={handleDelete}
                 className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--rose,#CF2D56)]/10 transition-colors"
@@ -241,7 +282,7 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
         {/* 内容 */}
         <ScrollArea className="flex-1">
           <div className="p-6 flex flex-col gap-6">
-            {isLoadingDetail ? (
+            {isLoadingDetail && !creating ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-5 w-5 animate-spin text-[var(--fg-faint,#9C9A91)]" />
               </div>
@@ -271,9 +312,11 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-[var(--fg-muted,#6B6960)]">
-                    <span>已分配用户: {roleDetail?.userCount ?? 0} 人</span>
-                  </div>
+                  {!creating && (
+                    <div className="flex items-center gap-2 text-xs text-[var(--fg-muted,#6B6960)]">
+                      <span>已分配用户: {roleDetail?.userCount ?? 0} 人</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 权限配置 */}
@@ -335,7 +378,7 @@ export function EditRoleDrawer({ roleId, open, onOpenChange }: EditRoleDrawerPro
             )}
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-            保存角色
+            {creating ? '创建角色' : '保存角色'}
           </Button>
         </div>
       </SheetContent>

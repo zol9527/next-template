@@ -254,10 +254,10 @@ export function MediaLibrary() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* 通过 context 注入标题、面包屑、操作和筛选栏到 CardHeader */}
+      {/* 通过 context 注入标题、说明和筛选栏到 CardHeader */}
       <AdminPageHeader
         title="媒体库"
-        breadcrumbs={[{ label: '内容管理' }, { label: '媒体库' }]}
+        description="管理图片、视频、文档等媒体资源"
         actions={headerActions}
         filterBar={
           <MediaFilterBar

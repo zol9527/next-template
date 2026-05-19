@@ -3,11 +3,13 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { Search, PenLine } from 'lucide-react'
 
 import { BlogMainLayout, type BlogStats } from '@/components/business/admin/blog/blog-main-layout'
 import { parseApiResponse } from '@/lib/api/parse-response'
 import { AdminArticleListResponseSchema } from '@/contracts/dtos/admin/blog/articles.dto'
 import { AdminPageHeader } from '@/components/ui/admin-page-header'
+import { Button } from '@/components/ui/button'
 
 // ==================== 辅助函数 ====================
 
@@ -98,19 +100,45 @@ export default function AdminBlogPage() {
 
   return (
     <>
-      <AdminPageHeader title="博客管理" description="管理所有博客文章和分类" />
-      <div className="min-h-0 flex-1 w-full animate-in fade-in duration-500 -mx-7 -my-6">
-        <BlogMainLayout
-        stats={stats}
-        keyword={keyword}
-        onKeywordChange={handleKeywordChange}
-        selectedCategoryId={selectedCategoryId}
-        onCategoryChange={setSelectedCategoryId}
-        onViewArticle={handleViewArticle}
-        onEditArticle={handleEditArticle}
-        onWriteArticle={handleWriteArticle}
+      <AdminPageHeader
+        title="博客管理"
+        description="管理所有博客文章和分类"
+        actions={
+          <div className="flex items-center gap-3">
+            {/* 搜索输入框 */}
+            <div className="flex items-center h-9 min-w-[200px] rounded-full px-3.5 gap-2 bg-bg border border-border-default">
+              <Search className="size-4 shrink-0 text-fg-muted" strokeWidth={2} />
+              <input
+                type="text"
+                value={keyword}
+                onChange={(e) => handleKeywordChange(e.target.value)}
+                placeholder="搜索文章…"
+                className="flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-muted"
+              />
+              <kbd className="ml-auto rounded-sm py-px px-1.25 bg-surface border border-border-default font-mono text-[11px] text-fg-muted">
+                ⌘K
+              </kbd>
+            </div>
+            {/* 写文章按钮 */}
+            <Button size="sm" onClick={handleWriteArticle}>
+              <PenLine className="size-4" strokeWidth={2} />
+              <span>写文章</span>
+            </Button>
+          </div>
+        }
       />
-    </div>
+      {/* BlogMainLayout 使用负 margin 铺满 CardContent 区域 */}
+      {/* CardContent 有 py-6 px-7，负 margin 抵消后让双栏布局直接贴边 */}
+      <div className="min-h-0 flex-1 -mx-7 -mb-6 -mt-0">
+        <BlogMainLayout
+          stats={stats}
+          keyword={keyword}
+          selectedCategoryId={selectedCategoryId}
+          onCategoryChange={setSelectedCategoryId}
+          onViewArticle={handleViewArticle}
+          onEditArticle={handleEditArticle}
+        />
+      </div>
     </>
   )
 }
