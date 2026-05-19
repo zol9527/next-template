@@ -44,7 +44,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { name: '媒体库', href: '/admin/media', icon: ImageIcon, requiredAccess: { action: 'read', scope: 'media' } },
   { name: '博客管理', href: '/admin/blog', icon: FileText, requiredAccess: { action: 'read', scope: 'blog.articles' } },
   { name: '用户管理', href: '/admin/users', icon: Users, requiredAccess: { action: 'read', scope: 'users' } },
-  { name: '商城管理', href: '/admin/products', icon: ShoppingCart, requiredAccess: { action: 'read', scope: 'products' } },
+  { name: '商城管理', href: '/admin/market/products', icon: ShoppingCart, requiredAccess: { action: 'read', scope: 'products' } },
   { name: '通知中心', href: '/admin/notifications', icon: Bell, requiredAccess: { action: 'write', scope: 'notifications' } },
   { name: '签到管理', href: '/admin/checkin', icon: CalendarCheck, requiredAccess: { action: 'read', scope: 'checkin' } },
   { name: '用户反馈', href: '/admin/feedback', icon: MessageSquare, requiredAccess: { action: 'read', scope: 'feedback' } },

@@ -97,7 +97,7 @@ export function CreateCouponPage() {
     },
     onSuccess: () => {
       toast({ title: '创建成功', description: '优惠券已创建' })
-      router.push('/admin/coupons')
+      router.push('/admin/market/coupons')
     },
     onError: (error) => {
       toast({
@@ -204,7 +204,7 @@ export function CreateCouponPage() {
         {/* 面包屑导航 */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push('/admin/coupons')}
+            onClick={() => router.push('/admin/market/coupons')}
             className="flex items-center gap-1.5 text-body-sm text-fg-muted hover:text-fg motion-safe:transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -218,7 +218,7 @@ export function CreateCouponPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={() => router.push('/admin/coupons')}
+            onClick={() => router.push('/admin/market/coupons')}
             className="rounded-lg border-border-default"
           >
             取消

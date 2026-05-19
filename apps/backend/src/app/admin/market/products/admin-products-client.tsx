@@ -132,7 +132,7 @@ export function AdminProductsClient() {
             <Button
               type="button"
               className="gap-2 shadow-lg shadow-primary/20"
-              onClick={() => router.push('/admin/products/create')}
+              onClick={() => router.push('/admin/market/products/create')}
             >
               <Plus className="h-4 w-4" />
               添加商品
@@ -233,10 +233,10 @@ export function AdminProductsClient() {
       <AdminProductList
         filters={filters}
         onSelect={(productId) => {
-          router.push(`/admin/products/${productId}/edit`)
+          router.push(`/admin/market/products/${productId}/edit`)
         }}
         onView={(productId) => {
-          router.push(`/admin/products/${productId}/edit`)
+          router.push(`/admin/market/products/${productId}/edit`)
         }}
       />
     </ShopMainCard>

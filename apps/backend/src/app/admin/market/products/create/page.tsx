@@ -280,7 +280,7 @@ export default function AdminProductsCreatePage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'products', 'stats'] })
       toast({ title: '发布成功', description: `商品「${form.name}」已发布` })
       // 跳转到列表页（暂时不跳转到编辑页，因为没有拿到返回的 id）
-      router.push('/admin/products')
+      router.push('/admin/market/products')
     },
     onError: (error) => {
       try {
@@ -321,7 +321,7 @@ export default function AdminProductsCreatePage() {
 
   /** 返回列表 */
   const handleGoBack = React.useCallback(() => {
-    router.push('/admin/products')
+    router.push('/admin/market/products')
   }, [router])
 
   const isMutating = createMutation.isPending

@@ -10,11 +10,11 @@ import { cn } from '@/lib/utils'
  * 每个 Tab 对应一个路由，通过 router.push() 实现页面切换
  */
 const SHOP_TABS = [
-  { value: 'products', label: '商品管理', href: '/admin/products' },
-  { value: 'categories', label: '分类管理', href: '/admin/categories' },
-  { value: 'orders', label: '订单管理', href: '/admin/orders' },
-  { value: 'coupons', label: '优惠券', href: '/admin/coupons' },
-  { value: 'affiliate', label: '分销管理', href: '/admin/affiliate' },
+  { value: 'products', label: '商品管理', href: '/admin/market/products' },
+  { value: 'categories', label: '分类管理', href: '/admin/market/categories' },
+  { value: 'orders', label: '订单管理', href: '/admin/market/orders' },
+  { value: 'coupons', label: '优惠券', href: '/admin/market/coupons' },
+  { value: 'affiliate', label: '分销管理', href: '/admin/market/affiliate' },
 ] as const
 
 export type ShopTab = (typeof SHOP_TABS)[number]['value']
@@ -169,8 +169,8 @@ export function ShopMainCard({
         'bg-surface rounded-2xl shadow-md',
         // flex 布局，让 content 区域撑满
         'flex flex-col',
-        // 最小高度保证视觉一致性
-        'min-h-0',
+        // 占据父容器（<main>）的全部剩余空间，消除底部空白
+        'flex-1 min-h-0',
         className
       )}
     >

@@ -163,7 +163,7 @@ export default function AdminProductsEditPage() {
     queryKey: ['admin', 'products', productId],
     queryFn: async () => {
       if (!productId) throw new Error('Product ID is required')
-      const res = await fetch(`/api/v1/admin/products/${productId}`, { credentials: 'include' })
+      const res = await fetch(`/api/v1/admin/market/products/${productId}`, { credentials: 'include' })
       if (!res.ok) throw new Error(await readApiErrorMessage(res))
       const json = (await res.json()) as ApiResponse<AdminProduct>
       if (!json.success) throw new Error(json.error.message)
@@ -291,7 +291,7 @@ export default function AdminProductsEditPage() {
         throw new Error(JSON.stringify(newErrors))
       }
 
-      const res = await fetch(`/api/v1/admin/products/${productId}`, {
+      const res = await fetch(`/api/v1/admin/market/products/${productId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -326,7 +326,7 @@ export default function AdminProductsEditPage() {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!productId) throw new Error('Product ID is required')
-      const res = await fetch(`/api/v1/admin/products/${productId}`, {
+      const res = await fetch(`/api/v1/admin/market/products/${productId}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -337,7 +337,7 @@ export default function AdminProductsEditPage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'products', 'stats'] })
       toast({ title: '删除成功' })
-      router.push('/admin/products')
+      router.push('/admin/market/products')
     },
     onError: (error) => {
       toast({ title: '删除失败', description: error.message, variant: 'destructive' })
@@ -367,7 +367,7 @@ export default function AdminProductsEditPage() {
 
   /** 返回列表 */
   const handleGoBack = React.useCallback(() => {
-    router.push('/admin/products')
+    router.push('/admin/market/products')
   }, [router])
 
   const isSubmitting = updateMutation.isPending || deleteMutation.isPending

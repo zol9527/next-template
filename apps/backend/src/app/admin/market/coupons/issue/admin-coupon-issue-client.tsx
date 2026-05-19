@@ -173,7 +173,7 @@ export function AdminCouponIssueClient() {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => window.location.href = '/admin/coupons'}
+              onClick={() => window.location.href = '/admin/market/coupons'}
             >
               去创建优惠券
             </Button>
