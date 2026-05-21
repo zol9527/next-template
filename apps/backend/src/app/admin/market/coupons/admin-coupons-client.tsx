@@ -140,7 +140,8 @@ export function AdminCouponsClient() {
     <>
       <AdminPageHeader
         title="商城管理"
-        tabs={<ShopTabBar activeTab="coupons" />}
+        description="管理商品、订单、分类、优惠券和分销"
+        filterBar={<ShopTabBar activeTab="coupons" />}
         actions={
           <>
             <ShopSearchInput value={keyword} onChange={setKeyword} placeholder="搜索优惠券名称..." />

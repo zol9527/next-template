@@ -47,7 +47,8 @@ export function AdminOrdersClient() {
     <>
       <AdminPageHeader
         title="商城管理"
-        tabs={<ShopTabBar activeTab="orders" />}
+        description="管理商品、订单、分类、优惠券和分销"
+        filterBar={<ShopTabBar activeTab="orders" />}
         actions={
           <ShopSearchInput
             value={keyword}

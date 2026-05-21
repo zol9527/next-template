@@ -121,7 +121,8 @@ export function AdminProductsClient() {
     <>
       <AdminPageHeader
         title="商城管理"
-        tabs={<ShopTabBar activeTab="products" />}
+        description="管理商品、订单、分类、优惠券和分销"
+        filterBar={<ShopTabBar activeTab="products" />}
         actions={
           <>
             <ShopSearchInput

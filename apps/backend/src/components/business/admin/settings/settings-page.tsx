@@ -1,21 +1,9 @@
 'use client'
 
-/**
- * Component: SettingsPage
- *
- * Description: 系统配置管理主容器组件
- * 统一的 Tab 导航页面，包含 6 个 Tab 面板
- * - Tab 状态: useState<SettingsTab>
- * - 纯前端状态，无路由变化
- * - Tab 切换时组件卸载，React Query 缓存保留
- * - 各 Tab 面板自行管理保存逻辑（内含保存按钮）
- */
-
 import * as React from 'react'
 import { Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminPageHeader } from '@/components/ui/admin-page-header'
-import { AdminPageLayout } from '@/components/ui/admin-page-layout'
 import { SettingsTabBar } from './settings-tab-bar'
 import { SiteConfigTab } from './tabs/site-config-tab'
 import { AgreementTab } from './tabs/agreement-tab'
@@ -33,14 +21,28 @@ export type SettingsTab =
   | 'data-management'
   | 'logs'
 
+/**
+ * 系统配置页面
+ *
+ * 布局结构与用户管理页面一致:
+ *   第一行: 标题 + 说明 + 操作按钮（保存配置）
+ *   第二行: Tab 导航（站点配置 / 协议管理 / 功能开关 / AI设置 / 数据管理 / 日志管理）
+ *
+ * Header 由 AdminPageHeader 注入:
+ *   - title + description 渲染标题行
+ *   - actions 渲染右侧操作按钮
+ *   - filterBar 渲染第二行的 Tab 导航
+ *
+ * 路由: /admin/settings
+ */
 export function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>('site-config')
 
   return (
-    <AdminPageLayout>
+    <>
       <AdminPageHeader
         title="系统配置"
-        description="管理系统设置和配置"
+        description="管理系统设置、协议、功能开关与数据"
         actions={
           <div className="flex items-center gap-3">
             <span className="text-caption text-fg-muted">
@@ -52,10 +54,11 @@ export function SettingsPage() {
             </Button>
           </div>
         }
+        filterBar={<SettingsTabBar activeTab={activeTab} onTabChange={setActiveTab} />}
       />
-      <SettingsTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="flex-1 min-h-0">
+      {/* Tab 内容面板 */}
+      <div className="flex flex-col flex-1 min-h-0">
         {activeTab === 'site-config' && <SiteConfigTab />}
         {activeTab === 'agreement' && <AgreementTab />}
         {activeTab === 'feature-flags' && <FeatureFlagsTab />}
@@ -63,6 +66,6 @@ export function SettingsPage() {
         {activeTab === 'data-management' && <DataManagementTab />}
         {activeTab === 'logs' && <LogsTab />}
       </div>
-    </AdminPageLayout>
+    </>
   )
 }

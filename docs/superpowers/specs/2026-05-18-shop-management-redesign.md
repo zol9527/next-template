@@ -63,20 +63,44 @@ Tab 切换通过 `router.push()` 实现路由跳转，非 SPA 状态切换。
 ### 3.2 MainCard 容器结构
 
 ```
-┌──────────────────────────────────────────────┐
-│  TabBar: [商品管理 | 分类管理 | 订单管理 | 优惠券 | 分销管理]  [搜索框] [操作按钮]
-│───────────────────────────────────────────────│
-│  Content Area (由各页面自行渲染)                │
-│                                               │
-│                                               │
-└──────────────────────────────────────────────┘
+AdminShell CardHeader:
+┌──────────────────────────────────────────────────────────┐
+│  商城管理 / 管理商品、订单、分类、优惠券和分销     [搜索框] [操作按钮] │
+├──────────────────────────────────────────────────────────┤
+│  [商品管理 | 分类管理 | 订单管理 | 优惠券 | 分销管理]  ← filterBar    │
+├──────────────────────────────────────────────────────────┤
+
+CardContent (由 AdminShell 提供):
+│  Content Area (由各页面自行渲染)                              │
+│                                                              │
+└──────────────────────────────────────────────────────────┘
 ```
 
+Header 布局说明：
+- **第一行（主行）**: 标题 + 描述 + 右侧操作区（搜索框 + 页面专属按钮）
+- **第二行（filterBar）**: Tab 导航栏，通过 `AdminPageHeader` 的 `filterBar` prop 注入
+- Tab 导航通过 `ShopTabBar` 组件实现，渲染在 filterBar 位置
+
 - 外壳：白色卡片，`border-radius: 16px`，`box-shadow: 0px 1px 3px #26251E0A, 0px 8px 24px #26251E0F`
-- TabBar 区域：高度 60px，底部 1px border 分割线 `#26251E14`
+- Header 主行：高度 60px，底部 1px border 分割线 `#26251E14`
+- filterBar 行：Tab 导航，底部 1px border 分割线 `#26251E14`
 - Content 区域：`padding: 24px 28px`，`flex: 1`
 
-### 3.3 Tab 导航样式
+### 3.3 Header 布局模式
+
+商城管理采用与用户管理一致的 Header 两行布局模式：
+
+**第一行（主行）**：
+- 左侧：页面标题 "商城管理"（Outfit 600 18px） + 描述文字
+- 右侧：页面专属操作（搜索框 + 功能按钮）
+- 高度 60px，底部 border 分割
+
+**第二行（filterBar）**：
+- ShopTabBar 组件渲染在此位置
+- 通过 `AdminPageHeader` 的 `filterBar` prop 注入
+- 底部 border 分割
+
+### 3.4 Tab 导航样式
 
 - 非选中 Tab：`color: #6B6960`，`font-weight: 500`，`font-size: 13.5px`
 - 选中 Tab：`color: #F54E00`，`font-weight: 600`，底部 2px 橙色下划线
@@ -163,7 +187,8 @@ interface ShopKPICardsProps {
 
 ### 5.1 商品管理 (`/admin/products`)
 
-**TabBar 右侧**：搜索框 (220px) + 「添加商品」按钮 (橙色实心)
+**Header 第一行右侧**：搜索框 (220px) + 「添加商品」按钮 (橙色实心)
+**Header 第二行 (filterBar)**：商品管理 Tab 高亮
 
 **内容区**：
 1. 状态筛选行：全部(128) | 上架中(89) | 低库存(12) | 草稿(15) | 已下架(12)
@@ -184,7 +209,8 @@ interface ShopKPICardsProps {
 
 ### 5.2 订单管理 (`/admin/orders`)
 
-**TabBar 右侧**：搜索框 (220px) + 筛选按钮
+**Header 第一行右侧**：搜索框 (220px) + 筛选按钮
+**Header 第二行 (filterBar)**：订单管理 Tab 高亮
 
 **内容区**：
 1. 状态筛选行：全部(1,024) | 已完成(687) | 待付款(156) | 退款中(23)
@@ -199,7 +225,8 @@ interface ShopKPICardsProps {
 
 ### 5.3 分类管理 (`/admin/categories`)
 
-**TabBar 右侧**：搜索框 (220px) + 「添加分类」按钮
+**Header 第一行右侧**：搜索框 (220px) + 「添加分类」按钮
+**Header 第二行 (filterBar)**：分类管理 Tab 高亮
 
 **内容区**：双栏布局（无表格）
 
@@ -227,7 +254,8 @@ interface ShopKPICardsProps {
 
 ### 5.4 分销管理 (`/admin/affiliate`)
 
-**TabBar 右侧**：搜索框 (220px) + 「导出数据」按钮
+**Header 第一行右侧**：搜索框 (220px) + 「导出数据」按钮
+**Header 第二行 (filterBar)**：分销管理 Tab 高亮
 
 **内容区**：
 1. KPI 卡片行（4个）：推广员总数(86)、总佣金(¥12,450)、本月佣金(¥2,890)、待结算(¥1,230)
@@ -236,7 +264,8 @@ interface ShopKPICardsProps {
 
 ### 5.5 优惠券管理 (`/admin/coupons`)
 
-**TabBar 右侧**：搜索框 (220px) + 「创建优惠券」按钮
+**Header 第一行右侧**：搜索框 (220px) + 「创建优惠券」按钮
+**Header 第二行 (filterBar)**：优惠券 Tab 高亮
 
 **内容区**：
 1. KPI 卡片行（4个）：优惠券总数(128)、进行中(45)、已过期(67)、总使用次数(1,234)

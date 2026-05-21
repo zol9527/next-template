@@ -84,7 +84,8 @@ export function AdminAffiliateClient() {
     <>
       <AdminPageHeader
         title="商城管理"
-        tabs={<ShopTabBar activeTab="affiliate" />}
+        description="管理商品、订单、分类、优惠券和分销"
+        filterBar={<ShopTabBar activeTab="affiliate" />}
         actions={
           <>
             <ShopSearchInput

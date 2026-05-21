@@ -33,7 +33,7 @@ interface ShopTabBarProps {
 /**
  * Component: ShopTabBar
  *
- * Description: 商城模块的 Tab 导航栏（独立组件，可嵌入 AdminPageHeader 的 tabs 属性）。
+ * Description: 商城模块的 Tab 导航栏（独立组件，通过 AdminPageHeader 的 filterBar 属性注入到 Header 第二行）。
  *
  * 设计规范:
  *   - Tab 选中: color #F54E00 (text-primary), font-weight 600, 底部 2px 橙色下划线
@@ -63,7 +63,7 @@ export function ShopTabBar({ activeTab, className }: ShopTabBarProps) {
 
   return (
     <nav
-      className={cn('flex items-center h-full', className)}
+      className={cn('flex items-center h-full px-7', className)}
       role="tablist"
       aria-label="商城管理导航"
     >
@@ -145,7 +145,7 @@ interface ShopMainCardProps {
  *
  * Description: 商城管理模块的内容容器组件。
  *   TabBar 已提取为独立的 ShopTabBar 组件，
- *   需要通过 AdminPageHeader 的 tabs 属性注入到 CardHeader 中。
+ *   通过 AdminPageHeader 的 filterBar 属性注入到 CardHeader 第二行。
  *
  * 结构:
  *   ┌─────────────────────────────────────────────────────────┐
