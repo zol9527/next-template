@@ -472,7 +472,7 @@ export function createCouponService(
       originalAmount: string
       discountAmount: string
       finalAmount: string
-      coupon: Coupon
+      coupon: Coupon | null
     }> {
       logger.info({ action: 'calculate_discount', userCouponId: params.userCouponId })
 
@@ -486,11 +486,11 @@ export function createCouponService(
       if (userCoupon.userId !== params.userId) {
         return {
           canUse: false,
-          reason: 'Coupon does not belong to user',
+          reason: 'Coupons are not available',
           originalAmount: params.originalAmount,
           discountAmount: '0.00',
           finalAmount: params.originalAmount,
-          coupon: userCoupon.coupon!,
+          coupon: null,
         }
       }
 

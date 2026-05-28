@@ -15,6 +15,8 @@ import { ok, fail } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
 import { env } from '@/config'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
+import { extractClientIpSafe } from '@/lib/http/ip-extractor'
+import { isInternalIp } from '@/lib/security/ip-whitelist'
 
 function getCronToken(req: NextRequest): string | null {
   return req.headers.get('x-internal-cron-token')
@@ -32,6 +34,14 @@ export const POST = withV1Route({
 
     if (!provided || provided !== configured) {
       return createJsonApiResponse(req, fail('UNAUTHORIZED', 'Unauthorized'), { status: 401 })
+    }
+
+    const ipResult = extractClientIpSafe(req, { trustProxy: true, allowPrivateIp: true, requireIp: false })
+    const clientIp = ipResult.ip
+
+    if (clientIp && !isInternalIp(clientIp)) {
+      serviceContext!.logger.warn({ action: 'internal_ip_rejected', ip: clientIp }, 'Internal API access from non-whitelisted IP')
+      return createJsonApiResponse(req, fail('FORBIDDEN', 'Access denied'), { status: 403 })
     }
 
     const deleted = await cleanupExpiredCounters(serviceContext!.logger)
