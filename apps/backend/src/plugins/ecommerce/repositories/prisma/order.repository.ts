@@ -243,6 +243,76 @@ export function createPrismaOrderRepository(): OrderRepository {
       return mapOrder(order)
     },
 
+    // CAS (Compare-And-Swap) 原子状态更新，防止并发竞态条件
+    async updateOrderStatusCas(ctx: RepoContext, params: {
+      orderId: string
+      expectedStatus: string
+      newStatus: string
+      paidAt?: string | null
+      paidAmount?: string | null
+      updatedAt: string
+    }): Promise<{ updated: boolean }> {
+      const { logger } = ctx
+      logger.info({ action: 'update_order_status_cas', orderId: params.orderId, expectedStatus: params.expectedStatus, newStatus: params.newStatus })
+
+      const data: Record<string, unknown> = {
+        status: params.newStatus,
+        updatedAt: new Date(params.updatedAt),
+      }
+      if (params.paidAt != null) data.paidAt = new Date(params.paidAt)
+      if (params.paidAmount !== undefined) data.paidAmount = params.paidAmount
+
+      try {
+        const order = await prisma.order.updateMany({
+          where: { id: params.orderId, status: params.expectedStatus },
+          data,
+        })
+        return { updated: order.count > 0 }
+      } catch {
+        return { updated: false }
+      }
+    },
+
+    // 原子退款金额递增，使用事务 + 条件检查防止超退（安全修复 H-1）
+    async tryIncrementRefundedAmount(ctx: RepoContext, params: {
+      orderId: string
+      incrementAmount: string
+      maxAmount: string
+      updatedAt: string
+    }): Promise<{ success: boolean }> {
+      const { logger } = ctx
+      logger.info({ action: 'try_increment_refunded_amount', orderId: params.orderId, incrementAmount: params.incrementAmount })
+
+      // 安全修复 H-1: 使用 Prisma 事务 + 原子条件更新防止超退
+      const result = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({
+          where: { id: params.orderId },
+          select: { refundedAmount: true, paidAmount: true, priceAmount: true },
+        })
+
+        if (!order) return false
+
+        const currentRefunded = order.refundedAmount
+        const increment = new Prisma.Decimal(params.incrementAmount)
+        const maxAmount = new Prisma.Decimal(params.maxAmount)
+        const newRefunded = currentRefunded.plus(increment)
+
+        if (newRefunded.greaterThan(maxAmount)) return false
+
+        await tx.order.update({
+          where: { id: params.orderId },
+          data: {
+            refundedAmount: newRefunded,
+            updatedAt: new Date(params.updatedAt),
+          },
+        })
+
+        return true
+      })
+
+      return { success: result }
+    },
+
     async getDashboardStats(ctx: RepoContext) {
       const { logger } = ctx
       logger.info({ action: 'get_dashboard_stats' })

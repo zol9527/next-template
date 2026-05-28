@@ -171,24 +171,28 @@ export async function useApiAuth(
 
   const { createRbacRepository } = await import('@/repositories/factory/core/auth.factory')
   const rbacRepo = await createRbacRepository()
-  const _grants: Grant[] = await rbacRepo.getGrantsForUser(
-    { traceId: serviceCtx.traceId, logger: serviceCtx.logger },
-    { userId }
-  )
+  const rbacCtx = { traceId: serviceCtx.traceId, logger: serviceCtx.logger }
+
+  // 从数据库加载角色和权限，避免使用 JWT 中可能过期的角色信息
+  const [_grants, _roleRecords] = await Promise.all([
+    rbacRepo.getGrantsForUser(rbacCtx, { userId }),
+    rbacRepo.getRolesForUser(rbacCtx, { userId }),
+  ])
+  const _dbRoleNames = _roleRecords.map((r) => r.name)
   const _accessManager = createAccessManager(_grants)
 
   return {
     userId,
     sessionId,
-    roles: tokenResult.roles || [],
+    roles: _dbRoleNames,
     access: _accessManager,
 
     hasRole: (role: string) => {
-      return (tokenResult.roles || []).includes(role)
+      return _dbRoleNames.includes(role)
     },
 
     assertRole: (role: string) => {
-      if (!(tokenResult.roles || []).includes(role)) {
+      if (!_dbRoleNames.includes(role)) {
         throw new ForbiddenError()
       }
     },

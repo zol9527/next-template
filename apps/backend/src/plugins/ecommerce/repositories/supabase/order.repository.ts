@@ -324,6 +324,99 @@ export function createSupabaseOrderRepository(): OrderRepository {
       return mapOrder(data as unknown as Record<string, unknown>)
     },
 
+    async updateOrderStatusCas(ctx: RepoContext, params: {
+      orderId: string
+      expectedStatus: string
+      newStatus: string
+      paidAt?: string | null
+      paidAmount?: string | null
+      updatedAt: string
+    }): Promise<{ updated: boolean }> {
+      const { logger } = ctx
+      logger.info({ action: 'update_order_status_cas', orderId: params.orderId, expectedStatus: params.expectedStatus, newStatus: params.newStatus })
+
+      const updates: Record<string, unknown> = {
+        status: params.newStatus,
+        updated_at: params.updatedAt,
+      }
+      if (params.paidAt !== undefined) updates.paid_at = params.paidAt
+      if (params.paidAmount !== undefined) updates.paid_amount = params.paidAmount
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', params.orderId)
+        .eq('status', params.expectedStatus)  // CAS 条件：仅当状态匹配时才更新
+        .select('id')
+        .maybeSingle()
+
+      if (error) {
+        logger.error({ action: 'update_order_status_cas_error', orderId: params.orderId, error })
+        throw error
+      }
+
+      return { updated: !!data }
+    },
+
+    async tryIncrementRefundedAmount(ctx: RepoContext, params: {
+      orderId: string
+      incrementAmount: string
+      maxAmount: string
+      updatedAt: string
+    }): Promise<{ success: boolean }> {
+      const { logger } = ctx
+      logger.info({ action: 'try_increment_refunded_amount', orderId: params.orderId, incrementAmount: params.incrementAmount })
+
+      // 安全修复 H-1: 原子递增退款金额
+      // 使用数据库层面的条件更新，确保 refunded_amount + increment <= paid_amount
+      // 注意: Supabase JS 客户端不直接支持算术表达式，使用 RPC 更安全
+      // 但为保持兼容性，使用以下策略：
+      // 1. 先读取当前值
+      // 2. 使用 CAS 条件更新（包含当前值校验）
+
+      // 读取当前 refunded_amount 和 paid_amount
+      const { data: current, error: fetchError } = await supabase
+        .from('orders')
+        .select('id, refunded_amount, paid_amount, price_amount')
+        .eq('id', params.orderId)
+        .maybeSingle()
+
+      if (fetchError) throw fetchError
+      if (!current) return { success: false }
+
+      const currentRefunded = Number(current.refunded_amount ?? 0)
+      const increment = Number(params.incrementAmount)
+      const maxAmount = Number(params.maxAmount)
+      const newRefunded = currentRefunded + increment
+
+      if (newRefunded > maxAmount) {
+        logger.warn({ action: 'refund_amount_exceeds_max', orderId: params.orderId, newRefunded, maxAmount })
+        return { success: false }
+      }
+
+      // CAS 更新：确保 refunded_amount 未被其他并发请求修改
+      const { data: updated, error: updateError } = await supabase
+        .from('orders')
+        .update({
+          refunded_amount: String(newRefunded),
+          updated_at: params.updatedAt,
+        })
+        .eq('id', params.orderId)
+        .eq('refunded_amount', String(currentRefunded))  // CAS：确保未被并发修改
+        .select('id')
+        .maybeSingle()
+
+      if (updateError) throw updateError
+
+      if (!updated) {
+        // CAS 失败：其他并发请求已修改 refunded_amount
+        logger.info({ action: 'refund_cas_conflict', orderId: params.orderId })
+        return { success: false }
+      }
+
+      return { success: true }
+    },
+
     async getDashboardStats(ctx: RepoContext) {
       const { logger } = ctx
       logger.info({ action: 'get_dashboard_stats' })

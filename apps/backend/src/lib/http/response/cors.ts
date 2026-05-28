@@ -71,11 +71,17 @@ export function decideCors(origin: string | null): CorsDecision {
  * Parameters:
  *     req(NextRequest): Next.js 请求对象
  *     res(NextResponse): Next.js 响应对象
+ *     allowedMethods(string | undefined): 该路由支持的 HTTP 方法列表
+ *         未指定时使用默认值（GET,POST,PATCH,DELETE,OPTIONS）
  *
  * Returns:
  *     res(NextResponse): 添加了 CORS 头的响应对象
  */
-export function appendCorsHeaders(req: NextRequest, res: NextResponse): NextResponse {
+export function appendCorsHeaders(
+  req: NextRequest,
+  res: NextResponse,
+  allowedMethods?: string,
+): NextResponse {
   const origin = req.headers.get('origin')
   const decision = decideCors(origin)
 
@@ -84,7 +90,7 @@ export function appendCorsHeaders(req: NextRequest, res: NextResponse): NextResp
     res.headers.set('Vary', 'Origin')
     res.headers.set('Access-Control-Allow-Credentials', 'true')
     res.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS)
-    res.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS)
+    res.headers.set('Access-Control-Allow-Methods', allowedMethods ?? ALLOWED_METHODS)
   }
 
   return res

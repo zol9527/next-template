@@ -1,8 +1,10 @@
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createUserDocumentRepository } from '@/repositories/factory'
 import { fileStorage } from '@/lib/file-storage'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
+import { createOptionsResponse } from '@/lib/http/response'
 
 
 export const GET = withV1Route({
@@ -41,6 +43,12 @@ export const GET = withV1Route({
   },
 })
 
-export function OPTIONS() {
-  return new NextResponse(null, { status: 200 })
+/**
+ * Function: OPTIONS
+ *
+ * Description: 标准预检请求响应
+ * 仅允许 GET 方法（文件下载为只读端点）
+ */
+export function OPTIONS(req: NextRequest) {
+  return createOptionsResponse(req, 'GET,OPTIONS')
 }

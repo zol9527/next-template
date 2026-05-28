@@ -246,7 +246,21 @@ async function wechatPayRequest<TResponse>(params: {
   const text = await res.text()
 
   if (!res.ok) {
-    throw new Error(`WechatPay API error: ${res.status} ${text}`)
+    /**
+     * 错误信息安全处理：仅提取结构化错误码和消息，不包含完整响应体。
+     *
+     * 微信支付 API 的错误响应可能包含商户号、请求参数等敏感配置信息，
+     * 将完整响应文本写入日志或错误消息存在信息泄露风险。
+     */
+    let errorCode = 'UNKNOWN'
+    let errorMessage = 'Request failed'
+    try {
+      const errorJson = JSON.parse(text) as { code?: string; message?: string }
+      errorCode = errorJson.code ?? errorCode
+      errorMessage = errorJson.message ?? errorMessage
+    } catch { /* 响应非 JSON，忽略解析错误 */ }
+
+    throw new Error(`WechatPay API error: ${res.status} [${errorCode}] ${errorMessage}`)
   }
 
   return JSON.parse(text) as TResponse

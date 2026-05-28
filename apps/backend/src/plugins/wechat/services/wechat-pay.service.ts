@@ -145,13 +145,36 @@ export function createWechatPayService(
         throw new WechatPayServiceError('INVALID_STATE', 'Order status does not allow refund')
       }
 
-      const refundAmountFen = decimalStringToFen(params.refundAmount)
-      const totalAmountFen = decimalStringToFen(order.paidAmount || order.priceAmount)
-
       // 校验退款金额
-      const currentRefundedFen = decimalStringToFen(order.refundedAmount || '0')
-      if (refundAmountFen + currentRefundedFen > totalAmountFen) {
+      const totalAmountFen = decimalStringToFen(order.paidAmount || order.priceAmount)
+      const refundAmountFen = decimalStringToFen(params.refundAmount)
+
+      if (refundAmountFen > totalAmountFen) {
         throw new WechatPayServiceError('INVALID_STATE', 'Refund amount exceeds total paid amount')
+      }
+
+      /**
+       * 安全修复 H-1: 使用原子递增退款金额，防止并发退款导致超退
+       *
+       * 原实现在应用层读取 refundedAmount 后做加法校验，存在 TOCTOU 竞态：
+       * 两个并发退款请求可能同时读到相同的 refundedAmount=0，均通过校验。
+       *
+       * 修复方案：通过数据库层面的 CAS 原子操作（tryIncrementRefundedAmount）
+       * 确保 refunded_amount + increment <= paid_amount，避免超退。
+       * 若 CAS 冲突（其他并发请求已修改），返回 success=false，由调用方重试或拒绝。
+       */
+      const refundAmountStr = params.refundAmount
+      const maxAmountStr = order.paidAmount || order.priceAmount
+
+      const atomicResult = await deps.orders.tryIncrementRefundedAmount(repoCtx, {
+        orderId: order.id,
+        incrementAmount: refundAmountStr,
+        maxAmount: maxAmountStr,
+        updatedAt: new Date().toISOString(),
+      })
+
+      if (!atomicResult.success) {
+        throw new WechatPayServiceError('INVALID_STATE', 'Refund amount exceeds total paid amount or concurrent modification detected')
       }
 
       const action = 'wechat_pay_refund'
@@ -439,13 +462,23 @@ export function createWechatPayService(
         const confirmedAt = existingByTransactionId.confirmedAt ?? new Date().toISOString()
 
         if (order.status !== 'paid' && order.status !== 'completed') {
-          await deps.orders.updateOrderStatus(repoCtx, {
+          /**
+           * 安全修复 M-1: 使用 CAS 原子更新订单状态
+           *
+           * 仅当订单仍处于 expectedStatus（pending_payment）时才更新为 paid，
+           * 防止并发回调导致重复状态推进和重复履约任务创建。
+           */
+          const casResult = await deps.orders.updateOrderStatusCas(repoCtx, {
             orderId: order.id,
-            status: 'paid',
+            expectedStatus: order.status,
+            newStatus: 'paid',
             paidAt: confirmedAt,
             paidAmount: order.priceAmount,
             updatedAt: new Date().toISOString(),
           })
+          if (!casResult.updated) {
+            logger.info({ action: 'wechat_pay.notify.cas_skipped_replayed', orderId: order.id, outTradeNo, transactionId })
+          }
         }
 
         await deps.fulfillmentJobs.upsertJobByPaymentId(repoCtx, {
@@ -533,13 +566,23 @@ export function createWechatPayService(
       }
 
       if (order.status !== 'paid' && order.status !== 'completed') {
-        await deps.orders.updateOrderStatus(repoCtx, {
+        /**
+         * 安全修复 M-1: 使用 CAS 原子更新订单状态（首次确认路径）
+         *
+         * 仅当订单仍处于 pending_payment 时才更新为 paid，
+         * 防止并发回调导致重复状态推进。
+         */
+        const casResult = await deps.orders.updateOrderStatusCas(repoCtx, {
           orderId: order.id,
-          status: 'paid',
+          expectedStatus: order.status,
+          newStatus: 'paid',
           paidAt: confirmedAt,
           paidAmount: order.priceAmount,
           updatedAt: new Date().toISOString(),
         })
+        if (!casResult.updated) {
+          logger.info({ action: 'wechat_pay.notify.cas_skipped_confirmed', orderId: order.id, outTradeNo, transactionId })
+        }
       }
 
       await deps.fulfillmentJobs.upsertJobByPaymentId(repoCtx, {

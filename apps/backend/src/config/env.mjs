@@ -61,6 +61,10 @@ export const env = createEnv({
     WECHAT_PAY_PUBLIC_KEYS_JSON: z.string().min(1).optional(),
     WECHAT_PAY_NOTIFY_URL: z.string().url().optional(),
 
+    // 微信支付回调 IP 白名单（CIDR 格式，逗号分隔，如 "101.226.62.0/24,101.226.103.0/24"）
+    // 留空则跳过 IP 检查（仅依赖 RSA 签名验证）
+    WECHAT_PAY_NOTIFY_ALLOWED_IPS: z.string().optional(),
+
     // 内部定时任务认证令牌
     INTERNAL_CRON_TOKEN: z.string().min(16).optional(),
 
@@ -190,6 +194,7 @@ export const env = createEnv({
     WECHAT_PAY_PUBLIC_KEY_ID: process.env.WECHAT_PAY_PUBLIC_KEY_ID,
     WECHAT_PAY_PUBLIC_KEYS_JSON: process.env.WECHAT_PAY_PUBLIC_KEYS_JSON,
     WECHAT_PAY_NOTIFY_URL: process.env.WECHAT_PAY_NOTIFY_URL,
+    WECHAT_PAY_NOTIFY_ALLOWED_IPS: process.env.WECHAT_PAY_NOTIFY_ALLOWED_IPS,
 
     // 内部定时任务认证令牌
     INTERNAL_CRON_TOKEN: process.env.INTERNAL_CRON_TOKEN,
@@ -273,3 +278,29 @@ export const env = createEnv({
   },
   emptyStringAsUndefined: true,
 })
+
+/**
+ * 生产环境密钥强制校验
+ *
+ * 安全修复 M-5: 认证密钥在 env.mjs 中定义为 optional（便于本地开发），
+ * 但生产环境必须配置，否则应在启动时立即失败（fail-fast），
+ * 而非等到运行时（如用户登录时）才抛出错误。
+ */
+if (env.NODE_ENV === 'production') {
+  const requiredInProduction = [
+    ['AUTH_JWT_ACCESS_SECRET', env.AUTH_JWT_ACCESS_SECRET],
+    ['AUTH_REFRESH_TOKEN_PEPPER', env.AUTH_REFRESH_TOKEN_PEPPER],
+    ['MFA_SECRET_ENCRYPTION_KEY', env.MFA_SECRET_ENCRYPTION_KEY],
+  ]
+
+  const missing = requiredInProduction
+    .filter(([, value]) => !value)
+    .map(([key]) => key)
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Production environment requires the following secrets to be configured: ${missing.join(', ')}. ` +
+      'Application cannot start without them.',
+    )
+  }
+}

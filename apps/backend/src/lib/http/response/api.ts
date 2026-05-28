@@ -40,11 +40,16 @@ export function createJsonApiResponse<T>(
  *
  * Parameters:
  *     req(NextRequest): Next.js 请求对象
+ *     allowedMethods(string | undefined): 该路由支持的 HTTP 方法列表
+ *         未指定时使用 cors.ts 中的默认值
  *
  * Returns:
  *     res(NextResponse): 204 No Content 响应对象
  */
-export function createOptionsResponse(req: NextRequest): NextResponse {
+export function createOptionsResponse(
+  req: NextRequest,
+  allowedMethods?: string,
+): NextResponse {
   const res = new NextResponse(null, { status: 204 })
-  return appendCorsHeaders(req, res)
+  return appendCorsHeaders(req, res, allowedMethods)
 }

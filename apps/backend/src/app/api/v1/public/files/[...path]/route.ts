@@ -4,8 +4,10 @@ import fs from 'node:fs/promises'
 import { createReadStream } from 'node:fs'
 import { Readable } from 'node:stream'
 
-import { withV1Route } from '@/app/api/v1/_shared/route-handler'
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import { withV1Route } from '@/app/api/v1/_shared/route-handler'
+import { createOptionsResponse } from '@/lib/http/response'
 import { env, BACKEND_ROOT_DIR } from '@/config'
 
 // ============================================================
@@ -59,6 +61,16 @@ const FORCE_DOWNLOAD_EXTENSIONS = new Set(['.pdf'])
  * 	- 使用流式响应（fs.createReadStream），避免全量读入内存
  * 	- 安全头：X-Content-Type-Options + SVG CSP sandbox + PDF 强制下载
  */
+/**
+ * Function: OPTIONS
+ *
+ * Description: 标准预检请求响应
+ * 仅允许 GET 方法（公开文件下载为只读端点）
+ */
+export function OPTIONS(req: NextRequest) {
+  return createOptionsResponse(req, 'GET,OPTIONS')
+}
+
 export const GET = withV1Route({
   action: 'public:storage:read',
 
