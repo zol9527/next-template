@@ -7,7 +7,7 @@ import type {
 import type { RepoContext } from '@/types/repo/repo-context'
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/client'
 
-const ASSET_SELECT = 'id,provider,bucket,object_key,url,content_type,size_bytes,status,etag,created_by,created_at,updated_at'
+const ASSET_SELECT = 'id,provider,bucket,object_key,url,content_type,size_bytes,status,etag,metadata,created_by,created_at,updated_at'
 
 function getString(row: Record<string, unknown>, key: string): string | null {
   const value = row[key]
@@ -30,6 +30,8 @@ function mapAsset(row: Record<string, unknown>) {
     sizeBytes: getNumber(row, 'size_bytes') ?? 0,
     status: getString(row, 'status') as 'active' | 'archived',
     etag: getString(row, 'etag'),
+    // 元数据：存储图片分辨率、视频时长等信息（Json 字段，可为 null）
+    metadata: (row.metadata as Record<string, unknown> | null) ?? undefined,
     createdBy: getString(row, 'created_by'),
     createdAt: getString(row, 'created_at')!,
     updatedAt: getString(row, 'updated_at')!,
@@ -216,7 +218,7 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
       return (data ?? []).map((r) => mapAsset(r as unknown as Record<string, unknown>))
     },
 
-    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; createdBy: string }) {
+    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; metadata?: Record<string, unknown>; createdBy: string }) {
       const { logger } = ctx
       logger.info({ action: 'create_media_asset', provider: params.provider, objectKey: params.objectKey })
 
@@ -230,6 +232,7 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
           content_type: params.contentType,
           size_bytes: params.sizeBytes,
           etag: params.etag,
+          metadata: params.metadata ?? undefined,
           created_by: params.createdBy,
           status: 'active',
         })
@@ -238,6 +241,74 @@ export function createSupabaseMediaAssetRepository(): MediaAssetRepository {
 
       if (error) throw error
       return mapAsset(data as unknown as Record<string, unknown>)
+    },
+
+    /**
+     * Function: updateMediaAsset
+     *
+     * Description: 更新媒体资源记录（部分字段）
+     */
+    async updateMediaAsset(ctx: RepoContext, params: {
+      assetId: string
+      objectKey?: string
+      url?: string | null
+      contentType?: string
+      sizeBytes?: number
+      status?: string
+    }) {
+      const { logger } = ctx
+      logger.info({ action: 'update_media_asset', assetId: params.assetId })
+
+      // 构建动态更新数据对象，仅包含传入的字段（Supabase 使用 snake_case 列名）
+      const data: Record<string, unknown> = {}
+      if (params.objectKey !== undefined) data.object_key = params.objectKey
+      if (params.url !== undefined) data.url = params.url
+      if (params.contentType !== undefined) data.content_type = params.contentType
+      if (params.sizeBytes !== undefined) data.size_bytes = params.sizeBytes
+      if (params.status !== undefined) data.status = params.status
+
+      const { data: updated, error } = await supabase
+        .from('media_assets')
+        .update(data)
+        .eq('id', params.assetId)
+        .select(ASSET_SELECT)
+        .single()
+
+      if (error) throw error
+      return mapAsset(updated as unknown as Record<string, unknown>)
+    },
+
+    /**
+     * Function: getStorageBreakdown
+     *
+     * Description: 按 contentType 前缀分组统计存储空间使用量
+     */
+    async getStorageBreakdown(ctx: RepoContext): Promise<Record<string, number>> {
+      const { logger } = ctx
+      logger.info({ action: 'get_storage_breakdown' })
+
+      const { data, error } = await supabase
+        .from('media_assets')
+        .select('content_type, size_bytes')
+        .eq('status', 'active')
+
+      if (error) throw error
+
+      const breakdown: Record<string, number> = {}
+      for (const row of data ?? []) {
+        const r = row as unknown as Record<string, unknown>
+        const ct = (r.content_type as string) ?? ''
+        let category: string
+        if (ct.startsWith('image/')) category = 'image'
+        else if (ct.startsWith('video/')) category = 'video'
+        else if (ct.startsWith('audio/')) category = 'audio'
+        else category = 'document'
+
+        const bytes = (r.size_bytes as number) ?? 0
+        breakdown[category] = (breakdown[category] ?? 0) + bytes
+      }
+
+      return breakdown
     },
 
     async deleteMediaAsset(ctx: RepoContext, params: { assetId: string }) {

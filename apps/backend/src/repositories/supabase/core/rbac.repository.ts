@@ -227,6 +227,25 @@ export function createSupabaseRbacRepository(): RbacRepository {
       return mapRole(data as unknown as Record<string, unknown>)
     },
 
+    async updateRole(ctx: RepoContext, params: { roleId: string; name?: string; description?: string }): Promise<RoleDto> {
+      const { logger } = ctx
+      logger.info({ action: 'update_role', roleId: params.roleId })
+
+      const updateData: Record<string, unknown> = {}
+      if (params.name !== undefined) updateData.name = params.name
+      if (params.description !== undefined) updateData.description = params.description
+
+      const { data, error } = await supabase
+        .from('roles')
+        .update(updateData)
+        .eq('id', params.roleId)
+        .select(ROLE_SELECT)
+        .single()
+
+      if (error) throw error
+      return mapRole(data as unknown as Record<string, unknown>)
+    },
+
     async deleteRole(ctx: RepoContext, params: { roleId: string }): Promise<void> {
       const { logger } = ctx
       logger.info({ action: 'delete_role', roleId: params.roleId })

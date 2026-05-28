@@ -172,6 +172,25 @@ export function createPrismaRbacRepository(): RbacRepository {
       }
     },
 
+    async updateRole(ctx: RepoContext, params: { roleId: string; name?: string; description?: string }): Promise<RoleDto> {
+      const { logger } = ctx
+      logger.info({ action: 'update_role', roleId: params.roleId })
+
+      const role = await prisma.role.update({
+        where: { id: params.roleId },
+        data: {
+          ...(params.name !== undefined && { name: params.name }),
+          ...(params.description !== undefined && { description: params.description }),
+        },
+      })
+
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description ?? undefined,
+      }
+    },
+
     async deleteRole(ctx: RepoContext, params: { roleId: string }): Promise<void> {
       const { logger } = ctx
       logger.info({ action: 'delete_role', roleId: params.roleId })

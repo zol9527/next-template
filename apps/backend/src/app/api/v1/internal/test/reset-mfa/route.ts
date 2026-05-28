@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { env } from '@/config'
 import { ok, fail } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
@@ -17,6 +18,13 @@ export const POST = withV1Route({
     // 额外检查：生产环境下必须禁用
     if (process.env.E2E_ALLOW_INTERNAL_TEST_ROUTES !== 'true' || process.env.NODE_ENV === 'production') {
       return createJsonApiResponse(req, fail('NOT_FOUND', 'Not found'), { status: 404 })
+    }
+
+    // 安全修复: 添加内部 cron token 验证，与 internal/cron 路由保持一致
+    const configuredToken = env.INTERNAL_CRON_TOKEN
+    const providedToken = req.headers.get('x-internal-cron-token')
+    if (!configuredToken || !providedToken || providedToken !== configuredToken) {
+      return createJsonApiResponse(req, fail('UNAUTHORIZED', 'Unauthorized'), { status: 401 })
     }
 
     const identifier = body!.username

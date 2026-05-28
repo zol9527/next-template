@@ -62,6 +62,8 @@ function mapAsset(a: Record<string, unknown>): AdminMediaAsset {
     // 状态枚举值映射: 仅保留 'active' 和 'archived' 两种状态
     status: (a.status as string) === 'active' ? 'active' : 'archived',
     etag: a.etag as string | null,
+    // 元数据：存储图片分辨率、视频时长等信息（Json 字段，可为 null）
+    metadata: (a.metadata as Record<string, unknown> | null) ?? undefined,
     createdBy: a.createdById as string | null,
     // 日期时间字段转为 ISO 8601 格式字符串
     createdAt: (a.createdAt as Date)?.toISOString() ?? '',
@@ -283,7 +285,7 @@ export function createPrismaMediaAssetRepository(): MediaAssetRepository {
      * Returns:
      * 	AdminMediaAsset: 新创建的媒体资源对象（DTO 格式）
      */
-    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; createdBy: string }) {
+    async createMediaAsset(ctx: RepoContext, params: { provider: AdminMediaProvider; bucket: string; objectKey: string; url?: string | null; contentType: string; sizeBytes: number; etag?: string | null; metadata?: Record<string, unknown>; createdBy: string }) {
       const { logger } = ctx
       logger.info({ action: 'create_media_asset', provider: params.provider, objectKey: params.objectKey })
 
@@ -296,12 +298,99 @@ export function createPrismaMediaAssetRepository(): MediaAssetRepository {
           contentType: params.contentType,
           sizeBytes: params.sizeBytes,
           etag: params.etag,
+          metadata: params.metadata ?? undefined,
           createdById: params.createdBy,
           // 新创建的资源默认状态为 active
           status: 'active',
         },
       })
       return mapAsset(asset)
+    },
+
+    /**
+     * Function: updateMediaAsset
+     *
+     * Description: 更新媒体资源记录（部分字段）
+     *              仅更新传入的字段，未传入的字段保持不变
+     *
+     * Parameters:
+     * 	ctx(RepoContext): Repository 上下文，包含 logger 等依赖
+     * 	params(object): 更新参数对象
+     * 		assetId(string): 待更新的媒体资源 ID
+     * 		objectKey(string, optional): 新的对象键
+     * 		url(string | null, optional): 新的访问 URL
+     * 		contentType(string, optional): 新的 MIME 类型
+     * 		sizeBytes(number, optional): 新的文件大小
+     * 		status(string, optional): 新的状态
+     *
+     * Returns:
+     * 	AdminMediaAsset: 更新后的媒体资源对象（DTO 格式）
+     */
+    async updateMediaAsset(ctx: RepoContext, params: {
+      assetId: string
+      objectKey?: string
+      url?: string | null
+      contentType?: string
+      sizeBytes?: number
+      status?: string
+    }) {
+      const { logger } = ctx
+      logger.info({ action: 'update_media_asset', assetId: params.assetId })
+
+      // 构建动态更新数据对象，仅包含传入的字段
+      const data: Prisma.MediaAssetUpdateInput = {}
+      if (params.objectKey !== undefined) data.objectKey = params.objectKey
+      if (params.url !== undefined) data.url = params.url
+      if (params.contentType !== undefined) data.contentType = params.contentType
+      if (params.sizeBytes !== undefined) data.sizeBytes = params.sizeBytes
+      if (params.status !== undefined) data.status = params.status
+
+      const asset = await prisma.mediaAsset.update({
+        where: { id: params.assetId },
+        data,
+      })
+      return mapAsset(asset)
+    },
+
+    /**
+     * Function: getStorageBreakdown
+     *
+     * Description: 按 contentType 前缀分组统计存储空间使用量
+     *              仅统计状态为 active 的资源
+     *              将 contentType 按前缀归类为 image/video/audio/document 四大类
+     *
+     * Parameters:
+     * 	ctx(RepoContext): Repository 上下文，包含 logger 等依赖
+     *
+     * Returns:
+     * 	Record<string, number>: 按类型分组的字节数（key 为 image/video/document/audio）
+     */
+    async getStorageBreakdown(ctx: RepoContext): Promise<Record<string, number>> {
+      const { logger } = ctx
+      logger.info({ action: 'get_storage_breakdown' })
+
+      // 使用 Prisma 聚合查询，按 contentType 分组求和
+      const result = await prisma.mediaAsset.groupBy({
+        by: ['contentType'],
+        where: { status: 'active' },
+        _sum: { sizeBytes: true },
+      })
+
+      const breakdown: Record<string, number> = {}
+      for (const row of result) {
+        const ct = row.contentType ?? ''
+        let category: string
+        if (ct.startsWith('image/')) category = 'image'
+        else if (ct.startsWith('video/')) category = 'video'
+        else if (ct.startsWith('audio/')) category = 'audio'
+        else category = 'document'
+
+        // sizeBytes 是 BigInt 类型，需要转换为 number
+        const bytes = Number(row._sum.sizeBytes ?? 0n)
+        breakdown[category] = (breakdown[category] ?? 0) + bytes
+      }
+
+      return breakdown
     },
 
     /**

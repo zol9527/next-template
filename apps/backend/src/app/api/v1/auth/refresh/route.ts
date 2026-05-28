@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto'
 import type { NextRequest } from 'next/server'
+import { env } from '@/config'
 import { ok, fail } from '@/contracts/api-response.schema'
 import { createJsonApiResponse, createOptionsResponse } from '@/lib/http/response'
 import { appendAuthCookies, removeAuthCookies } from '@/lib/http'
@@ -53,7 +54,8 @@ export const POST = withV1Route({
       const token = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value
         ?? req.headers.get('authorization')?.slice(7).trim()
       if (!token) return undefined
-      return createHmac('sha256', 'rate-limit-salt')
+      // 安全修复: 使用环境变量 pepper 作为 HMAC 盐，避免硬编码
+      return createHmac('sha256', env.AUTH_REFRESH_TOKEN_PEPPER || 'dev-only-fallback')
         .update(token)
         .digest('hex')
         .slice(0, 16)
@@ -89,8 +91,10 @@ export const POST = withV1Route({
       userId: result.userId,
     }
 
-    // 非浏览器客户端（小程序等）需要通过响应体获取新 token
-    if (isNonBrowserClient(req) || body?.refreshToken) {
+    // 安全修复: 仅对非浏览器客户端在响应体中返回 token
+    // 移除 body?.refreshToken 条件 — 该条件允许攻击者在浏览器端通过附带
+    // refreshToken 来绕过客户端类型检查，获取响应体中的明文 token
+    if (isNonBrowserClient(req)) {
       responseData.accessToken = result.accessToken
       responseData.refreshToken = result.refreshToken
     }

@@ -117,6 +117,17 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: buildImageRemotePatterns(),
   },
+  // 旧路由重定向到统一的 /admin/settings 页面
+  async redirects() {
+    return [
+      { source: '/admin/site-config', destination: '/admin/settings', permanent: true },
+      { source: '/admin/agreements', destination: '/admin/settings', permanent: true },
+      { source: '/admin/feature-flags', destination: '/admin/settings', permanent: true },
+      { source: '/admin/ai-settings', destination: '/admin/settings', permanent: true },
+      { source: '/admin/data-management', destination: '/admin/settings', permanent: true },
+      { source: '/admin/logs', destination: '/admin/settings', permanent: true },
+    ]
+  },
   // 注意：安全响应头（CSP、HSTS 等）现在通过 src/proxy.ts middleware 在运行时动态设置
   // 这样可以利用运行时环境变量，无需在 CI/CD 构建时注入
 };

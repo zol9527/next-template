@@ -5,61 +5,35 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
 } from '@/components/ui/sidebar'
 import { AppSidebarMenu } from './app-sidebar-menu'
 import { AppSidebarHeader } from './app-sidebar-header'
 import { AppSidebarFooter } from './app-sidebar-footer'
-import { getFilteredSidebarGroups } from './sidebar-items'
-
-interface AppSidebarProps {
-  enabledPlugins: Record<string, boolean>
-}
 
 /**
- * File: app-sidebar.tsx
- * Description: 业务侧边栏主组件，集成 shadcn/ui Sidebar
- * Function: AppSidebar
+ * Component: AppSidebar
  *
- * Description: 业务侧边栏组件，封装 shadcn/ui Sidebar 和业务逻辑
- *
- * Parameters:
- *     enabledPlugins(Record<string, boolean>): 插件启用状态映射，用于动态过滤菜单
- *
- * Returns:
- *     React.ReactElement: 完整的侧边栏组件
- *
- * Features:
- *     - Logo 区域
- *     - 菜单导航（根据插件状态动态过滤）
- *     - 底部操作（退出登录）
- *     - 键盘快捷键（Ctrl/Cmd + B）
- *     - Cookie 状态持久化
- *     - 权限由上层 PermissionProvider 提供
+ * Description: 业务侧边栏组件（Paper Design 展开态 224px）
+ * 基于 shadcn/ui Sidebar，仅保留展开态，去掉折叠逻辑
+ * 规格来源: Paper Design "App Shell — 主框架模板" Sidebar (FT6-1)
  */
-export function AppSidebar({ enabledPlugins }: AppSidebarProps) {
-  const filteredGroups = getFilteredSidebarGroups(enabledPlugins)
-
+export function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
-
-      {/* header */}
+    <Sidebar collapsible="none" variant="sidebar" className="border-none shadow-none">
+      {/* 品牌区 */}
       <SidebarHeader>
         <AppSidebarHeader />
       </SidebarHeader>
 
-      {/* content */}
+      {/* 导航区 — 10 项扁平列表 */}
       <SidebarContent>
-        <AppSidebarMenu groups={filteredGroups} />
+        <AppSidebarMenu />
       </SidebarContent>
 
-      {/* footer */}
+      {/* 底部操作区 — 退出登录 */}
       <SidebarFooter>
         <AppSidebarFooter />
       </SidebarFooter>
-
-      {/* rail */}
-      <SidebarRail />
     </Sidebar>
   )
 }

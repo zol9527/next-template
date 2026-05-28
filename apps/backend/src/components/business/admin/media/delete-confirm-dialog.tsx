@@ -51,18 +51,18 @@ export function DeleteConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChangeAction}>
-      <DialogContent size="md">
+      <DialogContent style={{ width: '480px', borderRadius: 'var(--radius-lg, 16px)' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {hasReferences ? (
-              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <AlertTriangle className="w-5 h-5" style={{ color: 'var(--error)' }} />
             ) : null}
             确认删除媒体？
           </DialogTitle>
           <DialogDescription>
             {hasReferences ? (
               <>
-                该媒体正在被 <span className="font-bold text-destructive">{references.length}</span> 个地方使用
+                该媒体正在被 <span className="font-bold" style={{ color: 'var(--error)' }}>{references.length}</span> 个地方使用
               </>
             ) : (
               <>
@@ -76,7 +76,7 @@ export function DeleteConfirmDialog({
         {hasReferences && (
           <div className="py-4">
             <p className="text-sm font-medium mb-2">引用详情：</p>
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-border/20 bg-muted/5 p-2">
+            <div className="max-h-48 overflow-y-auto p-2" style={{ borderRadius: 'var(--radius-sm, 8px)', border: '1px solid var(--border)' }}>
               <ul className="space-y-1">
                 {references.map((ref) => (
                   <li
@@ -96,12 +96,18 @@ export function DeleteConfirmDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChangeAction(false)}
+            style={{ borderRadius: 'var(--radius-sm, 8px)' }}
           >
             取消
           </Button>
           <Button
             variant={hasReferences ? "destructive" : "solid"}
             onClick={onConfirmAction}
+            style={
+              hasReferences
+                ? { backgroundColor: 'var(--error)', color: '#ffffff', borderRadius: 'var(--radius-sm, 8px)' }
+                : { borderRadius: 'var(--radius-sm, 8px)' }
+            }
           >
             {hasReferences ? '仍要删除' : '确认删除'}
           </Button>

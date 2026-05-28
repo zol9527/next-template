@@ -96,22 +96,36 @@ export default function AdminNotificationsPage() {
     : notifications
 
   return (
-    <AdminPageLayout>
+    <>
       <AdminPageHeader
-        title="通知管理"
+        title="通知中心"
         description="管理站点的通知信息"
         actions={
-          <Link href="/admin/notifications/create">
-            <Button size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              新建通知
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* 搜索框 */}
+            <div className="flex items-center h-9 min-w-[200px] rounded-full px-3.5 gap-2 bg-bg border border-border-default">
+              <Search className="size-4 shrink-0 text-fg-muted" strokeWidth={2} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索通知..."
+                className="flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-muted"
+              />
+            </div>
+            {/* 发送通知按钮 */}
+            <Link href="/admin/notifications/create">
+              <Button size="sm" className="gap-2">
+                <Plus className="size-4" strokeWidth={2} />
+                发送通知
+              </Button>
+            </Link>
+          </div>
         }
       />
-
-      {/* 搜索工具栏 */}
-      <AdminFilterBar>
+      <AdminPageLayout>
+        {/* 搜索工具栏 */}
+        <AdminFilterBar>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -129,5 +143,6 @@ export default function AdminNotificationsPage() {
         data={filteredNotifications}
       />
     </AdminPageLayout>
+    </>
   )
 }

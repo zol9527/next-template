@@ -6,6 +6,7 @@ import { appendAuthCookies, removeAuthCookies } from '@/lib/http'
 import { createAuth } from '@/app/api/v1/auth/auth-deps'
 import { withV1Route } from '@/app/api/v1/_shared/route-handler'
 import { extractClientIpSafe } from '@/lib/http/ip-extractor'
+import { isNonBrowserClient } from '@/lib/http/client-detector'
 
 export const POST = withV1Route({
   pluginGuard: 'wechat',
@@ -35,11 +36,16 @@ export const POST = withV1Route({
       ctx: { userAgent: req.headers.get('user-agent'), clientIp },
     })
 
-    const res = createJsonApiResponse(req, ok({
-      userId: result.userId,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    }))
+    // 安全修复: 浏览器端仅通过 HttpOnly Cookie 下发 token
+    // 非浏览器客户端（小程序等）自行管理 token，需要通过响应体获取
+    const responseData: Record<string, unknown> = { userId: result.userId }
+
+    if (isNonBrowserClient(req)) {
+      responseData.accessToken = result.accessToken
+      responseData.refreshToken = result.refreshToken
+    }
+
+    const res = createJsonApiResponse(req, ok(responseData))
     appendAuthCookies(res, result.accessToken, result.refreshToken)
     return res
   },

@@ -13,6 +13,7 @@ import type {
   AdminSortOrder,
 } from '@/contracts/dtos/admin/media-assets.dto'
 import type { AdminOssUploadPolicyResponse } from '@/contracts/dtos/admin/oss-upload-policy.dto'
+import { parseApiResponse } from '@/lib/api/parse-response'
 
 export interface AdminMediaUploadProgressInfo {
   percent: number
@@ -38,6 +39,19 @@ export interface AdminMediaAssetsReferencesQueryParams {
   enabled?: boolean
 }
 
+export interface StorageUsage {
+  used: number
+  total: number
+  breakdown?: Record<string, number>
+}
+
+export interface MediaListPagination {
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
 export interface UseAdminMediaAssetsParams {
   list?: AdminMediaAssetsListQueryParams
   references?: AdminMediaAssetsReferencesQueryParams
@@ -52,6 +66,9 @@ export interface AdminMediaAssetsContextValue {
     },
   ) => Promise<AdminMediaAsset>
   removeAsset: (assetId: string) => Promise<{ id: string }>
+  // 新增方法
+  renameAsset: (id: string, name: string) => Promise<void>
+  fetchStorageUsage: () => Promise<StorageUsage>
 }
 
 const AdminMediaAssetsContext = createContext<AdminMediaAssetsContextValue | undefined>(undefined)
@@ -81,19 +98,9 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       credentials: 'include',
     })
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: { message: '操作失败' } }))
-      throw new Error(error.error?.message || '删除媒体失败')
-    }
-
-    const json = await res.json()
-    if (!json.success) {
-      throw new Error(json.error?.message || '删除媒体失败')
-    }
-
+    const data = await parseApiResponse<{ id: string }>(res)
     await invalidateList()
-
-    return json.data as { id: string }
+    return data
   }
 
   const uploadAsset = async (
@@ -112,17 +119,7 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       }),
     })
 
-    if (!policyRes.ok) {
-      const error = await policyRes.json().catch(() => ({ error: { message: '获取签名失败' } }))
-      throw new Error(error.error?.message || '获取上传签名失败')
-    }
-
-    const policyJson = await policyRes.json()
-    if (!policyJson.success) {
-      throw new Error(policyJson.error?.message || '获取上传签名失败')
-    }
-
-    const policy = policyJson.data as AdminOssUploadPolicyResponse
+    const policy = await parseApiResponse<AdminOssUploadPolicyResponse>(policyRes)
 
     const formFields = Object.fromEntries(
       Object.entries(policy.formFields).map(([k, v]) => [k, String(v)]),
@@ -151,25 +148,39 @@ export function AdminMediaAssetsProvider({ children }: { children: ReactNode }) 
       }),
     })
 
-    if (!registerRes.ok) {
-      const error = await registerRes.json().catch(() => ({ error: { message: '登记失败' } }))
-      throw new Error(error.error?.message || '登记媒体失败')
-    }
-
-    const registerJson = await registerRes.json()
-    if (!registerJson.success) {
-      throw new Error(registerJson.error?.message || '登记媒体失败')
-    }
-
+    const created = await parseApiResponse<AdminMediaAsset>(registerRes)
     await invalidateList()
+    return created
+  }
 
-    return registerJson.data as AdminMediaAsset
+  // 重命名媒体资产
+  const renameAsset = async (id: string, name: string) => {
+    const res = await fetch(`/api/v1/admin/media-assets/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    })
+
+    await parseApiResponse(res)
+    await invalidateList()
+  }
+
+  // 获取存储空间使用情况
+  const fetchStorageUsage = async () => {
+    const res = await fetch('/api/v1/admin/storage/usage', {
+      credentials: 'include',
+    })
+
+    return parseApiResponse<StorageUsage>(res)
   }
 
   const contextValue: AdminMediaAssetsContextValue = {
     invalidateList,
     uploadAsset,
     removeAsset,
+    renameAsset,
+    fetchStorageUsage,
   }
 
   return (
@@ -228,17 +239,7 @@ export function useAdminMediaAssets(params?: UseAdminMediaAssetsParams) {
         credentials: 'include',
       })
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: { message: '请求失败' } }))
-        throw new Error(error.error?.message || '获取媒体列表失败')
-      }
-
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error?.message || '获取媒体列表失败')
-      }
-
-      return json.data as AdminMediaAssetCursorListResponse
+      return parseApiResponse<AdminMediaAssetCursorListResponse>(res)
     },
     placeholderData: (prev) => prev,
     staleTime: 60 * 1000,
@@ -259,21 +260,11 @@ export function useAdminMediaAssets(params?: UseAdminMediaAssetsParams) {
         credentials: 'include',
       })
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          return { references: [], count: 0 }
-        }
-
-        const error = await res.json().catch(() => ({ error: { message: '查询失败' } }))
-        throw new Error(error.error?.message || '获取引用列表失败')
+      if (res.status === 404) {
+        return { references: [], count: 0 }
       }
 
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error?.message || '获取引用列表失败')
-      }
-
-      return json.data as AdminMediaAssetReferencesResponse
+      return parseApiResponse<AdminMediaAssetReferencesResponse>(res)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -282,6 +273,79 @@ export function useAdminMediaAssets(params?: UseAdminMediaAssetsParams) {
     ...ctx,
     listQuery,
     referencesQuery,
+  }
+}
+
+/**
+ * Function: useAdminMediaAssetsPaginated
+ *
+ * Description: 使用传统分页查询媒体资产的 Hook
+ *
+ * Parameters:
+ *   params: {
+ *     page: number
+ *     pageSize: number
+ *     search?: string
+ *     type?: AdminMediaAssetType[]
+ *     sortBy?: string
+ *     sortOrder?: 'asc' | 'desc'
+ *     enabled?: boolean
+ *   }
+ *
+ * Returns:
+ *   listQuery and context methods
+ */
+export function useAdminMediaAssetsPaginated(params?: {
+  page?: number
+  pageSize?: number
+  search?: string
+  type?: AdminMediaAssetType[]
+  sortBy?: AdminMediaAssetSortBy
+  sortOrder?: AdminSortOrder
+  enabled?: boolean
+}) {
+  const ctx = useContext(AdminMediaAssetsContext)
+  if (!ctx) {
+    throw new Error('useAdminMediaAssetsPaginated 必须在 AdminMediaAssetsProvider 内使用')
+  }
+
+  const page = params?.page ?? 1
+  const pageSize = params?.pageSize ?? 20
+  const search = (params?.search ?? '').trim()
+  const type = Array.from(new Set(params?.type ?? [])).sort()
+  const sortBy = params?.sortBy ?? 'createdAt'
+  const sortOrder = params?.sortOrder ?? 'desc'
+
+  const listQuery = useQuery<{
+    items: AdminMediaAsset[]
+    pagination: MediaListPagination
+  }>({
+    queryKey: ['admin', 'media-assets', 'paginated', { page, pageSize, search, type, sortBy, sortOrder }],
+    enabled: params?.enabled ?? true,
+    queryFn: async () => {
+      const searchParams = new URLSearchParams()
+      searchParams.set('page', String(page))
+      searchParams.set('pageSize', String(pageSize))
+      searchParams.set('sortBy', sortBy)
+      searchParams.set('sortOrder', sortOrder)
+      if (search) searchParams.set('search', search)
+      for (const t of type) {
+        searchParams.append('type', t)
+      }
+
+      const res = await fetch(`/api/v1/admin/media-assets?${searchParams.toString()}`, {
+        credentials: 'include',
+      })
+
+      return parseApiResponse<{ items: AdminMediaAsset[]; pagination: MediaListPagination }>(res)
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 30 * 1000,
+  })
+
+  return {
+    ...ctx,
+    listQuery,
   }
 }
 

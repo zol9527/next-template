@@ -64,6 +64,9 @@ export const env = createEnv({
     // 内部定时任务认证令牌
     INTERNAL_CRON_TOKEN: z.string().min(16).optional(),
 
+    // 内部请求基础 URL（用于 SSRF 防护，避免信任 Host/X-Forwarded-Proto 头）
+    INTERNAL_BASE_URL: z.string().url().optional(),
+
     // 内部 API IP 白名单（支持单个 IP 和 CIDR 格式，逗号分隔）
     INTERNAL_ALLOWED_IPS: z.string().optional(),
 
@@ -190,6 +193,9 @@ export const env = createEnv({
 
     // 内部定时任务认证令牌
     INTERNAL_CRON_TOKEN: process.env.INTERNAL_CRON_TOKEN,
+
+    // 内部请求基础 URL
+    INTERNAL_BASE_URL: process.env.INTERNAL_BASE_URL,
 
     // 内部 API IP 白名单
     INTERNAL_ALLOWED_IPS: process.env.INTERNAL_ALLOWED_IPS,

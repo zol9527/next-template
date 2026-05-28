@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server'
+import { env } from '@/config'
 import { REFRESH_TOKEN_COOKIE } from '@/lib/constants/token'
 import { TRACE_ID_HEADER } from './headers'
 import { extractSetCookieHeaders } from '@/lib/http'
@@ -33,11 +34,11 @@ export async function tryRefreshSessionByCookie(
   const cookieHeader = req.headers.get('cookie')
   if (!cookieHeader) return null
 
-  const forwardedProto = req.headers.get('x-forwarded-proto')
-  const hostHeader = req.headers.get('host')
-  const protocol = forwardedProto ?? req.nextUrl.protocol.replace(':', '')
-  const host = hostHeader ?? req.nextUrl.host
-  const refreshUrl = new URL('/api/v1/auth/refresh', `${protocol}://${host}`)
+  // 安全修复: 使用环境变量配置的内部 URL，不信任请求头
+  // 防止攻击者通过伪造 Host/X-Forwarded-Proto 头发起 SSRF 攻击
+  const baseUrl = env.INTERNAL_BASE_URL
+    ?? `${req.nextUrl.protocol.replace(':', '')}://${req.nextUrl.host}`
+  const refreshUrl = new URL('/api/v1/auth/refresh', baseUrl)
 
   let refreshRes: Response
   try {

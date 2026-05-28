@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { CheckinStatsSchema, type CheckinStats } from '@/contracts/dtos/admin-checkin.dto'
 import type { ApiResponse } from '@/contracts/api-response.schema'
+import { AdminPageHeader } from '@/components/ui/admin-page-header'
 
 /**
  * Component: StatCard
@@ -135,25 +136,24 @@ export default function AdminCheckinStatsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* 头部标题区 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">签到统计</h1>
-          <p className="text-sm text-muted-foreground">查看每日签到趋势和活跃用户情况</p>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh} 
-          disabled={isFetching}
-          className="bg-background hover:bg-muted/30 transition-all gap-2"
-        >
-          <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-          刷新数据
-        </Button>
-      </div>
-
+    <>
+      <AdminPageHeader
+        title="签到统计"
+        description="查看每日签到趋势和活跃用户情况"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isFetching}
+            className="bg-background hover:bg-muted/30 transition-all gap-2"
+          >
+            <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+            刷新数据
+          </Button>
+        }
+      />
+      <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* 指标卡片行 */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
@@ -256,5 +256,6 @@ export default function AdminCheckinStatsPage() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }
