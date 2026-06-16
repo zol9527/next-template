@@ -697,12 +697,12 @@ export function createCouponService(
       const redemption = await deps.redemptions.redeemAtomically(repoCtx, {
         userCouponId: params.userCouponId,
         userId: params.userId,
-        couponId: calculation.coupon.id,
+        couponId: calculation.coupon!.id,
         orderId: params.orderId ?? null,
         originalAmount: calculation.originalAmount,
         discountAmount: calculation.discountAmount,
         finalAmount: calculation.finalAmount,
-        giftProductId: calculation.coupon.giftProductId ?? null,
+        giftProductId: calculation.coupon!.giftProductId ?? null,
       })
 
       logger.info({ action: 'coupon_redeemed', redemptionId: redemption.id })

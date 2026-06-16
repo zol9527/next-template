@@ -257,7 +257,7 @@ export function getUserColumns(props: UserColumnsProps = {}): ColumnDef<AdminUse
                 <MoreHorizontal className="h-4 w-4 text-[var(--fg-faint,#9C9A91)]" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="right" className="w-48">
               <DropdownMenuItem onClick={() => onViewDetails?.(user)}>
                 <Eye className="mr-2 h-4 w-4" />
                 查看详情

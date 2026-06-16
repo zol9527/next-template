@@ -591,7 +591,7 @@ export function createAdminMediaAssetService(
      */
     async getStorageUsage(): Promise<{ used: number; total: number; breakdown: Record<string, number> }> {
       // 总配额通过环境变量配置，默认 10 GB
-      const totalBytes = parseInt(env.STORAGE_LIMIT_BYTES ?? String(10 * 1024 * 1024 * 1024), 10)
+      const totalBytes = parseInt(process.env.STORAGE_LIMIT_BYTES ?? String(10 * 1024 * 1024 * 1024), 10)
 
       // 调用 Repository 聚合查询
       const breakdown = await deps.media.getStorageBreakdown(repoCtx)

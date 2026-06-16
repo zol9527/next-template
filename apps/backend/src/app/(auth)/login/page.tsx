@@ -1,3 +1,4 @@
+import { connection } from 'next/server'
 import { AdminLoginForm } from '@/components/business/admin/admin-login-form'
 import { PublicIcpFiling } from '@/components/business/shared/public-icp-filing'
 import { APP_NAME, getCopyrightText } from '@/config/site'
@@ -16,7 +17,9 @@ import { APP_NAME, getCopyrightText } from '@/config/site'
  *   5. 登录表单（400px 宽度）
  *   6. 底部版权（absolute bottom-8）
  */
-export default function AdminLoginPage() {
+export default async function AdminLoginPage() {
+  // 标记为动态渲染：页面包含基于 new Date() 的版权年份
+  await connection()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 relative">
       {/* ── 品牌区域：Logo + 名称 ── */}

@@ -4,12 +4,27 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb'
 
 let prismaClient: PrismaClient | null | undefined
 
-function toMariaDbUrl(databaseUrl: string): string {
-  if (databaseUrl.startsWith('mysql://')) {
-    return `mariadb://${databaseUrl.slice('mysql://'.length)}`
-  }
+/**
+ * 将 mysql:// 或 mariadb:// 连接串解析为 mariadb npm 可识别的配置对象。
+ *
+ * 切换为对象配置的原因：
+ * 1. 让 env.CONNECTION_LIMIT 显式生效（之前 URL 字符串路径走的是 mariadb 默认值 10）
+ * 2. 为后续注入 pool 健壮性参数预留扩展点
+ *
+ * 注意：new URL().password 返回 percent-encoded 字符串（如 "p%40ss"），
+ * 必须 decodeURIComponent 一次，与 mariadb npm 内部的 URL 解析行为等价。
+ */
+function parseMariaDbConfig(databaseUrl: string) {
+  const parsed = new URL(databaseUrl)
 
-  return databaseUrl
+  return {
+    host: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : 3306,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: parsed.pathname.replace(/^\//, ''),
+    connectionLimit: env.CONNECTION_LIMIT,
+  }
 }
 
 export function createPrismaClient() {
@@ -19,16 +34,7 @@ export function createPrismaClient() {
   }
 
   if (env.DATABASE_URL?.includes('mysql:') || env.DATABASE_URL?.includes('mariadb:')) {
-    // MySQL/MariaDB: 优先使用完整连接串，避免仅配置 DATABASE_URL 时参数为空
-    const adapter = env.DATABASE_URL
-      ? new PrismaMariaDb(toMariaDbUrl(env.DATABASE_URL))
-      : new PrismaMariaDb({
-          host: env.DATABASE_HOST,
-          user: env.DATABASE_USER,
-          password: env.DATABASE_PASSWORD,
-          database: env.DATABASE_NAME,
-          connectionLimit: env.CONNECTION_LIMIT,
-        })
+    const adapter = new PrismaMariaDb(parseMariaDbConfig(env.DATABASE_URL))
     return new PrismaClient({ adapter })
   }
 

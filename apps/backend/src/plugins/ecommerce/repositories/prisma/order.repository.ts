@@ -3,7 +3,7 @@ import type { OrderRepository } from '@/plugins/ecommerce/repositories/interface
 import type { Order as OrderDto } from '@/plugins/ecommerce/contracts/orders.dto'
 import type { AdminOrder } from '@/plugins/ecommerce/contracts/admin-orders.dto'
 import type { RepoContext } from '@/types/repo/repo-context'
-import type { Prisma, Order as PrismaOrder } from '@/lib/prisma/generated/prisma'
+import { Prisma, type Order as PrismaOrder } from '@/lib/prisma/generated/prisma'
 
 function mapOrder(o: PrismaOrder): OrderDto {
   const allowedStatuses: readonly string[] = ['pending_payment', 'paid', 'cancelled', 'closed', 'refunding', 'refunded', 'completed']

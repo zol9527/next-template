@@ -298,7 +298,7 @@ export function createPrismaMediaAssetRepository(): MediaAssetRepository {
           contentType: params.contentType,
           sizeBytes: params.sizeBytes,
           etag: params.etag,
-          metadata: params.metadata ?? undefined,
+          metadata: params.metadata as Prisma.InputJsonValue | undefined,
           createdById: params.createdBy,
           // 新创建的资源默认状态为 active
           status: 'active',
