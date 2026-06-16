@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import type { MfaPolicyRepository } from '@/repositories/interfaces/mfa-policy.interface'
-import type { RbacRepository } from '@/repositories/interfaces/rbac.interface'
+import type { MfaPolicyRepository } from '@/repositories/interfaces/core/mfa-policy.interface'
+import type { RbacRepository } from '@/repositories/interfaces/core/rbac.interface'
 import type { RoleDto } from '@/contracts/dtos/rbac/role.dto'
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors/app-error'
 

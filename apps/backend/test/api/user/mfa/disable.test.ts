@@ -157,6 +157,7 @@ describe('API: POST /api/v1/user/mfa/disable', () => {
       updatePassword: vi.fn(),
       updateWechatDisplayProfile: vi.fn(),
       updateUserPhone: vi.fn(),
+      updateUserAdmin: vi.fn(),
     }
 
     mockMfaRepository.getUserMfaData = mockGetUserMfaData

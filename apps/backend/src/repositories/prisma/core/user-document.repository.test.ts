@@ -23,21 +23,26 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-const { prisma } = vi.mocked(await import('@/lib/prisma'), { shallow: false })
+const { prisma } = vi.mocked(await import('@/lib/prisma'), { deep: true })
 
 // Mock logger
 const mockLogger = {
+  level: 'debug',
   info: vi.fn(),
   error: vi.fn(),
   warn: vi.fn(),
   debug: vi.fn(),
+  fatal: vi.fn(),
+  trace: vi.fn(),
+  silent: vi.fn(),
+  msgPrefix: undefined,
   child: vi.fn(() => mockLogger),
 }
 
 // Mock RepoContext
 const mockCtx: RepoContext = {
   traceId: 'test-trace-id',
-  logger: mockLogger,
+  logger: mockLogger as any,
 }
 
 describe('PrismaUserDocumentRepository', () => {
@@ -606,7 +611,7 @@ describe('PrismaUserDocumentRepository', () => {
      *   void: 无返回值
      */
     it('应该成功删除文档', async () => {
-      vi.mocked(prisma.userDocument.delete).mockResolvedValue(undefined)
+      vi.mocked(prisma.userDocument.delete).mockResolvedValue(undefined as any)
 
       await repository.delete(mockCtx, { id: 'doc-123' })
 

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMfaPolicyService } from '@/services/core/mfa-policy.service'
-import type { MfaPolicyRepository } from '@/repositories/interfaces/mfa-policy.interface'
+import type { MfaPolicyRepository } from '@/repositories/interfaces/core/mfa-policy.interface'
 import type { MfaAuditAction } from '@/services/core/mfa-audit-log.service'
 import type {
   MfaGlobalSettingsDto,
@@ -56,7 +56,7 @@ const mockContext = {
   logger: mockLogger,
   clientIp: '192.168.1.1',
   userAgent: 'Test Agent',
-}
+} as any
 
 // ==================== Helper Functions ====================
 
@@ -71,7 +71,7 @@ const mockContext = {
  * Returns:
  *   repo(MfaPolicyRepository): 模拟的 Repository
  */
-function createMockMfaPolicyRepository(overrides: Partial<MfaPolicyRepository> = {}): MfaPolicyRepository {
+function createMockMfaPolicyRepository(overrides: any = {}): MfaPolicyRepository {
   return {
     // 全局设置
     getGlobalSettings: vi.fn(() => Promise.resolve(null)),
@@ -98,7 +98,7 @@ function createMockMfaPolicyRepository(overrides: Partial<MfaPolicyRepository> =
       // Handle both array format (service bug) and { policies: array } format (interface)
       const policies = Array.isArray(paramsOrArray) ? paramsOrArray : paramsOrArray.policies
       return Promise.resolve(
-        policies.map((p) => ({
+        policies.map((p: any) => ({
           ...p,
           updatedAt: new Date().toISOString(),
         }))

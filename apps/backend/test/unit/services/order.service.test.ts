@@ -6,14 +6,14 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createOrderService } from '@/plugins/ecommerce/services/order.service'
-import type { OrderRepository } from '@/repositories/interfaces/order.interface'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
-import type { IdempotencyRepository } from '@/repositories/interfaces/idempotency.interface'
-import type { CouponRepository, UserCouponRepository, CouponRedemptionRepository } from '@/repositories/interfaces/coupon.interface'
-import type { PromoterCodeRepository } from '@/repositories/interfaces/promoter-code.interface'
-import type { DistributionRepository } from '@/repositories/interfaces/distribution.interface'
-import type { AdminProduct } from '@/contracts/dtos/admin/products.dto'
-import type { Order } from '@/contracts/dtos/orders.dto'
+import type { OrderRepository } from '@/plugins/ecommerce/repositories/interfaces/order.interface'
+import type { ProductRepository } from '@/plugins/ecommerce/repositories/interfaces/product.interface'
+import type { IdempotencyRepository } from '@/repositories/interfaces/core/idempotency.interface'
+import type { CouponRepository, UserCouponRepository, CouponRedemptionRepository } from '@/plugins/ecommerce/repositories/interfaces/coupon.interface'
+import type { PromoterCodeRepository } from '@/plugins/promotion/repositories/interfaces/promoter-code.interface'
+import type { DistributionRepository } from '@/plugins/promotion/repositories/interfaces/distribution.interface'
+import type { AdminProduct } from '@/plugins/ecommerce/contracts/admin-products.dto'
+import type { Order } from '@/plugins/ecommerce/contracts/orders.dto'
 import type { IdempotencyRequest } from '@/contracts/dtos/idempotency.dto'
 import type pino from 'pino'
 
@@ -71,7 +71,7 @@ function buildTestProduct(overrides?: Partial<AdminProduct>): AdminProduct {
     updatedAt: '2024-01-01T00:00:00.000Z',
     deletedAt: null,
     ...overrides,
-  }
+  } as AdminProduct
 }
 
 /**
@@ -125,7 +125,7 @@ function buildTestIdempotencyRequest(overrides?: Partial<IdempotencyRequest>): I
 /**
  * 创建模拟的商品仓库
  */
-function createMockProductRepository(overrides?: Partial<ProductRepository>): ProductRepository {
+function createMockProductRepository(overrides?: any): ProductRepository {
   return {
     getProductById: overrides?.getProductById ?? vi.fn().mockResolvedValue(null),
     listProducts: overrides?.listProducts ?? vi.fn(),
@@ -142,13 +142,13 @@ function createMockProductRepository(overrides?: Partial<ProductRepository>): Pr
     listProductMediaAttachments: overrides?.listProductMediaAttachments ?? vi.fn(),
     listAttachmentsForProducts: overrides?.listAttachmentsForProducts ?? vi.fn(),
     getGlobalStats: overrides?.getGlobalStats ?? vi.fn(),
-  }
+  } as any
 }
 
 /**
  * 创建模拟的订单仓库
  */
-function createMockOrderRepository(overrides?: Partial<OrderRepository>): OrderRepository {
+function createMockOrderRepository(overrides?: any): any {
   return {
     getOrderById: overrides?.getOrderById ?? vi.fn().mockResolvedValue(null),
     createOrder: overrides?.createOrder ?? vi.fn().mockResolvedValue(buildTestOrder()),
@@ -165,7 +165,7 @@ function createMockOrderRepository(overrides?: Partial<OrderRepository>): OrderR
 /**
  * 创建模拟的幂等性仓库
  */
-function createMockIdempotencyRepository(overrides?: Partial<IdempotencyRepository>): IdempotencyRepository {
+function createMockIdempotencyRepository(overrides?: any): any {
   return {
     getRequest: overrides?.getRequest ?? vi.fn().mockResolvedValue(null),
     createRequest: overrides?.createRequest ?? vi.fn().mockResolvedValue(buildTestIdempotencyRequest()),
@@ -174,7 +174,7 @@ function createMockIdempotencyRepository(overrides?: Partial<IdempotencyReposito
   }
 }
 
-function createMockCouponRepository(overrides?: Partial<CouponRepository>): CouponRepository {
+function createMockCouponRepository(overrides?: any): any {
   return {
     getCouponById: overrides?.getCouponById ?? vi.fn(),
     createCoupon: overrides?.createCoupon ?? vi.fn(),
@@ -186,7 +186,7 @@ function createMockCouponRepository(overrides?: Partial<CouponRepository>): Coup
   }
 }
 
-function createMockUserCouponRepository(overrides?: Partial<UserCouponRepository>): UserCouponRepository {
+function createMockUserCouponRepository(overrides?: any): any {
   return {
     getUserCouponById: overrides?.getUserCouponById ?? vi.fn(),
     createUserCoupon: overrides?.createUserCoupon ?? vi.fn(),
@@ -199,7 +199,7 @@ function createMockUserCouponRepository(overrides?: Partial<UserCouponRepository
   }
 }
 
-function createMockRedemptionRepository(overrides?: Partial<CouponRedemptionRepository>): CouponRedemptionRepository {
+function createMockRedemptionRepository(overrides?: any): any {
   return {
     createRedemption: overrides?.createRedemption ?? vi.fn(),
     getRedemptionById: overrides?.getRedemptionById ?? vi.fn(),
@@ -210,7 +210,7 @@ function createMockRedemptionRepository(overrides?: Partial<CouponRedemptionRepo
   }
 }
 
-function createMockPromoterCodeRepository(overrides?: Partial<PromoterCodeRepository>): PromoterCodeRepository {
+function createMockPromoterCodeRepository(overrides?: any): any {
   return {
     getCodeByCode: overrides?.getCodeByCode ?? vi.fn(),
     getCodeById: overrides?.getCodeById ?? vi.fn(),
@@ -225,7 +225,7 @@ function createMockPromoterCodeRepository(overrides?: Partial<PromoterCodeReposi
   }
 }
 
-function createMockDistributionRepository(overrides?: Partial<DistributionRepository>): DistributionRepository {
+function createMockDistributionRepository(overrides?: any): any {
   return {
     getRelationByUserId: overrides?.getRelationByUserId ?? vi.fn(),
     bindRelation: overrides?.bindRelation ?? vi.fn(),

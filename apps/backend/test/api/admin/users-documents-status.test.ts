@@ -7,8 +7,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { PATCH } from '@/app/api/v1/admin/users/[id]/documents/[documentId]/status/route'
-import type { UserDocumentRepository } from '@/repositories/interfaces/user-document.interface'
-import type { DocumentVersionRepository } from '@/repositories/interfaces/document-version.interface'
+import type { UserDocumentRepository } from '@/repositories/interfaces/core/user-document.interface'
+import type { DocumentVersionRepository } from '@/repositories/interfaces/core/document-version.interface'
 import type { UserDocument } from '@/contracts/dtos/user-document.dto'
 
 // Mock logger to avoid file system issues
@@ -117,12 +117,12 @@ function createAdminAuth() {
 
 describe('API: PATCH /api/v1/admin/users/[id]/documents/[documentId]/status', () => {
   // 使用 Partial 类型来模拟仓储接口，仅包含测试所需的必要方法
-  const userDocsRepo: Partial<UserDocumentRepository> = {
+  const userDocsRepo = {
     findById: vi.fn(),
     update: vi.fn(),
   }
 
-  const docVersionsRepo: Partial<DocumentVersionRepository> = {
+  const docVersionsRepo = {
     findByUserDocumentId: vi.fn(),
     create: vi.fn(),
   }
@@ -131,16 +131,9 @@ describe('API: PATCH /api/v1/admin/users/[id]/documents/[documentId]/status', ()
     getUserById: vi.fn(),
   }
 
-  // 模拟 UserDocumentService，仅包含测试所需的方法
-  type UserDocServiceMock = {
-    updateDocumentStatusByAdmin: (
-      documentId: string,
-      status: string,
-      rejectionReason?: string
-    ) => Promise<UserDocument>
-  }
-  const userDocService: UserDocServiceMock = {
-    updateDocumentStatusByAdmin: vi.fn(),
+  // 模拟 UserDocumentService，仅包含测试所需的方法（类型由 vi.fn() 推断即可得到 Mock 方法）
+  const userDocService = {
+    updateDocumentStatusByAdmin: vi.fn<(documentId: string, status: string, rejectionReason?: string) => Promise<UserDocument>>(),
   }
 
   const MOCK_USER_ID = '550e8400-e29b-41d4-a716-446655440000'
@@ -150,10 +143,10 @@ describe('API: PATCH /api/v1/admin/users/[id]/documents/[documentId]/status', ()
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(createUserDocumentRepository).mockResolvedValue(userDocsRepo)
-    vi.mocked(createDocumentVersionRepository).mockResolvedValue(docVersionsRepo)
+    vi.mocked(createUserDocumentRepository).mockResolvedValue(userDocsRepo as any)
+    vi.mocked(createDocumentVersionRepository).mockResolvedValue(docVersionsRepo as any)
     vi.mocked(createUserRepository).mockResolvedValue(usersRepo as any)
-    vi.mocked(createUserDocumentService).mockReturnValue(userDocService)
+    vi.mocked(createUserDocumentService).mockReturnValue(userDocService as any)
     mockUseApiAuth.mockResolvedValue(createAdminAuth())
   })
 
@@ -170,7 +163,7 @@ describe('API: PATCH /api/v1/admin/users/[id]/documents/[documentId]/status', ()
       documentType: 'id_card',
     })
     userDocsRepo.update.mockResolvedValue(mockUpdatedDoc)
-    userDocService.updateDocumentStatusByAdmin.mockResolvedValue(mockUpdatedDoc)
+    userDocService.updateDocumentStatusByAdmin.mockResolvedValue(mockUpdatedDoc as UserDocument)
 
     const body = { status: 'approved' }
     const req = new NextRequest(`http://localhost/api/v1/admin/users/${MOCK_USER_ID}/documents/${MOCK_DOC_ID}/status`, {
@@ -201,7 +194,7 @@ describe('API: PATCH /api/v1/admin/users/[id]/documents/[documentId]/status', ()
       documentType: 'id_card',
     })
     userDocsRepo.update.mockResolvedValue(mockUpdatedDoc)
-    userDocService.updateDocumentStatusByAdmin.mockResolvedValue(mockUpdatedDoc)
+    userDocService.updateDocumentStatusByAdmin.mockResolvedValue(mockUpdatedDoc as UserDocument)
 
     const body = {
       status: 'rejected',

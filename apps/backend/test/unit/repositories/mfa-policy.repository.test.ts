@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { PrismaMfaPolicyRepository } from '@/repositories/prisma/core/mfa-policy.repository'
-import type { MfaPolicyRepository } from '@/repositories/interfaces/mfa-policy.interface'
+import type { MfaPolicyRepository } from '@/repositories/interfaces/core/mfa-policy.interface'
 import type { RepoContext } from '@/types/repo/repo-context'
 
 // Mock Prisma Client
@@ -33,7 +33,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-const { prisma } = vi.mocked(await import('@/lib/prisma'), { shallow: false })
+const { prisma } = (await import('@/lib/prisma')) as any
 
 // Mock logger
 const mockLogger = {
@@ -45,10 +45,10 @@ const mockLogger = {
 }
 
 // Mock RepoContext
-const mockCtx: RepoContext = {
+const mockCtx = {
   traceId: 'test-trace-id',
   logger: mockLogger,
-}
+} as any
 
 describe('PrismaMfaPolicyRepository', () => {
   let repository: MfaPolicyRepository
@@ -256,6 +256,7 @@ describe('PrismaMfaPolicyRepository', () => {
     it('should return all policies', async () => {
       const mockPolicies = [
         {
+          id: 'policy-1',
           roleName: 'admin',
           policy: 'required',
           allowExemptions: false,
@@ -263,6 +264,7 @@ describe('PrismaMfaPolicyRepository', () => {
           updatedAt: new Date('2024-01-01T00:00:00.000Z'),
         },
         {
+          id: 'policy-2',
           roleName: 'user',
           policy: 'optional',
           allowExemptions: true,
@@ -271,7 +273,7 @@ describe('PrismaMfaPolicyRepository', () => {
         },
       ]
 
-      vi.mocked(prisma.mfaRolePolicy.findMany).mockResolvedValue(mockPolicies)
+      vi.mocked(prisma.mfaRolePolicy.findMany).mockResolvedValue(mockPolicies as any)
 
       const result = await repository.getRolePolicies(mockCtx)
 
@@ -333,6 +335,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should return policy for existing role', async () => {
       const mockPolicy = {
+        id: 'policy-1',
         roleName: 'admin',
         policy: 'required',
         allowExemptions: false,
@@ -340,7 +343,7 @@ describe('PrismaMfaPolicyRepository', () => {
         updatedAt: new Date('2024-01-01T00:00:00.000Z'),
       }
 
-      vi.mocked(prisma.mfaRolePolicy.findUnique).mockResolvedValue(mockPolicy)
+      vi.mocked(prisma.mfaRolePolicy.findUnique).mockResolvedValue(mockPolicy as any)
 
       const result = await repository.getRolePolicyByName(mockCtx, {
         roleName: 'admin',
@@ -370,6 +373,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should create new role policy', async () => {
       const mockPolicy = {
+        id: 'policy-3',
         roleName: 'moderator',
         policy: 'optional',
         allowExemptions: true,
@@ -377,11 +381,11 @@ describe('PrismaMfaPolicyRepository', () => {
         updatedAt: new Date('2024-01-01T00:00:00.000Z'),
       }
 
-      vi.mocked(prisma.mfaRolePolicy.upsert).mockResolvedValue(mockPolicy)
+      vi.mocked(prisma.mfaRolePolicy.upsert).mockResolvedValue(mockPolicy as any)
 
       const result = await repository.upsertRolePolicy(mockCtx, {
         roleName: 'moderator',
-        policy: 'optional',
+        policy: 'optional' as any,
         allowExemptions: true,
       })
 
@@ -425,6 +429,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should update existing role policy', async () => {
       const mockPolicy = {
+        id: 'policy-1',
         roleName: 'admin',
         policy: 'required',
         allowExemptions: false,
@@ -432,11 +437,11 @@ describe('PrismaMfaPolicyRepository', () => {
         updatedAt: new Date('2024-01-02T00:00:00.000Z'),
       }
 
-      vi.mocked(prisma.mfaRolePolicy.upsert).mockResolvedValue(mockPolicy)
+      vi.mocked(prisma.mfaRolePolicy.upsert).mockResolvedValue(mockPolicy as any)
 
       const result = await repository.upsertRolePolicy(mockCtx, {
         roleName: 'admin',
-        policy: 'required',
+        policy: 'required' as any,
         allowExemptions: false,
       })
 
@@ -461,7 +466,7 @@ describe('PrismaMfaPolicyRepository', () => {
      *   policies(MfaRolePolicyDto[]): 空数组
      */
     it('should handle empty array', async () => {
-      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => {
         return await callback(prisma)
       })
 
@@ -507,18 +512,18 @@ describe('PrismaMfaPolicyRepository', () => {
         },
       ]
 
-      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => {
         // 模拟事务中的 upsert 调用
         vi.mocked(prisma.mfaRolePolicy.upsert)
-          .mockResolvedValueOnce(mockPolicies[0])
-          .mockResolvedValueOnce(mockPolicies[1])
+          .mockResolvedValueOnce(mockPolicies[0] as any)
+          .mockResolvedValueOnce(mockPolicies[1] as any)
         return await callback(prisma)
       })
 
       const result = await repository.batchUpsertRolePolicies(mockCtx, {
         policies: [
-          { roleName: 'admin', policy: 'required', allowExemptions: false },
-          { roleName: 'user', policy: 'optional', allowExemptions: true },
+          { roleName: 'admin', policy: 'required' as any, allowExemptions: false },
+          { roleName: 'user', policy: 'optional' as any, allowExemptions: true },
         ],
       })
 
@@ -560,6 +565,7 @@ describe('PrismaMfaPolicyRepository', () => {
     it('should return paginated exemption list', async () => {
       const mockExemptions = [
         {
+          id: 'exemption-1',
           userId: 'user-1',
           reason: '测试用户',
           createdBy: 'admin-1',
@@ -567,6 +573,7 @@ describe('PrismaMfaPolicyRepository', () => {
           expiresAt: null,
         },
         {
+          id: 'exemption-2',
           userId: 'user-2',
           reason: '特殊账号',
           createdBy: 'admin-1',
@@ -575,7 +582,7 @@ describe('PrismaMfaPolicyRepository', () => {
         },
       ]
 
-      vi.mocked(prisma.mfaExemption.findMany).mockResolvedValue(mockExemptions)
+      vi.mocked(prisma.mfaExemption.findMany).mockResolvedValue(mockExemptions as any)
       vi.mocked(prisma.mfaExemption.count).mockResolvedValue(2)
 
       const result = await repository.getExemptions(mockCtx, {
@@ -659,6 +666,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should return exemption for existing user', async () => {
       const mockExemption = {
+        id: 'exemption-1',
         userId: 'user-1',
         reason: '测试用户',
         createdBy: 'admin-1',
@@ -666,7 +674,7 @@ describe('PrismaMfaPolicyRepository', () => {
         expiresAt: new Date('2024-12-31T23:59:59.000Z'),
       }
 
-      vi.mocked(prisma.mfaExemption.findUnique).mockResolvedValue(mockExemption)
+      vi.mocked(prisma.mfaExemption.findUnique).mockResolvedValue(mockExemption as any)
 
       const result = await repository.getExemptionByUserId(mockCtx, {
         userId: 'user-1',
@@ -695,6 +703,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should return exemption with null expiresAt', async () => {
       const mockExemption = {
+        id: 'exemption-1',
         userId: 'user-1',
         reason: '永久豁免',
         createdBy: 'admin-1',
@@ -702,7 +711,7 @@ describe('PrismaMfaPolicyRepository', () => {
         expiresAt: null,
       }
 
-      vi.mocked(prisma.mfaExemption.findUnique).mockResolvedValue(mockExemption)
+      vi.mocked(prisma.mfaExemption.findUnique).mockResolvedValue(mockExemption as any)
 
       const result = await repository.getExemptionByUserId(mockCtx, {
         userId: 'user-1',
@@ -734,6 +743,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should create new exemption', async () => {
       const mockExemption = {
+        id: 'exemption-1',
         userId: 'user-1',
         reason: '测试用户',
         createdBy: 'admin-1',
@@ -741,7 +751,7 @@ describe('PrismaMfaPolicyRepository', () => {
         expiresAt: new Date('2024-12-31T23:59:59.000Z'),
       }
 
-      vi.mocked(prisma.mfaExemption.create).mockResolvedValue(mockExemption)
+      vi.mocked(prisma.mfaExemption.create).mockResolvedValue(mockExemption as any)
 
       const result = await repository.createExemption(mockCtx, {
         userId: 'user-1',
@@ -787,6 +797,7 @@ describe('PrismaMfaPolicyRepository', () => {
      */
     it('should create exemption without expiresAt', async () => {
       const mockExemption = {
+        id: 'exemption-1',
         userId: 'user-1',
         reason: '永久豁免',
         createdBy: 'admin-1',
@@ -794,7 +805,7 @@ describe('PrismaMfaPolicyRepository', () => {
         expiresAt: null,
       }
 
-      vi.mocked(prisma.mfaExemption.create).mockResolvedValue(mockExemption)
+      vi.mocked(prisma.mfaExemption.create).mockResolvedValue(mockExemption as any)
 
       const result = await repository.createExemption(mockCtx, {
         userId: 'user-1',
@@ -832,7 +843,7 @@ describe('PrismaMfaPolicyRepository', () => {
      *   boolean: 删除成功返回 true
      */
     it('should return true on successful deletion', async () => {
-      vi.mocked(prisma.mfaExemption.delete).mockResolvedValue(undefined)
+      vi.mocked(prisma.mfaExemption.delete).mockResolvedValue(undefined as any)
 
       const result = await repository.deleteExemption(mockCtx, {
         userId: 'user-1',

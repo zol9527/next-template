@@ -7,7 +7,7 @@ import type { UserRepository } from '@/repositories/interfaces/core/user.interfa
 import type { SessionRepository } from '@/repositories/interfaces/core/session.interface'
 import type { WechatAccountRepository } from '@/plugins/wechat/repositories/interfaces/wechat-account.interface'
 import type { RbacRepository } from '@/repositories/interfaces/core/rbac.interface'
-import type { WechatOauthClient } from '@/lib/wechat/oauth'
+import type { WechatOauthProvider } from '@/services/core/auth.service'
 
 vi.mock('@/lib/wechat/phone', () => ({
   getPhoneNumber: vi.fn(),
@@ -75,7 +75,7 @@ describe('AuthService - WeChat Profile Methods', () => {
           sessions: {} as unknown as SessionRepository,
           wechatAccounts: {} as unknown as WechatAccountRepository,
           rbac: {} as unknown as RbacRepository,
-          wechatOauth: {} as unknown as WechatOauthClient,
+          wechatOauth: {} as unknown as WechatOauthProvider,
         },
         ctx,
       )
@@ -108,7 +108,7 @@ describe('AuthService - WeChat Profile Methods', () => {
           sessions: {} as unknown as SessionRepository,
           wechatAccounts: {} as unknown as WechatAccountRepository,
           rbac: {} as unknown as RbacRepository,
-          wechatOauth: {} as unknown as WechatOauthClient,
+          wechatOauth: {} as unknown as WechatOauthProvider,
         },
         ctx,
       )
@@ -139,7 +139,7 @@ describe('AuthService - WeChat Profile Methods', () => {
           sessions: {} as unknown as SessionRepository,
           wechatAccounts: {} as unknown as WechatAccountRepository,
           rbac: {} as unknown as RbacRepository,
-          wechatOauth: {} as unknown as WechatOauthClient,
+          wechatOauth: {} as unknown as WechatOauthProvider,
         },
         ctx,
       )

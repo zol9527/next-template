@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/v1/admin/users/[id]/upload-permission/route'
 import { GET } from '@/app/api/v1/user/upload-permission/route'
 import { ForbiddenError } from '@/lib/errors/app-error'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
 
 // Mock logger - 使用内联定义以避免 hoisting 问题
 vi.mock('@/lib/logger', () => {

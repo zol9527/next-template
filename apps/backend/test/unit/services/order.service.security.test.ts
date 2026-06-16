@@ -7,11 +7,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createOrderService } from '@/plugins/ecommerce/services/order.service'
-import type { OrderRepository } from '@/repositories/interfaces/order.interface'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
-import type { IdempotencyRepository } from '@/repositories/interfaces/idempotency.interface'
-import type { Order } from '@/contracts/dtos/orders.dto'
-import type { AdminProduct } from '@/contracts/dtos/admin/products.dto'
+import type { OrderRepository } from '@/plugins/ecommerce/repositories/interfaces/order.interface'
+import type { ProductRepository } from '@/plugins/ecommerce/repositories/interfaces/product.interface'
+import type { IdempotencyRepository } from '@/repositories/interfaces/core/idempotency.interface'
+import type { Order } from '@/plugins/ecommerce/contracts/orders.dto'
+import type { AdminProduct } from '@/plugins/ecommerce/contracts/admin-products.dto'
 import type pino from 'pino'
 
 // ==================== Mock Objects ====================
@@ -52,7 +52,7 @@ function buildTestProduct(): AdminProduct {
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     deletedAt: null,
-  }
+  } as any
 }
 
 function buildTestOrder(overrides?: Partial<Order>): Order {
@@ -78,7 +78,7 @@ function buildTestOrder(overrides?: Partial<Order>): Order {
   }
 }
 
-function createMockProductRepository(): ProductRepository {
+function createMockProductRepository(): any {
   return {
     getProductById: vi.fn().mockResolvedValue(buildTestProduct()),
     listProducts: vi.fn(),
@@ -95,10 +95,11 @@ function createMockProductRepository(): ProductRepository {
     listProductMediaAttachments: vi.fn(),
     listAttachmentsForProducts: vi.fn(),
     getGlobalStats: vi.fn(),
+    getProductStats: vi.fn(),
   }
 }
 
-function createMockOrderRepository(overrides?: Partial<OrderRepository>): OrderRepository {
+function createMockOrderRepository(overrides?: any): any {
   return {
     getOrderById: overrides?.getOrderById ?? vi.fn(),
     createOrder: overrides?.createOrder ?? vi.fn(),
@@ -112,7 +113,7 @@ function createMockOrderRepository(overrides?: Partial<OrderRepository>): OrderR
   }
 }
 
-function createMockIdempotencyRepository(): IdempotencyRepository {
+function createMockIdempotencyRepository(): any {
   return {
     getRequest: vi.fn(),
     createRequest: vi.fn(),

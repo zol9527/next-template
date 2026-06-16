@@ -7,10 +7,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import bcrypt from 'bcryptjs'
 import { createAuthService } from '@/services/core/auth.service'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
-import type { SessionRepository } from '@/repositories/interfaces/session.interface'
-import type { WechatAccountRepository } from '@/repositories/interfaces/wechat-account.interface'
-import type { RbacRepository } from '@/repositories/interfaces/rbac.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
+import type { SessionRepository } from '@/repositories/interfaces/core/session.interface'
+import type { WechatAccountRepository } from '@/plugins/wechat/repositories/interfaces/wechat-account.interface'
+import type { RbacRepository } from '@/repositories/interfaces/core/rbac.interface'
 import type { Session } from '@/contracts/dtos/session.dto'
 import type { RoleDto } from '@/contracts/dtos/rbac'
 import type pino from 'pino'
@@ -33,7 +33,7 @@ const mockServiceContext = {
 /**
  * 创建模拟的用户仓库
  */
-function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepository {
+function createMockUserRepository(overrides?: any): any {
   return {
     getUserById: vi.fn().mockResolvedValue(null),
     getUserByIdentifier: vi.fn().mockResolvedValue(null),
@@ -71,7 +71,7 @@ function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepo
 /**
  * 创建模拟的会话仓库
  */
-function createMockSessionRepository(overrides?: Partial<SessionRepository>): SessionRepository {
+function createMockSessionRepository(overrides?: any): any {
   return {
     getSessionById: vi.fn().mockResolvedValue(null),
     getSessionByRefreshTokenHash: vi.fn().mockResolvedValue(null),
@@ -98,7 +98,7 @@ function createMockSessionRepository(overrides?: Partial<SessionRepository>): Se
 /**
  * 创建模拟的微信账号仓库
  */
-function createMockWechatAccountRepository(overrides?: Partial<WechatAccountRepository>): WechatAccountRepository {
+function createMockWechatAccountRepository(overrides?: any): any {
   return {
     ...overrides,
     findByOpenid: overrides?.findByOpenid ?? vi.fn().mockResolvedValue(null),
@@ -111,7 +111,7 @@ function createMockWechatAccountRepository(overrides?: Partial<WechatAccountRepo
 /**
  * 创建模拟的 RBAC 仓库
  */
-function createMockRbacRepository(overrides?: Partial<RbacRepository>): RbacRepository {
+function createMockRbacRepository(overrides?: any): any {
   return {
     getRolesForUser: vi.fn().mockResolvedValue([]),
     getGrantsForUser: vi.fn().mockResolvedValue([]),

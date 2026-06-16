@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { NextRequest } from 'next/server'
 import { extractClientIpSafe, validateAndSanitizeIp } from '@/lib/http/ip-extractor'
 
 // Mock env

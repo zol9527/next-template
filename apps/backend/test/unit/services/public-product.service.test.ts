@@ -6,10 +6,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPublicProductService } from '@/plugins/ecommerce/services/public-product.service'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
-import type { MediaAssetRepository } from '@/repositories/interfaces/media-asset.interface'
+import type { ProductRepository } from '@/plugins/ecommerce/repositories/interfaces/product.interface'
+import type { MediaAssetRepository } from '@/repositories/interfaces/core/media-asset.interface'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
-import type { AdminProduct } from '@/contracts/dtos/admin/products.dto'
+import type { AdminProduct } from '@/plugins/ecommerce/contracts/admin-products.dto'
 import type pino from 'pino'
 
 // 模拟日志记录器
@@ -19,7 +19,7 @@ const mockLogger = {
   warn: vi.fn(),
   debug: vi.fn(),
   child: vi.fn(() => mockLogger),
-} as pino.Logger
+} as unknown as pino.Logger
 
 // 模拟服务上下文
 const mockServiceContext = {
@@ -54,13 +54,13 @@ function buildTestProduct(overrides?: Partial<AdminProduct>): AdminProduct {
     updatedAt: '2024-01-01T00:00:00.000Z',
     deletedAt: null,
     ...overrides,
-  }
+  } as AdminProduct
 }
 
 /**
  * 创建模拟的商品仓库
  */
-function createMockProductRepository(overrides?: Partial<ProductRepository>): ProductRepository {
+function createMockProductRepository(overrides?: any): ProductRepository {
   return {
     ...overrides,
     listProducts: overrides?.listProducts ?? vi.fn().mockResolvedValue({
@@ -88,7 +88,7 @@ function createMockProductRepository(overrides?: Partial<ProductRepository>): Pr
 /**
  * 创建模拟的媒体资源仓库
  */
-function createMockMediaAssetRepository(overrides?: Partial<MediaAssetRepository>): MediaAssetRepository {
+function createMockMediaAssetRepository(overrides?: any): any {
   return {
     getMediaAssetById: vi.fn(),
     getMediaAssetsByIds: vi.fn(),
@@ -104,7 +104,7 @@ function createMockMediaAssetRepository(overrides?: Partial<MediaAssetRepository
 /**
  * 创建模拟的存储提供者
  */
-function createMockStorageProvider(overrides?: Partial<ObjectStorageProvider>): ObjectStorageProvider {
+function createMockStorageProvider(overrides?: any): any {
   return {
     uploadFile: vi.fn(),
     deleteFile: vi.fn(),
@@ -205,9 +205,9 @@ describe('公开商品服务测试', () => {
       expect(result.items).toHaveLength(2)
       // coverUrl 应该包含完整的域名和 key，可能有签名参数
       expect(result.items[0].coverUrl).toMatch(/^https:\/\/cdn\.example\.com\/key-c1(\?.*)?$/)
-      expect(result.items[0].mediaUrls.some(u => /^https:\/\/cdn\.example\.com\/key-m1(\?.*)?$/.test(u))).toBe(true)
+      expect(result.items[0].mediaUrls?.some(u => /^https:\/\/cdn\.example\.com\/key-m1(\?.*)?$/.test(u))).toBe(true)
       expect(result.items[1].coverUrl).toMatch(/^https:\/\/cdn\.example\.com\/key-c2(\?.*)?$/)
-      expect(result.items[1].mediaUrls.some(u => /^https:\/\/cdn\.example\.com\/key-m2(\?.*)?$/.test(u))).toBe(true)
+      expect(result.items[1].mediaUrls?.some(u => /^https:\/\/cdn\.example\.com\/key-m2(\?.*)?$/.test(u))).toBe(true)
 
       // 关键验证：
       // 1. getMediaAssetsByIds 应该只调用一次
@@ -215,8 +215,8 @@ describe('公开商品服务测试', () => {
       
       // 2. 调用参数应包含所有 ID
       const callArgs = (media.getMediaAssetsByIds as any).mock.calls[0][1]
-      expect(callArgs.assetIds).toHaveLength(4)
-      expect(callArgs.assetIds).toEqual(expect.arrayContaining(['c1', 'm1', 'c2', 'm2']))
+      expect(callArgs?.assetIds).toHaveLength(4)
+      expect(callArgs?.assetIds).toEqual(expect.arrayContaining(['c1', 'm1', 'c2', 'm2']))
 
       // 3. getMediaAssetById 绝不应该被调用 (N+1 预防)
       expect(media.getMediaAssetById).not.toHaveBeenCalled()
@@ -264,8 +264,8 @@ describe('公开商品服务测试', () => {
       expect(media.getMediaAssetsByIds).toHaveBeenCalledTimes(1)
       const callArgs = (media.getMediaAssetsByIds as any).mock.calls[0][1]
       
-      expect(callArgs.assetIds).toContain('c1')
-      expect(callArgs.assetIds).not.toContain('c2')
+      expect(callArgs?.assetIds).toContain('c1')
+      expect(callArgs?.assetIds).not.toContain('c2')
     })
 
     /**

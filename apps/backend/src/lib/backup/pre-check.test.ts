@@ -87,8 +87,8 @@ beforeEach(() => {
   // getTableNameMapping 默认返回与 manifest 匹配的表
   vi.spyOn(schemaAnalyzer, 'getTableNameMapping').mockResolvedValue(
     new Map([
-      ['users', 'users'],
-      ['posts', 'posts'],
+      ['users', { displayName: 'users', approxRows: 100, dataLength: 1024 }],
+      ['posts', { displayName: 'posts', approxRows: 50, dataLength: 512 }],
     ])
   )
 

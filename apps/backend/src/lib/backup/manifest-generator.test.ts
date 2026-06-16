@@ -38,6 +38,7 @@ import type { ManifestFileEntry } from './manifest-generator'
 function createMockPrisma() {
   return {
     $queryRaw: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
   }
 }
 

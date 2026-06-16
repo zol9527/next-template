@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server'
 import { POST, GET } from '@/app/api/v1/admin/exports/route'
 import * as RepoFactory from '@/repositories/factory'
 import * as DataExportServiceModule from '@/services/core/data-export.service'
-import type { ExportJobRepository } from '@/repositories/interfaces/export-job.interface'
+import type { ExportJobRepository } from '@/repositories/interfaces/core/export-job.interface'
 import type { DataExportService } from '@/services/core/data-export.service'
 import type { ExportJobResponse } from '@/contracts/dtos/export.dto'
 

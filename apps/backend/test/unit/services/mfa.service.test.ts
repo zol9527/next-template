@@ -44,8 +44,8 @@ import { MfaAuditLogService } from '@/services/core/mfa-audit-log.service'
 import * as bcrypt from 'bcryptjs'
 import type { Logger } from 'pino'
 
-import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
+import type { MfaRepository } from '@/repositories/interfaces/core/mfa.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
 import type { ServiceContext } from '@/types/service/service-context'
 
 describe('Unit: MfaService', () => {
@@ -69,10 +69,9 @@ describe('Unit: MfaService', () => {
     mockContext = {
       traceId: 'test-trace-id',
       logger: mockLogger as Logger,
-      userId: 'test-user-id',
       clientIp: '192.168.1.1',
       userAgent: 'Test Browser',
-    }
+    } as unknown as ServiceContext
 
     mockMfaRepo = {
       getUserMfaData: vi.fn(),
@@ -87,15 +86,15 @@ describe('Unit: MfaService', () => {
       cleanupExpiredActionTokens: vi.fn(),
       createAuditLog: vi.fn(),
       getUserAuditLogs: vi.fn(),
-    }
+    } as unknown as MfaRepository
 
     mockUserRepo = {
       getUserById: vi.fn(),
     } as unknown as UserRepository
 
-    // Mock bcrypt
-    vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value')
-    vi.mocked(bcrypt.compare).mockResolvedValue(true)
+    // Mock bcrypt (cast as any due to overloaded types)
+    ;(bcrypt.hash as any).mockResolvedValue('hashed-value')
+    ;(bcrypt.compare as any).mockResolvedValue(true)
 
     // Mock encryption
     vi.mocked(MfaEncryption.encryptSecret).mockReturnValue('encrypted-secret')
@@ -110,8 +109,8 @@ describe('Unit: MfaService', () => {
 
     vi.mocked(MfaTotpService.verifyToken).mockReturnValue(true)
 
-    // Mock audit log service
-    vi.mocked(MfaAuditLogService.logSuccess).mockReturnValue({
+    // Mock audit log service (cast as any due to void return type mismatch)
+    ;(MfaAuditLogService.logSuccess as any).mockReturnValue({
       id: 'log-id-1',
       userId: 'test-user-id',
       action: 'setup',
@@ -122,7 +121,7 @@ describe('Unit: MfaService', () => {
       createdAt: new Date(),
     })
 
-    vi.mocked(MfaAuditLogService.logFailure).mockReturnValue({
+    ;(MfaAuditLogService.logFailure as any).mockReturnValue({
       id: 'log-id-2',
       userId: 'test-user-id',
       action: 'setup',
@@ -133,7 +132,7 @@ describe('Unit: MfaService', () => {
       createdAt: new Date(),
     })
 
-    vi.mocked(MfaAuditLogService.formatForStorage).mockReturnValue({
+    ;(MfaAuditLogService.formatForStorage as any).mockReturnValue({
       userId: 'test-user-id',
       action: 'setup',
       ip: '192.168.1.1',
@@ -481,7 +480,7 @@ describe('Unit: MfaService', () => {
       vi.mocked(MfaTotpService.verifyToken).mockReturnValue(false)
 
       // Mock bcrypt compare 找到匹配的备份码
-      vi.mocked(bcrypt.compare)
+      ;(bcrypt.compare as any)
         .mockResolvedValueOnce(false) // 第一个哈希不匹配
         .mockResolvedValue(true) // 第二个哈希匹配
 
@@ -544,7 +543,7 @@ describe('Unit: MfaService', () => {
       // Mock TOTP 验证失败
       vi.mocked(MfaTotpService.verifyToken).mockReturnValue(false)
       // Mock bcrypt compare 不匹配
-      vi.mocked(bcrypt.compare).mockResolvedValue(false)
+      ;(bcrypt.compare as any).mockResolvedValue(false)
 
       const result = await MfaService.verifyMFA(
         'user-123',
@@ -575,7 +574,7 @@ describe('Unit: MfaService', () => {
       vi.mocked(MfaTotpService.verifyToken).mockReturnValue(false)
 
       // Mock bcrypt compare 找到匹配的备份码
-      vi.mocked(bcrypt.compare)
+      ;(bcrypt.compare as any)
         .mockResolvedValueOnce(false) // code1 mismatch
         .mockResolvedValueOnce(true)  // code2 match
 

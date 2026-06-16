@@ -6,9 +6,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createUserDocumentService } from '@/services/core/user-document.service'
-import type { UserDocumentRepository } from '@/repositories/interfaces/user-document.interface'
-import type { DocumentVersionRepository } from '@/repositories/interfaces/document-version.interface'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
+import type { UserDocumentRepository } from '@/repositories/interfaces/core/user-document.interface'
+import type { DocumentVersionRepository } from '@/repositories/interfaces/core/document-version.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
 
 // Mock 文件存储
 vi.mock('@/lib/file-storage', () => ({
@@ -36,11 +36,11 @@ const mockLogger = {
 const mockServiceContext = {
   traceId: 'test-trace-id',
   logger: mockLogger,
-}
+} as any
 
 describe('用户文档 Service 测试', () => {
-  // 使用 Partial 类型来模拟仓储接口
-  const userDocsRepo: Partial<UserDocumentRepository> = {
+  // 使用 any 类型来模拟仓储接口
+  const userDocsRepo: any = {
     findByUserIdAndDocumentType: vi.fn(),
     findByUserId: vi.fn(),
     findById: vi.fn(),
@@ -52,19 +52,19 @@ describe('用户文档 Service 测试', () => {
     findByIdForFileAccess: vi.fn(),
   }
 
-  const docVersionsRepo: Partial<DocumentVersionRepository> = {
+  const docVersionsRepo: any = {
     findByUserDocumentId: vi.fn(),
     create: vi.fn(),
     deleteByUserDocumentId: vi.fn(),
   }
 
-  const usersRepo: Partial<UserRepository> = {
+  const usersRepo: any = {
     getUserById: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(usersRepo.getUserById!).mockResolvedValue({ id: 'user-123', canUpload: true } as any)
+    usersRepo.getUserById.mockResolvedValue({ id: 'user-123', canUpload: true })
   })
 
   describe('uploadUserDocument - 上传用户文档', () => {
@@ -79,7 +79,7 @@ describe('用户文档 Service 测试', () => {
         fileSize: 1024000,
       }
 
-      vi.mocked(userDocsRepo.findByUserIdAndDocumentType).mockResolvedValue(null)
+      userDocsRepo.findByUserIdAndDocumentType.mockResolvedValue(null)
       userDocsRepo.create.mockResolvedValue({
         id: 'new-doc-123',
         userId: 'user-123',

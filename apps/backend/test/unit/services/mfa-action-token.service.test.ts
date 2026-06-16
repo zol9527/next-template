@@ -414,7 +414,7 @@ describe('Unit: MfaActionTokenService', () => {
       expect(consumeResult.resourceId).toBe('order-456')
 
       // 5. 模拟标记为已使用
-      storedData.usedAt = new Date()
+      storedData.usedAt = new Date() as unknown as null
 
       // 6. 再次验证应该失败
       const verifyResult2 = MfaActionTokenService.verifyToken(token, tokenHash, expiresAt, storedData.usedAt)

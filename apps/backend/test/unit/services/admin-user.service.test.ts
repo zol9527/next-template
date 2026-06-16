@@ -6,8 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createAdminUserService, AdminUserServiceError } from '@/services/core/admin-user.service'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
-import type { SessionRepository } from '@/repositories/interfaces/session.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
+import type { SessionRepository } from '@/repositories/interfaces/core/session.interface'
 import type { AdminUserDetail } from '@/contracts/dtos/admin/user-detail.dto'
 import type pino from 'pino'
 
@@ -33,7 +33,7 @@ const mockServiceContext = {
 /**
  * 创建模拟的用户仓库
  */
-function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepository {
+function createMockUserRepository(overrides?: any): any {
   return {
     getUserById: vi.fn().mockResolvedValue(null),
     getUserByIdentifier: vi.fn().mockResolvedValue(null),
@@ -78,7 +78,7 @@ function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepo
 /**
  * 创建模拟的会话仓库
  */
-function createMockSessionRepository(overrides?: Partial<SessionRepository>): SessionRepository {
+function createMockSessionRepository(overrides?: any): any {
   return {
     getSessionById: vi.fn().mockResolvedValue(null),
     getSessionByRefreshTokenHash: vi.fn().mockResolvedValue(null),

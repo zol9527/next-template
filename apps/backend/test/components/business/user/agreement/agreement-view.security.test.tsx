@@ -8,7 +8,7 @@ describe('AgreementView Security', () => {
   it('should add rel="noopener noreferrer" to links with target="_blank"', () => {
     const agreement = {
       id: 'test-id',
-      type: 'USER_AGREEMENT',
+      type: 'USER_AGREEMENT' as const,
       version: '1.0',
       title: 'Test Agreement',
       content: '<p>Please visit <a href="https://example.com" target="_blank">Example</a> for more info.</p>',
@@ -31,7 +31,7 @@ describe('AgreementView Security', () => {
   it('should preserve existing rel attributes when adding noopener noreferrer', () => {
     const agreement = {
       id: 'test-id-preserve',
-      type: 'USER_AGREEMENT',
+      type: 'USER_AGREEMENT' as const,
       version: '1.0',
       title: 'Test Agreement Preserve',
       content: '<p>Link with nofollow: <a href="https://example.com" target="_blank" rel="nofollow">Nofollow</a></p>',
@@ -51,7 +51,7 @@ describe('AgreementView Security', () => {
   it('should not affect links without target="_blank"', () => {
     const agreement = {
       id: 'test-id-2',
-      type: 'USER_AGREEMENT',
+      type: 'USER_AGREEMENT' as const,
       version: '1.0',
       title: 'Test Agreement 2',
       content: '<p>Internal link: <a href="/internal">Internal</a></p>',

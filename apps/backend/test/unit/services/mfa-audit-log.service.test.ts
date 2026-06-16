@@ -300,7 +300,7 @@ describe('Unit: MfaAuditLogService', () => {
         createdAt: new Date(now - i * 1000), // 过去 5 秒
       }))
 
-      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs)
+      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs as any)
 
       expect(isSuspicious).toBe(true)
     })
@@ -330,7 +330,7 @@ describe('Unit: MfaAuditLogService', () => {
         },
       ]
 
-      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs)
+      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs as any)
 
       expect(isSuspicious).toBe(false)
     })
@@ -348,7 +348,7 @@ describe('Unit: MfaAuditLogService', () => {
         createdAt: new Date(now - i * 60000), // 过去 3 分钟
       }))
 
-      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs)
+      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs as any)
 
       expect(isSuspicious).toBe(true)
     })
@@ -388,7 +388,7 @@ describe('Unit: MfaAuditLogService', () => {
         },
       ]
 
-      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs)
+      const isSuspicious = MfaAuditLogService.detectSuspiciousActivity(logs as any)
 
       expect(isSuspicious).toBe(true)
     })
@@ -461,7 +461,7 @@ describe('Unit: MfaAuditLogService', () => {
         },
       ]
 
-      const summary = MfaAuditLogService.getAuditSummary(logs)
+      const summary = MfaAuditLogService.getAuditSummary(logs as any)
 
       expect(summary.totalLogs).toBe(4)
       expect(summary.successCount).toBe(2)
@@ -494,7 +494,7 @@ describe('Unit: MfaAuditLogService', () => {
         createdAt: new Date(now - i * 1000),
       }))
 
-      const summary = MfaAuditLogService.getAuditSummary(logs)
+      const summary = MfaAuditLogService.getAuditSummary(logs as any)
 
       expect(summary.suspiciousActivity).toBe(true)
     })

@@ -2,10 +2,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import bcrypt from 'bcryptjs'
 import { createAuthService } from '@/services/core/auth.service'
-import type { UserRepository } from '@/repositories/interfaces/user.interface'
-import type { SessionRepository } from '@/repositories/interfaces/session.interface'
-import type { WechatAccountRepository } from '@/repositories/interfaces/wechat-account.interface'
-import type { RbacRepository } from '@/repositories/interfaces/rbac.interface'
+import type { UserRepository } from '@/repositories/interfaces/core/user.interface'
+import type { SessionRepository } from '@/repositories/interfaces/core/session.interface'
+import type { WechatAccountRepository } from '@/plugins/wechat/repositories/interfaces/wechat-account.interface'
+import type { RbacRepository } from '@/repositories/interfaces/core/rbac.interface'
 import type { RoleDto } from '@/contracts/dtos/rbac'
 import type pino from 'pino'
 
@@ -22,7 +22,7 @@ const mockServiceContext = {
   logger: mockLogger,
 }
 
-function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepository {
+function createMockUserRepository(overrides?: any): any {
   return {
     getUserById: vi.fn().mockResolvedValue(null),
     getUserByIdentifier: vi.fn().mockResolvedValue(null),
@@ -45,7 +45,7 @@ function createMockUserRepository(overrides?: Partial<UserRepository>): UserRepo
   }
 }
 
-function createMockSessionRepository(overrides?: Partial<SessionRepository>): SessionRepository {
+function createMockSessionRepository(overrides?: any): any {
   return {
     getSessionById: vi.fn().mockResolvedValue(null),
     getSessionByRefreshTokenHash: vi.fn().mockResolvedValue(null),
@@ -58,7 +58,7 @@ function createMockSessionRepository(overrides?: Partial<SessionRepository>): Se
   }
 }
 
-function createMockWechatAccountRepository(overrides?: Partial<WechatAccountRepository>): WechatAccountRepository {
+function createMockWechatAccountRepository(overrides?: any): any {
   return {
     findByOpenid: vi.fn().mockResolvedValue(null),
     findByUserId: vi.fn().mockResolvedValue(null),
@@ -68,7 +68,7 @@ function createMockWechatAccountRepository(overrides?: Partial<WechatAccountRepo
   }
 }
 
-function createMockRbacRepository(overrides?: Partial<RbacRepository>): RbacRepository {
+function createMockRbacRepository(overrides?: any): any {
   return {
     getRolesForUser: vi.fn().mockResolvedValue([]),
     getGrantsForUser: vi.fn().mockResolvedValue([]),

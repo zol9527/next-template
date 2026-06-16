@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import * as Factory from '@/repositories/factory'
 import * as PublicProductService from '@/plugins/ecommerce/services/public-product.service'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
+import type { ProductRepository } from '@/plugins/ecommerce/repositories/interfaces/product.interface'
 
 vi.mock('@/repositories/factory', () => ({
   createProductRepository: vi.fn(),

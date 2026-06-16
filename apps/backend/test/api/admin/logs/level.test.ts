@@ -284,7 +284,7 @@ describe('API: /api/v1/admin/logs/level', () => {
         mockUseApiAuth.mockResolvedValue(createAdminAuth())
         // 重新设置限流器 mock（clearAllMocks 会清除 mockResolvedValue）
         const { enforceRateLimit } = await import('@/lib/utils/rate-limit')
-        vi.mocked(enforceRateLimit).mockResolvedValue({ allowed: true, retryAfterSeconds: 0 })
+        vi.mocked(enforceRateLimit).mockResolvedValue({ allowed: true })
         mockSetLogLevel.mockReturnValue({
           previousLevel: 'info',
           currentLevel: level,

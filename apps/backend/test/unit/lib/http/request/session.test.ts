@@ -18,7 +18,7 @@ describe('tryRefreshSessionByCookie', () => {
       capturedUrls.push(url.toString())
       return new Response(JSON.stringify({ data: {} }), {
         status: 200,
-        headers: { 'set-cookie': ['access_token=new; Path=/'] },
+        headers: { 'set-cookie': ['access_token=new; Path=/'] } as unknown as HeadersInit,
       })
     })
 

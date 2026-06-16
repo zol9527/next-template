@@ -1,26 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
-import { sidebarGroups } from '@/components/business/admin/sidebar/sidebar-items'
+import { SIDEBAR_ITEMS } from '@/components/business/admin/sidebar/sidebar-items'
 
-function collectRequiredAccess() {
-  return sidebarGroups.flatMap((group) =>
-    group.items.flatMap((item) => [item.requiredAccess, ...(item.children?.map((child) => child.requiredAccess) ?? [])])
-  ).filter((access): access is NonNullable<typeof access> => Boolean(access))
-}
-
-describe('sidebarGroups RBAC gating', () => {
+describe('sidebar RBAC gating', () => {
   it('所有 requiredAccess 都应包含有效的 action 和 scope', () => {
-    const requiredAccess = collectRequiredAccess()
-
-    for (const access of requiredAccess) {
-      expect(access?.action).toBeTruthy()
-      expect(access?.scope).toBeTruthy()
+    for (const item of SIDEBAR_ITEMS) {
+      if (item.requiredAccess) {
+        expect(item.requiredAccess.action).toBeTruthy()
+        expect(item.requiredAccess.scope).toBeTruthy()
+      }
     }
   })
 
-  it('侧边栏分组中的 requiredAccess 不应为空', () => {
-    const requiredAccess = collectRequiredAccess()
-
+  it('侧边栏中的 requiredAccess 不应为空', () => {
+    const requiredAccess = SIDEBAR_ITEMS
+      .map(item => item.requiredAccess)
+      .filter(Boolean)
     expect(requiredAccess.length).toBeGreaterThan(0)
   })
 })

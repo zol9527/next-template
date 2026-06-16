@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/v1/admin/users/[id]/mfa/reset/route'
 import * as MfaFactory from '@/repositories/factory'
-import type { MfaRepository } from '@/repositories/interfaces/mfa.interface'
+import type { MfaRepository } from '@/repositories/interfaces/core/mfa.interface'
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors/app-error'
 
 // Mock logger 避免文件系统写入

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createAdminProductService } from '@/plugins/ecommerce/services/admin-product.service'
-import type { ProductRepository } from '@/repositories/interfaces/product.interface'
-import type { MediaAssetRepository } from '@/repositories/interfaces/media-asset.interface'
+import type { ProductRepository } from '@/plugins/ecommerce/repositories/interfaces/product.interface'
+import type { MediaAssetRepository } from '@/repositories/interfaces/core/media-asset.interface'
 import type { ObjectStorageProvider } from '@/lib/storage/types'
 import type { ServiceContext } from '@/types/service/service-context'
-import type { AdminProduct } from '@/contracts/dtos/admin/products.dto'
+import type { AdminProduct } from '@/plugins/ecommerce/contracts/admin-products.dto'
 import type { AdminMediaAsset } from '@/contracts/dtos/admin/media-assets.dto'
 
 describe('AdminProductService Performance', () => {

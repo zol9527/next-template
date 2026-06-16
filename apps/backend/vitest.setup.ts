@@ -53,8 +53,7 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 }
 
 // Setup testing library for React component tests
-import { expect } from 'vitest'
-import * as matchers from '@testing-library/jest-dom/matchers'
-
-expect.extend(matchers)
+// 使用 vitest 专用入口：运行时自动 expect.extend(matchers)，编译时提供 matcher 类型扩展
+// （toBeInTheDocument / toHaveAttribute 等），替代手动 expect.extend + 单独的类型声明
+import '@testing-library/jest-dom/vitest'
 process.env.MFA_SECRET_ENCRYPTION_KEY = process.env.MFA_SECRET_ENCRYPTION_KEY ?? 'test_mfa_encryption_key_0123456789_0123456789'

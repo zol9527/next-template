@@ -39,21 +39,26 @@ vi.mock('@/lib/security/mfa-encryption', () => ({
   },
 }))
 
-const { prisma } = vi.mocked(await import('@/lib/prisma'), { shallow: false })
+const { prisma } = vi.mocked(await import('@/lib/prisma'), { deep: true })
 
 // Mock logger
 const mockLogger = {
+  level: 'debug',
   info: vi.fn(),
   error: vi.fn(),
   warn: vi.fn(),
   debug: vi.fn(),
+  fatal: vi.fn(),
+  trace: vi.fn(),
+  silent: vi.fn(),
+  msgPrefix: undefined,
   child: vi.fn(() => mockLogger),
 }
 
 // Mock RepoContext
 const mockCtx: RepoContext = {
   traceId: 'test-trace-id',
-  logger: mockLogger,
+  logger: mockLogger as any,
 }
 
 describe('PrismaMfaRepository', () => {
@@ -93,7 +98,7 @@ describe('PrismaMfaRepository', () => {
         mfaPendingSecret: 'encrypted-secret',
         mfaPendingBackupCodes: JSON.stringify(['code1', 'code2']),
         mfaPendingExpiresAt: futureDate,
-      })
+      } as any)
       vi.mocked(MfaEncryption.decryptSecret).mockReturnValue('raw-secret')
 
       const result = await repository.getPendingMfaSecret(mockCtx, { userId: 'user-123' })
@@ -119,7 +124,7 @@ describe('PrismaMfaRepository', () => {
         mfaPendingSecret: 'encrypted-secret',
         mfaPendingBackupCodes: JSON.stringify(['code1', 'code2']),
         mfaPendingExpiresAt: pastDate,
-      })
+      } as any)
 
       const result = await repository.getPendingMfaSecret(mockCtx, { userId: 'user-123' })
 
@@ -140,7 +145,7 @@ describe('PrismaMfaRepository', () => {
         mfaPendingSecret: 'encrypted-secret',
         mfaPendingBackupCodes: JSON.stringify(['code1', 'code2']),
         mfaPendingExpiresAt: futureDate,
-      })
+      } as any)
       vi.mocked(MfaEncryption.decryptSecret).mockImplementation(() => {
         throw new Error('Decryption failed')
       })
