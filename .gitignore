@@ -116,3 +116,4 @@ RELEASE_NOTES.md
 # 其他
 **/backups/
 **/exports/
+.serena/
