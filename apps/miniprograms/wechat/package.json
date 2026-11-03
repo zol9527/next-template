@@ -32,7 +32,7 @@
     "@types/wechat-miniprogram": "3.4.10",
     "@uni-helper/uni-app-types": "1.0.0-alpha.7",
     "sass": "1.69.5",
-    "vite": "6.4.3",
+    "vite": "6.4.5",
     "vitest": "^3.2.4"
   }
 }
